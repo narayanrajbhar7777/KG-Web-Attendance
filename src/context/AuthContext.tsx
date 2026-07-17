@@ -20,6 +20,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       localStorage.setItem('attendance_auth_user', JSON.stringify(user));
     } else {
       localStorage.removeItem('attendance_auth_user');
+      localStorage.removeItem('attendance_auth_token');
     }
   }, [user]);
 

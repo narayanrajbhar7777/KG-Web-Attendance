@@ -1,128 +1,201 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import type { User, AppRequest, EmployeeAttendance, AppNotification } from '../types';
-import { generateMockUsers, generateMockRequests, generateMockAttendance } from '../mockData/generate';
+import { fetchNotifications, fetchSettings, updateSettings, createNotification, markNotificationsAsReadAPI, createRequest, updateRequestStatusAPI, fetchMasterConfig, updateMasterConfig as updateMasterConfigAPI } from '../api';
+import { useAuth } from './AuthContext';
+
+type Theme = 'light' | 'dark';
 
 interface AppContextType {
-  users: User[];
-  requests: AppRequest[];
-  attendance: EmployeeAttendance[];
   notifications: AppNotification[];
-  applyRequest: (req: Omit<AppRequest, 'id' | 'status'>) => void;
-  updateRequestStatus: (id: string, status: AppRequest['status']) => void;
-  deleteRequest: (id: string) => void;
-  updateRequest: (id: string, req: Partial<AppRequest>) => void;
   addNotification: (message: string, targetUserId?: string) => void;
-  markNotificationsAsRead: (userId: string) => void;
+  markNotificationsAsRead: (userId: string, role: string) => void;
   customColors: Record<string, string>;
   updateCustomColor: (status: string, color: string) => void;
+  theme: Theme;
+  toggleTheme: () => void;
+  isNotificationsEnabled: boolean;
+  setIsNotificationsEnabled: (enabled: boolean) => void;
+  masterConfig: any;
+  setMasterConfig: (config: any) => void;
+
+  // Expose these via context to make it easier for components to call the API 
+  // without importing the API directly, or they can just import the API directly.
+  applyRequest: (req: Omit<AppRequest, 'id' | 'status'>) => Promise<void>;
+  updateRequestStatus: (id: string, status: AppRequest['status']) => Promise<void>;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [users] = useState<User[]>(() => {
-    const saved = localStorage.getItem('attendance_users');
-    if (saved) return JSON.parse(saved);
-    const generated = generateMockUsers();
-    localStorage.setItem('attendance_users', JSON.stringify(generated));
-    return generated;
+  const [notifications, setNotifications] = useState<AppNotification[]>([]);
+  const [customColors, setCustomColors] = useState<Record<string, string>>({});
+  const [theme, setTheme] = useState<Theme>('light');
+  const [isNotificationsEnabled, setIsNotificationsEnabledState] = useState(() => {
+    return localStorage.getItem('notifications_enabled') !== 'false';
   });
+  const [masterConfig, setMasterConfigState] = useState<any>(null);
 
-  const [requests, setRequests] = useState<AppRequest[]>(() => {
-    const saved = localStorage.getItem('attendance_requests_v2');
-    if (saved) return JSON.parse(saved);
-    const generated = generateMockRequests(users);
-    localStorage.setItem('attendance_requests_v2', JSON.stringify(generated));
-    return generated;
-  });
+  const setIsNotificationsEnabled = (enabled: boolean) => {
+    setIsNotificationsEnabledState(enabled);
+    localStorage.setItem('notifications_enabled', String(enabled));
+  };
+  const [loading, setLoading] = useState(true);
 
-  const [attendance] = useState<EmployeeAttendance[]>(() => {
-    const saved = localStorage.getItem('attendance_records');
-    if (saved) return JSON.parse(saved);
-    const generated = generateMockAttendance(users);
-    localStorage.setItem('attendance_records', JSON.stringify(generated));
-    return generated;
-  });
-
-  const [notifications, setNotifications] = useState<AppNotification[]>(() => {
-    const saved = localStorage.getItem('attendance_notifications');
-    if (saved) return JSON.parse(saved);
-    return [];
-  });
-
-  const [customColors, setCustomColors] = useState<Record<string, string>>(() => {
-    const saved = localStorage.getItem('attendance_custom_colors');
-    if (saved) return JSON.parse(saved);
-    return {};
-  });
+  const { user } = useAuth();
 
   useEffect(() => {
-    localStorage.setItem('attendance_custom_colors', JSON.stringify(customColors));
-  }, [customColors]);
+    if (!user) {
+      setNotifications([]);
+      setLoading(false);
+      return;
+    }
 
-  useEffect(() => {
-    localStorage.setItem('attendance_requests_v2', JSON.stringify(requests));
-  }, [requests]);
-
-  useEffect(() => {
-    localStorage.setItem('attendance_notifications', JSON.stringify(notifications));
-  }, [notifications]);
-
-  const applyRequest = (req: Omit<AppRequest, 'id' | 'status'>) => {
-    const newRequest: AppRequest = {
-      ...req,
-      id: `req_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`,
-      status: 'Pending'
-    };
-    setRequests(prev => [newRequest, ...prev]);
-  };
-
-  const updateRequestStatus = (id: string, status: AppRequest['status']) => {
-    setRequests(prev => prev.map(r => r.id === id ? { ...r, status } : r));
-  };
-
-  const deleteRequest = (id: string) => {
-    setRequests(prev => prev.filter(r => r.id !== id));
-  };
-
-  const updateRequest = (id: string, data: Partial<AppRequest>) => {
-    setRequests(prev => prev.map(r => r.id === id ? { ...r, ...data } : r));
-  };
-
-  const addNotification = (message: string, targetUserId?: string) => {
-    const newNotif: AppNotification = {
-      id: `notif_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`,
-      targetUserId,
-      message,
-      isRead: false,
-      createdAt: new Date().toISOString()
-    };
-    setNotifications(prev => [newNotif, ...prev]);
-  };
-
-  const markNotificationsAsRead = (userId: string) => {
-    const userRole = users.find(u => u.id === userId)?.role;
-    setNotifications(prev => prev.map(n => {
-      // If it's an admin notification (targetUserId is undefined) and current user is Admin
-      if (!n.targetUserId && userRole === 'Admin') {
-        return { ...n, isRead: true };
+    const loadData = async () => {
+      try {
+        const [n, s, mConfig] = await Promise.all([
+          isNotificationsEnabled ? fetchNotifications() : Promise.resolve([]),
+          user.role === 'Admin' ? fetchSettings(user.id) : Promise.resolve(null),
+          fetchMasterConfig()
+        ]);
+        if (n && !n.message) {
+          setNotifications(n);
+        }
+        if (s && s.customColors) {
+          setCustomColors(s.customColors);
+        }
+        if (s && s.theme) {
+          setTheme(s.theme);
+        } else {
+          setTheme(window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+        }
+        if (mConfig && !mConfig.message) {
+          setMasterConfigState(mConfig);
+        }
+      } catch (err) {
+        console.error("Failed to fetch initial data", err);
+      } finally {
+        setLoading(false);
       }
-      // If it's a specific user's notification
-      if (n.targetUserId === userId) {
-        return { ...n, isRead: true };
+    };
+
+    setLoading(true);
+    loadData();
+
+    if (!isNotificationsEnabled) {
+      return;
+    }
+
+    const intervalId = setInterval(async () => {
+      try {
+        const n = await fetchNotifications();
+        if (n && !n.message) {
+          setNotifications(n);
+        }
+      } catch (err) {
+        console.error("Failed to poll notifications", err);
       }
-      return n;
-    }));
+    }, 5000);
+
+    return () => clearInterval(intervalId);
+  }, [user, isNotificationsEnabled]);
+
+  const applyRequest = async (req: Omit<AppRequest, 'id' | 'status'>) => {
+    try {
+      await createRequest(req);
+    } catch (err) {
+      console.error(err);
+    }
   };
 
-  const updateCustomColor = (status: string, color: string) => {
-    setCustomColors(prev => ({ ...prev, [status]: color }));
+  const updateRequestStatus = async (id: string, status: AppRequest['status']) => {
+    try {
+      await updateRequestStatusAPI(id, status);
+    } catch (err) {
+      console.error(err);
+    }
   };
+
+  const setMasterConfig = async (newConfig: any) => {
+    try {
+      const result = await updateMasterConfigAPI(newConfig);
+      if (result) {
+        setMasterConfigState(result.masterConfig || result);
+      }
+    } catch (error) {
+      console.error('Failed to update master config:', error);
+    }
+  };
+
+  useEffect(() => {
+    const root = window.document.documentElement;
+    if (theme === 'dark') {
+      root.classList.add('dark');
+    } else {
+      root.classList.remove('dark');
+    }
+  }, [theme]);
+
+  const addNotification = async (message: string, targetUserId?: string) => {
+    try {
+      const newNotif = await createNotification(message, targetUserId);
+      setNotifications(prev => [newNotif, ...prev]);
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const markNotificationsAsRead = async (userId: string, role: string) => {
+    try {
+      await markNotificationsAsReadAPI(userId);
+      setNotifications(prev => prev.map(n => {
+        if (!n.targetUserId && role === 'Admin') return { ...n, isRead: true };
+        if (n.targetUserId === userId) return { ...n, isRead: true };
+        return n;
+      }));
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const updateCustomColor = async (status: string, color: string) => {
+    if (!user) return;
+    const newColors = { ...customColors, [status]: color };
+    setCustomColors(newColors);
+    try {
+      await updateSettings(user.id, { customColors: newColors });
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const toggleTheme = async () => {
+    if (!user) return;
+    const newTheme = theme === 'light' ? 'dark' : 'light';
+    setTheme(newTheme);
+    try {
+      await updateSettings(user.id, { theme: newTheme });
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-[#f4f7f6] dark:bg-[#0b1120] text-slate-500">
+        <div className="flex flex-col items-center">
+          <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mb-4"></div>
+          <p className="font-bold">Connecting to backend server...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <AppContext.Provider value={{
-      users, requests, attendance, notifications, customColors,
-      applyRequest, updateRequestStatus, deleteRequest, updateRequest, addNotification, markNotificationsAsRead, updateCustomColor
+      notifications, addNotification, markNotificationsAsRead,
+      isNotificationsEnabled, setIsNotificationsEnabled,
+      customColors, updateCustomColor, theme, toggleTheme,
+      applyRequest, updateRequestStatus, masterConfig, setMasterConfig
     }}>
       {children}
     </AppContext.Provider>

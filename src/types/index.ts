@@ -5,6 +5,8 @@ export interface User {
   code: string;
   name: string;
   role: Role;
+  image?: string;
+  designation?: string;
 }
 
 export type AttendanceStatus = 'P' | 'A' | 'WO' | 'H' | 'HD' | 'PH' | 'EL' | 'HDEL' | 'L' | 'EO' | 'NJ' | 'LWP';
@@ -22,15 +24,25 @@ export interface EmployeeAttendance {
   records: DailyAttendance[];
 }
 
+export interface AttendancePolicy {
+  id: string; // the database row id
+  employeeId: string;
+  inTime: string;
+  outTime: string;
+  weekOffs: number[];
+}
+
 export type RequestType = 'Leave' | 'Misspunch';
 export type RequestStatus = 'Pending' | 'Approved' | 'Rejected';
 
 export interface AppRequest {
   id: string;
   userId: string;
+  managerId?: string;
   type: RequestType;
   date: string; // Used as 'From Date' for leaves
   toDate?: string; // Used as 'To Date' for leaves
+  createdAt?: string;
   reason: string;
   status: RequestStatus;
   // For Misspunch
@@ -38,6 +50,20 @@ export interface AppRequest {
   outTime?: string;
   // For Leave
   leaveType?: string;
+}
+
+export interface LeaveType {
+  id: string;
+  code: string;
+  name: string;
+  isActive: boolean;
+}
+
+export interface EmployeeLeave {
+  id: string;
+  employeeId: string; // Links to user.id
+  leaveTypeId: string; // Links to leaveType.id
+  allocatedDays: number;
 }
 
 export interface AppNotification {

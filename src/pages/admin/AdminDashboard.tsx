@@ -1,17 +1,108 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../../context/AuthContext';
 import { useAppData } from '../../context/AppContext';
-import { Calendar, EyeOff, Filter, Download, MoreVertical, ArrowRight, Table, Check, X, Clock, Search } from 'lucide-react';
+import { fetchRequests, fetchUsers, fetchEmployeeDataExternal } from '../../api';
+import type { AppRequest, User } from '../../types';
+import { Calendar, EyeOff, Table, Check, X, Clock, Search } from 'lucide-react';
 import { format } from 'date-fns';
+import { AttendanceTable, type ColumnDef } from '../../components/AttendanceTable';
+import { getStatusColor, normalizeAttendanceStatus, calculateTime } from '../../utils/attendanceUtils';
 
 const AdminDashboard: React.FC = () => {
-  const { requests, users, updateRequestStatus, addNotification } = useAppData();
-  const employees = users.filter(u => u.role === 'Employee');
+  const navigate = useNavigate();
+  const { user } = useAuth();
+  const { updateRequestStatus: apiUpdateRequestStatus, addNotification } = useAppData();
+  const [requests, setRequests] = useState<AppRequest[]>([]);
+  const [users, setUsers] = useState<User[]>([]);
+  const [recentPunchesData, setRecentPunchesData] = useState<any[]>([]);
+
+  useEffect(() => {
+    const loadData = async () => {
+      try {
+        const todayStr = format(new Date(), 'dd-MMM-yyyy');
+
+        let reqsData = [];
+        try { reqsData = await fetchRequests(); } catch (e) { console.error("Failed fetchRequests:", e); }
+
+        let usersData = [];
+        try { usersData = await fetchUsers(); } catch (e) { console.error("Failed fetchUsers:", e); }
+
+        let extData = null;
+        if (user) {
+          try { extData = await fetchEmployeeDataExternal(user.id, todayStr, todayStr); } catch (e) { console.error("Failed fetchEmployeeDataExternal:", e); }
+        }
+
+        setRequests(reqsData || []);
+        setUsers(usersData || []);
+
+        if (extData) {
+          const empList = extData.empDet?.EMP_DATA || [];
+          const punchData = extData.punchDet?.EMP_PUNCH_DATA || [];
+
+          let allEmployees = empList.map((e: any) => ({
+            id: e.e_code,
+            name: e.e_name,
+            code: e.e_code,
+            designation: e.e_desg
+          }));
+
+          if (user && !allEmployees.some((e: any) => e.code === user.code)) {
+            allEmployees.unshift({
+              id: user.code,
+              name: user.name,
+              code: user.code,
+              designation: user.designation
+            });
+          }
+
+          const processed = allEmployees.map((emp: any) => {
+            const p = punchData.find((p: any) => String(p.emp_id) === String(emp.code));
+
+            const checkIn = p?.intime ? p.intime.split(' ')[1]?.substring(0, 5) : '-';
+            const checkOut = p?.outtime ? p.outtime.split(' ')[1]?.substring(0, 5) : '-';
+
+            const { total } = calculateTime(checkIn, checkOut);
+            const duration = total;
+
+            const currDate = format(new Date(), 'yyyy-MM-dd');
+            const pDate = p?.logindate ? p.logindate.split(' ')[0] : currDate;
+
+            const status = normalizeAttendanceStatus(p?.status, checkIn, checkOut, pDate);
+
+            return {
+              id: emp.code + '-' + Math.random(),
+              code: emp.code,
+              name: emp.name || 'Unknown',
+              date: p?.logindate ? p.logindate.split(' ')[0] : currDate,
+              checkIn,
+              checkOut,
+              duration,
+              status
+            };
+          });
+
+          processed.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+          setRecentPunchesData(processed);
+        }
+      } catch (error) {
+        console.error("Failed to load dashboard data", error);
+      }
+    };
+    if (user) {
+      loadData();
+    }
+  }, [user]);
+
+  const updateRequestStatus = async (id: string, status: AppRequest['status']) => {
+    await apiUpdateRequestStatus(id, status);
+    setRequests(prev => prev.map(r => r.id === id ? { ...r, status } : r));
+  };
 
   const [leavesSearch, setLeavesSearch] = useState('');
   const [punchesSearch, setPunchesSearch] = useState('');
   const [leaveReportSearch, setLeaveReportSearch] = useState('');
   const [punchReportSearch, setPunchReportSearch] = useState('');
-  const [recentPunchingSearch, setRecentPunchingSearch] = useState('');
 
   const pendingLeaves = requests.filter(r => r.type === 'Leave' && r.status === 'Pending').length;
   const approvedLeaves = requests.filter(r => r.type === 'Leave' && r.status === 'Approved').length;
@@ -22,7 +113,7 @@ const AdminDashboard: React.FC = () => {
   const rejectedPunches = requests.filter(r => r.type === 'Misspunch' && r.status === 'Rejected').length;
 
   const pendingRequestsList = requests.filter(r => r.status === 'Pending');
-  
+
   const pendingLeaveList = pendingRequestsList.filter(r => {
     if (r.type !== 'Leave') return false;
     const user = users.find(u => u.id === r.userId);
@@ -47,16 +138,19 @@ const AdminDashboard: React.FC = () => {
     return user?.name.toLowerCase().includes(punchReportSearch.toLowerCase()) || user?.code.toLowerCase().includes(punchReportSearch.toLowerCase());
   });
 
-  const recentPunches = [
-    { id: 1, emp: employees[0], date: '2026-07-09', checkIn: '09:00 AM', checkOut: '06:30 PM', duration: '09h 30m', status: 'Approved' },
-    { id: 2, emp: employees[1], date: '2026-07-10', checkIn: '09:15 AM', checkOut: '06:15 PM', duration: '09h 00m', status: 'Approved' },
-    { id: 3, emp: employees[2], date: '2026-07-15', checkIn: '09:00 AM', checkOut: '06:15 PM', duration: '09h 15m', status: 'Approved' },
-  ].filter(p => p.emp?.name.toLowerCase().includes(recentPunchingSearch.toLowerCase()) || p.emp?.code.toLowerCase().includes(recentPunchingSearch.toLowerCase()));
+  const recentPunchesColumns: ColumnDef<any>[] = [
+    { key: 'code', label: 'Code' },
+    { key: 'name', label: 'Name', render: (item) => <span className="font-medium text-slate-500 dark:text-slate-400 text-[11px] uppercase whitespace-nowrap">{item.name}</span> },
+    { key: 'date', label: 'Date', render: (item) => <span className="font-medium text-slate-600 dark:text-slate-300">{format(new Date(item.date), 'dd MMM yyyy')}</span> },
+    { key: 'day', label: 'Day', render: (item) => <span className="font-medium text-slate-600 dark:text-slate-300">{format(new Date(item.date), 'EEEE')}</span> },
+    { key: 'checkIn', label: 'In', render: (item) => <span className="font-mono text-slate-600 dark:text-slate-300">{item.checkIn !== '-' ? item.checkIn : <span className="text-slate-400 dark:text-slate-600">-</span>}</span> },
+    { key: 'checkOut', label: 'Out', render: (item) => <span className="font-mono text-slate-600 dark:text-slate-300">{item.checkOut !== '-' ? item.checkOut : <span className="text-slate-400 dark:text-slate-600">-</span>}</span> },
+    { key: 'duration', label: 'Working Hr', render: (item) => <span className="font-medium text-blue-600 dark:text-blue-400">{item.duration !== '-' ? item.duration : <span className="text-slate-400 dark:text-slate-600">-</span>}</span> },
+    { key: 'status', label: 'Status', render: (item) => <span className={`text-[13px] ${getStatusColor(item.status)}`}>{item.status}</span> },
+  ];
 
   return (
     <div className="flex flex-col animate-fade-in-up gap-4 pb-2">
-
-
 
       {/* Main content area */}
       <div className="flex flex-col gap-4">
@@ -92,8 +186,6 @@ const AdminDashboard: React.FC = () => {
                 </div>
               </div>
             </div>
-
-
           </div>
 
           {/* Missing Punch Card */}
@@ -124,10 +216,7 @@ const AdminDashboard: React.FC = () => {
                 </div>
               </div>
             </div>
-
-
           </div>
-
         </div>
 
         {/* Pending Requests Tables */}
@@ -305,7 +394,10 @@ const AdminDashboard: React.FC = () => {
           <div className="flex flex-col bg-white dark:bg-[#1e293b] rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700/60 overflow-hidden transition-colors duration-300">
             <div className="p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200 dark:border-slate-700/60">
               <div className="flex items-center gap-3">
-                <div className="bg-purple-50 dark:bg-purple-500/10 p-1.5 rounded-lg text-purple-600 dark:text-purple-400">
+                <div
+                  className="bg-purple-50 dark:bg-purple-500/10 p-1.5 rounded-lg text-purple-600 dark:text-purple-400 hover:bg-purple-100 dark:hover:bg-purple-500/20 transition-colors cursor-pointer"
+                  onClick={() => navigate('/admin/leave-requests-report')}
+                >
                   <Table className="w-4 h-4" />
                 </div>
                 <h3 className="text-[17px] font-bold text-slate-800 dark:text-white">Leave Requests Report</h3>
@@ -327,16 +419,20 @@ const AdminDashboard: React.FC = () => {
               <table className="w-full text-left border-collapse">
                 <thead className="sticky top-0 bg-white dark:bg-[#1e293b] z-10">
                   <tr className="bg-slate-50/80 dark:bg-[#182333]/50 text-slate-500 dark:text-slate-400 text-[10px] font-bold uppercase tracking-widest border-b border-slate-200 dark:border-slate-700/60 transition-colors">
-                    <th className="py-4 px-6">Employee Name</th>
-                    <th className="py-4 px-6">Date</th>
-                    <th className="py-4 px-6">Leave Details</th>
-                    <th className="py-4 px-6">Status</th>
+                    <th className="py-4 px-4">Code</th>
+                    <th className="py-4 px-4">Name</th>
+                    <th className="py-4 px-4">From</th>
+                    <th className="py-4 px-4">To</th>
+                    <th className="py-4 px-4 text-center">Count</th>
+                    <th className="py-4 px-4">Type</th>
+                    <th className="py-4 px-4">Reason</th>
+                    <th className="py-4 px-4">Status</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 dark:divide-slate-700/50">
                   {processedLeaveRequests.length === 0 ? (
                     <tr>
-                      <td colSpan={4} className="py-8 text-center text-slate-500 dark:text-slate-400">
+                      <td colSpan={8} className="py-8 text-center text-slate-500 dark:text-slate-400">
                         No leave reports found.
                       </td>
                     </tr>
@@ -345,28 +441,33 @@ const AdminDashboard: React.FC = () => {
                       const emp = users.find(u => u.id === req.userId);
                       return (
                         <tr key={req.id} className="hover:bg-slate-50 dark:hover:bg-[#2a374a]/30 transition-colors group">
-                          <td className="py-4 px-6">
-                            <div className="flex items-center gap-3">
-                              <div className="w-8 h-8 rounded-full bg-purple-100 dark:bg-purple-900/40 text-purple-600 dark:text-purple-400 flex items-center justify-center font-bold text-xs ring-2 ring-white dark:ring-[#1e293b]">
-                                {emp?.name?.charAt(0) || 'U'}
-                              </div>
-                              <div>
-                                <p className="font-bold text-slate-800 dark:text-slate-200 text-sm">{emp?.name}</p>
-                                <p className="text-[11px] text-slate-500 dark:text-slate-400 font-medium">{emp?.code}</p>
-                              </div>
-                            </div>
+                          <td className="py-4 px-4 text-sm text-slate-600 dark:text-slate-300 font-medium whitespace-nowrap">
+                            {emp?.code}
                           </td>
-                          <td className="py-4 px-6 text-sm text-slate-600 dark:text-slate-300 font-medium">
-                            {format(new Date(req.date), 'MMM dd, yyyy')}
+                          <td className="py-4 px-4 whitespace-nowrap">
+                            <p className="font-bold text-slate-800 dark:text-slate-200 text-sm">{emp?.name}</p>
                           </td>
-                          <td className="py-4 px-6">
+                          <td className="py-4 px-4 text-sm text-slate-600 dark:text-slate-300 font-medium whitespace-nowrap">
+                            {format(new Date(req.date), 'dd-MM-yyyy')}
+                          </td>
+                          <td className="py-4 px-4 text-sm text-slate-600 dark:text-slate-300 font-medium whitespace-nowrap">
+                            {req.toDate ? format(new Date(req.toDate), 'dd-MM-yyyy') : format(new Date(req.date), 'dd-MM-yyyy')}
+                          </td>
+                          <td className="py-4 px-4 text-sm text-slate-600 dark:text-slate-300 font-medium text-center whitespace-nowrap">
+                            {req.toDate ? Math.ceil((new Date(req.toDate).getTime() - new Date(req.date).getTime()) / (1000 * 3600 * 24)) + 1 : 1}
+                          </td>
+                          <td className="py-4 px-4 text-sm text-slate-600 dark:text-slate-300 font-medium whitespace-nowrap">
+                            {req.leaveType}
+                          </td>
+                          <td className="py-4 px-4">
                             <p className="text-sm text-slate-700 dark:text-slate-300 font-medium">{req.reason}</p>
-                            <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">Type: {req.leaveType} Day</p>
                           </td>
-                          <td className="py-4 px-6">
+                          <td className="py-4 px-4">
                             <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-bold border ${req.status === 'Approved'
                               ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-400 border-emerald-200 dark:border-emerald-500/20'
-                              : 'bg-red-100 text-red-700 dark:bg-red-500/10 dark:text-red-400 border-red-200 dark:border-red-500/20'
+                              : req.status === 'Rejected'
+                                ? 'bg-red-100 text-red-700 dark:bg-red-500/10 dark:text-red-400 border-red-200 dark:border-red-500/20'
+                                : 'bg-amber-100 text-amber-700 dark:bg-amber-500/10 dark:text-amber-400 border-amber-200 dark:border-amber-500/20'
                               }`}>
                               {req.status}
                             </span>
@@ -387,7 +488,10 @@ const AdminDashboard: React.FC = () => {
           <div className="flex flex-col bg-white dark:bg-[#1e293b] rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700/60 overflow-hidden transition-colors duration-300">
             <div className="p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200 dark:border-slate-700/60">
               <div className="flex items-center gap-3">
-                <div className="bg-indigo-50 dark:bg-indigo-500/10 p-1.5 rounded-lg text-indigo-600 dark:text-indigo-400">
+                <div
+                  className="bg-indigo-50 dark:bg-indigo-500/10 p-1.5 rounded-lg text-indigo-600 dark:text-indigo-400 hover:bg-indigo-100 dark:hover:bg-indigo-500/20 transition-colors cursor-pointer"
+                  onClick={() => navigate('/admin/missing-punch-report')}
+                >
                   <Table className="w-4 h-4" />
                 </div>
                 <h3 className="text-[17px] font-bold text-slate-800 dark:text-white">Missing Punch Report</h3>
@@ -409,16 +513,19 @@ const AdminDashboard: React.FC = () => {
               <table className="w-full text-left border-collapse">
                 <thead className="sticky top-0 bg-white dark:bg-[#1e293b] z-10">
                   <tr className="bg-slate-50/80 dark:bg-[#182333]/50 text-slate-500 dark:text-slate-400 text-[10px] font-bold uppercase tracking-widest border-b border-slate-200 dark:border-slate-700/60 transition-colors">
-                    <th className="py-4 px-6">Employee Name</th>
-                    <th className="py-4 px-6">Date</th>
-                    <th className="py-4 px-6">Punch Details</th>
-                    <th className="py-4 px-6">Status</th>
+                    <th className="py-4 px-4">Code</th>
+                    <th className="py-4 px-4">Name</th>
+                    <th className="py-4 px-4">Date</th>
+                    <th className="py-4 px-4">In</th>
+                    <th className="py-4 px-4">Out</th>
+                    <th className="py-4 px-4">Reason</th>
+                    <th className="py-4 px-4">Status</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 dark:divide-slate-700/50">
                   {processedMisspunchRequests.length === 0 ? (
                     <tr>
-                      <td colSpan={4} className="py-8 text-center text-slate-500 dark:text-slate-400">
+                      <td colSpan={7} className="py-8 text-center text-slate-500 dark:text-slate-400">
                         No missing punch reports found.
                       </td>
                     </tr>
@@ -427,30 +534,32 @@ const AdminDashboard: React.FC = () => {
                       const emp = users.find(u => u.id === req.userId);
                       return (
                         <tr key={req.id} className="hover:bg-slate-50 dark:hover:bg-[#2a374a]/30 transition-colors group">
-                          <td className="py-4 px-6">
-                            <div className="flex items-center gap-3">
-                              <div className="w-8 h-8 rounded-full bg-indigo-100 dark:bg-indigo-900/40 text-indigo-600 dark:text-indigo-400 flex items-center justify-center font-bold text-xs ring-2 ring-white dark:ring-[#1e293b]">
-                                {emp?.name?.charAt(0) || 'U'}
-                              </div>
-                              <div>
-                                <p className="font-bold text-slate-800 dark:text-slate-200 text-sm">{emp?.name}</p>
-                                <p className="text-[11px] text-slate-500 dark:text-slate-400 font-medium">{emp?.code}</p>
-                              </div>
-                            </div>
+                          <td className="py-4 px-4 text-sm text-slate-600 dark:text-slate-300 font-medium whitespace-nowrap">
+                            {emp?.code}
                           </td>
-                          <td className="py-4 px-6 text-sm text-slate-600 dark:text-slate-300 font-medium">
-                            {format(new Date(req.date), 'MMM dd, yyyy')}
+                          <td className="py-4 px-4 whitespace-nowrap">
+                            <p className="font-bold text-slate-800 dark:text-slate-200 text-sm">{emp?.name}</p>
                           </td>
-                          <td className="py-4 px-6">
-                            <p className="text-sm text-slate-700 dark:text-slate-300 font-medium">{req.reason}</p>
-                            <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
-                              Check In: {req.inTime || 'N/A'} | Check Out: {req.outTime || 'N/A'}
+                          <td className="py-4 px-4 text-sm text-slate-600 dark:text-slate-300 font-medium whitespace-nowrap">
+                            {format(new Date(req.date), 'dd-MM-yyyy')}
+                          </td>
+                          <td className="py-4 px-4 text-sm text-slate-600 dark:text-slate-300 font-medium whitespace-nowrap">
+                            {req.inTime || '-'}
+                          </td>
+                          <td className="py-4 px-4 text-sm text-slate-600 dark:text-slate-300 font-medium whitespace-nowrap">
+                            {req.outTime || '-'}
+                          </td>
+                          <td className="py-4 px-4">
+                            <p className="text-sm text-slate-600 dark:text-slate-300 font-medium max-w-[200px] truncate" title={req.reason}>
+                              {req.reason}
                             </p>
                           </td>
-                          <td className="py-4 px-6">
+                          <td className="py-4 px-4">
                             <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-bold border ${req.status === 'Approved'
                               ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-400 border-emerald-200 dark:border-emerald-500/20'
-                              : 'bg-red-100 text-red-700 dark:bg-red-500/10 dark:text-red-400 border-red-200 dark:border-red-500/20'
+                              : req.status === 'Rejected'
+                                ? 'bg-red-100 text-red-700 dark:bg-red-500/10 dark:text-red-400 border-red-200 dark:border-red-500/20'
+                                : 'bg-amber-100 text-amber-700 dark:bg-amber-500/10 dark:text-amber-400 border-amber-200 dark:border-amber-500/20'
                               }`}>
                               {req.status}
                             </span>
@@ -469,86 +578,26 @@ const AdminDashboard: React.FC = () => {
         </div>
 
         {/* Recent Punching Table */}
-        <div className="shrink-0 bg-white dark:bg-[#1e293b] rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700/60 overflow-hidden transition-colors duration-300">
-
-          {/* Table Header Controls */}
-          <div className="p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200 dark:border-slate-700/60">
-            <div className="flex items-center gap-3">
-              <div className="bg-blue-50 dark:bg-white/10 p-1.5 rounded-lg text-blue-500 dark:text-white">
-                <Table className="w-4 h-4" />
+        <div className="h-[450px]">
+          <AttendanceTable
+            data={recentPunchesData}
+            columns={recentPunchesColumns}
+            searchable={true}
+            searchPlaceholder="Search Employee..."
+            customTopLeft={
+              <div className="flex items-center gap-3">
+                <div onClick={() => navigate('/admin/summary')} className="bg-blue-50 dark:bg-white/10 p-1.5 rounded-lg text-blue-500 dark:text-white cursor-pointer hover:bg-blue-100 dark:hover:bg-white/20 transition-colors" title="Open Full Page">
+                  <Table className="w-4 h-4" />
+                </div>
+                <h2 className="text-[17px] font-bold text-slate-800 dark:text-white">Recent Punching</h2>
               </div>
-              <h3 className="text-[17px] font-bold text-slate-800 dark:text-white">Recent Punching</h3>
-            </div>
-            <div className="relative">
-              <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-              <input
-                type="text"
-                placeholder="Search Employee..."
-                value={recentPunchingSearch}
-                onChange={(e) => setRecentPunchingSearch(e.target.value)}
-                className="pl-9 pr-4 py-1.5 bg-white dark:bg-[#0b1120] border border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none dark:text-white transition-all placeholder:text-slate-400"
-              />
-            </div>
-
-          </div>
-
-          {/* Table */}
-          <div className="overflow-auto custom-scrollbar max-h-[340px] relative">
-            <table className="w-full text-left border-collapse">
-              <thead className="sticky top-0 bg-white dark:bg-[#1e293b] z-10">
-                <tr className="bg-slate-50/80 dark:bg-[#182333]/50 text-slate-500 dark:text-slate-400 text-[10px] font-bold uppercase tracking-widest border-b border-slate-200 dark:border-slate-700/60 transition-colors">
-                  <th className="py-4 px-6">Employee Name</th>
-                  <th className="py-4 px-6">Date</th>
-                  <th className="py-4 px-6">Check In</th>
-                  <th className="py-4 px-6">Checkout</th>
-                  <th className="py-4 px-6">Duration</th>
-                  <th className="py-4 px-6">Status</th>
-                  <th className="py-4 px-6 text-right">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100 dark:divide-slate-700/50">
-                {recentPunches.map((punch) => (
-                  <tr key={punch.id} className="hover:bg-slate-50 dark:hover:bg-[#2a374a]/30 transition-colors group">
-                    <td className="py-4 px-6">
-                      <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-full bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400 flex items-center justify-center font-bold text-xs ring-2 ring-white dark:ring-[#1e293b]">
-                          {punch.emp?.name?.charAt(0) || 'U'}
-                        </div>
-                        <div>
-                          <p className="font-bold text-slate-800 dark:text-slate-200 text-sm">{punch.emp?.name}</p>
-                          <p className="text-[11px] text-slate-500 dark:text-slate-400 font-medium">Engineering Dept.</p>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="py-4 px-6 text-sm text-slate-600 dark:text-slate-300 font-medium">{format(new Date(punch.date), 'MMM dd, yyyy')}</td>
-                    <td className="py-4 px-6 text-sm text-slate-600 dark:text-slate-300 font-medium">{punch.checkIn}</td>
-                    <td className="py-4 px-6 text-sm text-slate-600 dark:text-slate-300 font-medium">{punch.checkOut}</td>
-                    <td className="py-4 px-6 text-sm text-slate-600 dark:text-slate-300 font-medium">{punch.duration}</td>
-                    <td className="py-4 px-6">
-                      <span className="inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-500/20">
-                        {punch.status}
-                      </span>
-                    </td>
-                    <td className="py-4 px-6 text-right">
-                      <button className="p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 rounded transition-colors opacity-0 group-hover:opacity-100">
-                        <MoreVertical className="w-4 h-4" />
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-
-          {/* Table Footer */}
-          <div className="p-4 border-t border-slate-200 dark:border-slate-700/60 flex items-center justify-between text-xs font-medium text-slate-500 dark:text-slate-400 bg-slate-50/80 dark:bg-[#182333]/50 transition-colors">
-            <span>Showing {recentPunches.length} of 128 entries</span>
-            <div className="flex items-center gap-1.5">
-              <button className="w-7 h-7 flex items-center justify-center border border-slate-200 dark:border-slate-600 bg-white dark:bg-[#2a374a] rounded shadow-sm text-slate-400 dark:text-slate-500 hover:bg-slate-50 dark:hover:bg-[#34445c] dark:hover:text-white transition-colors">&lt;</button>
-              <button className="w-7 h-7 flex items-center justify-center border border-blue-600 dark:border-blue-500 bg-blue-600 text-white rounded shadow-sm hover:bg-blue-700 transition-colors">1</button>
-              <button className="w-7 h-7 flex items-center justify-center border border-slate-200 dark:border-slate-600 bg-white dark:bg-[#2a374a] rounded shadow-sm text-slate-400 dark:text-slate-500 hover:bg-slate-50 dark:hover:bg-[#34445c] dark:hover:text-white transition-colors">&gt;</button>
-            </div>
-          </div>
+            }
+            searchFn={(item, query) =>
+              item.name.toLowerCase().includes(query.toLowerCase()) ||
+              item.code.toLowerCase().includes(query.toLowerCase())
+            }
+            itemsPerPage={15}
+          />
         </div>
       </div>
     </div>
