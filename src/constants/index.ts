@@ -1,4 +1,3 @@
-export const API_BASE_URL = `http://${window.location.hostname}:3001/api`;
 export const KG_WEB_APP0_API_URL = `http://192.168.100.22:8080/KG_WEB_APP0/KGAPI`;
 export const ATTENDANCE_STATUSES = [
   { code: 'P', label: 'Present' },

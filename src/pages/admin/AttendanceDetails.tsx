@@ -3,7 +3,7 @@ import { useAuth } from '../../context/AuthContext';
 import { useAppData } from '../../context/AppContext';
 import { format, getDaysInMonth, addMonths, subMonths, isAfter, startOfDay, startOfMonth } from 'date-fns';
 import { ChevronLeft, ChevronRight, Search, X } from 'lucide-react';
-import { fetchEmployeePunchDataExternal, fetchEmployeeDetailsExternal, fetchEmployeeRequests } from '../../api';
+import { fetchEmployeePunchDataExternal, fetchEmployeeDetailsExternal } from '../../api';
 import { AttendanceTable } from '../../components/AttendanceTable';
 import { calculateTime, calculateTimeNum, formatDur, getFullStatus, getStatusColor, normalizeAttendanceStatus } from '../../utils/attendanceUtils';
 
@@ -26,7 +26,7 @@ const AttendanceDetails: React.FC = () => {
       const frDate = format(startOfMonth(currentDate), 'dd-MMM-yyyy');
       const toDate = format(new Date(currentDate.getFullYear(), currentDate.getMonth(), getDaysInMonth(currentDate)), 'dd-MMM-yyyy');
 
-      const requestsData = await fetchEmployeeRequests(user.id);
+
 
       let allEmployees = employeesList;
 
@@ -72,8 +72,7 @@ const AttendanceDetails: React.FC = () => {
 
       setDetailsData({
         employees: allEmployees,
-        attendance: attendance,
-        requests: requestsData?.requests || []
+        attendance: attendance
       });
     } catch (err) {
       console.error(err);
@@ -90,7 +89,7 @@ const AttendanceDetails: React.FC = () => {
     return <div className="flex justify-center p-8"><div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div></div>;
   }
 
-  const { employees, attendance, requests } = detailsData;
+  const { employees, attendance } = detailsData;
 
   const filteredEmployees = employees.filter((u: any) =>
     u.name.toLowerCase().includes(detailsSearch.toLowerCase()) ||
@@ -129,15 +128,13 @@ const AttendanceDetails: React.FC = () => {
       const record = empAttendance.find((r: any) => r.date === dateStr);
       let status = record?.status || '-';
 
-      const approvedMispunch = requests.find((r: any) => r.userId === selectedEmployee.id && r.type === 'Misspunch' && r.date === dateStr && r.status === 'Approved');
       // console.log(`Date: ${dateStr} | Status: ${status}`);
-      if (approvedMispunch) status = 'P/MP';
 
       if (status !== 'WO' && status !== '-') totalWorkingDays++;
       if (['P', 'L', 'EO', 'HD', 'P/MP', 'PH', 'In'].includes(status)) totalPresent++;
       if (status === 'A') totalAbsent++;
       if (status === 'WO') totalWeekOff++;
-      console.log(`Date: ${dateStr} | Status: ${status}`);
+      // console.log(`Date: ${dateStr} | Status: ${status}`);
       const { totalMins, otMins } = calculateTimeNum(record?.checkIn, record?.checkOut);
       totalWorkingMins += totalMins;
       totalOtMins += otMins;
@@ -208,10 +205,6 @@ const AttendanceDetails: React.FC = () => {
                   const dateStr = format(dateObj, 'yyyy-MM-dd');
                   const record = empAttendance.find((r: any) => r.date === dateStr);
                   let status = record?.status || '-';
-                  const approvedMispunch = requests.find((r: any) => r.userId === selectedEmployee.id && r.type === 'Misspunch' && r.date === dateStr && r.status === 'Approved');
-                  if (approvedMispunch) {
-                    status = 'P/MP';
-                  }
                   return { day, dateObj, record, status };
                 })}
                 columns={[
@@ -320,11 +313,6 @@ const AttendanceDetails: React.FC = () => {
                       if (!isFuture) {
                         const record = empAttendance.find((r: any) => r.date === dateStr);
                         status = record?.status || '-';
-
-                        const approvedMispunch = requests.find((r: any) => r.userId === emp.id && r.type === 'Misspunch' && r.date === dateStr && r.status === 'Approved');
-                        if (approvedMispunch) {
-                          status = 'P/MP';
-                        }
                       }
 
                       const customColor = customColors[status];

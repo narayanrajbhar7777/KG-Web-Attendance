@@ -2,8 +2,9 @@ import { useState, useEffect } from 'react';
 import { useAppData } from '../../context/AppContext';
 import { format } from 'date-fns';
 import { Filter, Calendar, Grid, ArrowUpDown, ChevronUp, ChevronDown, ChevronLeft, ChevronRight, X } from 'lucide-react';
-import { fetchAdminDashboard } from '../../api';
+import { fetchEmployeeRequests, fetchEmployeeDataExternal } from '../../api';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../../context/AuthContext';
 import DatePicker from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
 
@@ -11,6 +12,7 @@ export default function LeaveRequestsReportPage() {
   const { masterConfig: appMasterConfig } = useAppData();
   const masterConfig = appMasterConfig?.adminMasterConfig || appMasterConfig || {};
   const navigate = useNavigate();
+  const { user } = useAuth();
 
   const [dashboardData, setDashboardData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -23,9 +25,36 @@ export default function LeaveRequestsReportPage() {
 
   useEffect(() => {
     const loadData = async () => {
+      if (!user) return;
+      const managerId = user.code ? user.code.replace('FP', '') : user.id;
+      const todayStr = format(new Date(), 'dd-MMM-yyyy');
       try {
-        const data = await fetchAdminDashboard();
-        setDashboardData(data);
+        const [reqData, extData] = await Promise.all([
+          fetchEmployeeRequests(managerId),
+          fetchEmployeeDataExternal(user.id, todayStr, todayStr)
+        ]);
+
+        const empList = extData?.empDet?.EMP_DATA || [];
+        let usersData = empList.map((e: any) => ({
+          id: e.e_code,
+          name: e.e_name,
+          code: e.e_code,
+          designation: e.e_desg
+        }));
+
+        if (user && !usersData.some((e: any) => e.code === user.code)) {
+          usersData.unshift({
+            id: user.code,
+            name: user.name,
+            code: user.code,
+            designation: user.designation
+          });
+        }
+
+        setDashboardData({
+          processedRequestsList: reqData.requests,
+          users: usersData
+        });
       } catch (err) {
         console.error(err);
       } finally {
@@ -34,9 +63,33 @@ export default function LeaveRequestsReportPage() {
     };
     loadData();
     const intervalId = setInterval(() => {
-      fetchAdminDashboard().then(data => {
-        setDashboardData(data);
-      }).catch(console.error);
+      if (user) {
+        const managerId = user.code ? user.code.replace('FP', '') : user.id;
+        const todayStr = format(new Date(), 'dd-MMM-yyyy');
+        Promise.all([fetchEmployeeRequests(managerId), fetchEmployeeDataExternal(user.id, todayStr, todayStr)]).then(([reqData, extData]) => {
+          const empList = extData?.empDet?.EMP_DATA || [];
+          let usersData = empList.map((e: any) => ({
+            id: e.e_code,
+            name: e.e_name,
+            code: e.e_code,
+            designation: e.e_desg
+          }));
+
+          if (user && !usersData.some((e: any) => e.code === user.code)) {
+            usersData.unshift({
+              id: user.code,
+              name: user.name,
+              code: user.code,
+              designation: user.designation
+            });
+          }
+
+          setDashboardData({
+            processedRequestsList: reqData.requests,
+            users: usersData
+          });
+        }).catch(console.error);
+      }
     }, 5000);
     return () => clearInterval(intervalId);
   }, []);
@@ -50,7 +103,7 @@ export default function LeaveRequestsReportPage() {
 
   let processedLeaveRequests = processedRequestsList.filter((r: any) => {
     if (r.type !== 'Leave') return false;
-    const emp = users.find((u: any) => u.id === r.userId);
+    const emp = users.find((u: any) => u.id === r.userId || u.code === r.userId);
     let matchSearch = false;
     if (masterConfig?.leaveReport?.columns?.employeeName?.searchable !== false) {
       matchSearch = matchSearch || !!emp?.name.toLowerCase().includes(leaveReportSearch.toLowerCase()) || !!emp?.code.toLowerCase().includes(leaveReportSearch.toLowerCase());
@@ -69,8 +122,8 @@ export default function LeaveRequestsReportPage() {
 
   if (leaveReportSort && masterConfig?.leaveReport?.columns?.[leaveReportSort.key]?.sortable !== false) {
     processedLeaveRequests.sort((a: any, b: any) => {
-      const empA = users.find((u: any) => u.id === a.userId);
-      const empB = users.find((u: any) => u.id === b.userId);
+      const empA = users.find((u: any) => u.id === a.userId || u.code === a.userId);
+      const empB = users.find((u: any) => u.id === b.userId || u.code === b.userId);
 
       let valA, valB;
       if (leaveReportSort.key === 'employeeName') {
@@ -170,7 +223,7 @@ export default function LeaveRequestsReportPage() {
             <thead className="sticky top-0 bg-white dark:bg-[#1e293b] z-10">
               <tr className="bg-slate-50/80 dark:bg-[#182333]/50 text-slate-500 dark:text-slate-400 text-[10px] font-bold uppercase tracking-widest border-b border-slate-200 dark:border-slate-700/60 transition-colors">
                 <th className="py-4 px-4">Code</th>
-                <th className={`py-4 px-4 ${masterConfig?.leaveReport?.columns?.employeeName?.sortable !== false ? 'cursor-pointer hover:bg-slate-100 dark:hover:bg-[#2a374a]' : ''}`} onClick={() => handleLeaveReportSort('employeeName')}>
+                <th className={`py-4 px-4 ${masterConfig?.leaveReport?.columns?.employeeName?.sortable !== false ? 'cursor-pointer hover:bg-slate-100 dark:hover:bg-[#2a374a] ' : ''}`} onClick={() => handleLeaveReportSort('employeeName')}>
                   Name <SortIconLeaveReport columnKey="employeeName" />
                 </th>
                 <th className={`py-4 px-4 ${masterConfig?.leaveReport?.columns?.date?.sortable !== false ? 'cursor-pointer hover:bg-slate-100 dark:hover:bg-[#2a374a]' : ''}`} onClick={() => handleLeaveReportSort('date')}>
@@ -180,15 +233,18 @@ export default function LeaveRequestsReportPage() {
                 <th className="py-4 px-4 text-center">Count</th>
                 <th className="py-4 px-4">Type</th>
                 <th className="py-4 px-4">Reason</th>
+                <th className="py-4 px-4">Requested Date</th>
+                <th className="py-4 px-4">Actioned Date</th>
                 <th className={`py-4 px-4 ${masterConfig?.leaveReport?.columns?.status?.sortable !== false ? 'cursor-pointer hover:bg-slate-100 dark:hover:bg-[#2a374a]' : ''}`} onClick={() => handleLeaveReportSort('status')}>
                   Status <SortIconLeaveReport columnKey="status" />
                 </th>
+
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-slate-700/50">
               {processedLeaveRequests.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="py-8 text-center text-slate-500 dark:text-slate-400">
+                  <td colSpan={10} className="py-8 text-center text-slate-500 dark:text-slate-400">
                     No leave reports found.
                   </td>
                 </tr>
@@ -197,35 +253,43 @@ export default function LeaveRequestsReportPage() {
                   const emp = users.find(u => u.id === req.userId);
                   return (
                     <tr key={req.id} className="hover:bg-slate-50 dark:hover:bg-[#2a374a]/30 transition-colors group">
-                      <td className="py-4 px-4 text-sm text-slate-600 dark:text-slate-300 font-medium whitespace-nowrap">
+                      <td className="py-4 px-4 text-sm text-slate-500 dark:text-slate-400 font-medium whitespace-nowrap">
                         {emp?.code}
                       </td>
                       <td className="py-4 px-4 whitespace-nowrap">
-                        <p className="font-bold text-slate-800 dark:text-slate-200 text-sm">{emp?.name}</p>
+                        <p className="font-medium text-slate-500 dark:text-slate-400 text-[11px] uppercase whitespace-nowrap">{emp?.name}</p>
                       </td>
-                      <td className="py-4 px-4 text-sm text-slate-600 dark:text-slate-300 font-medium whitespace-nowrap">
+                      <td className="py-4 px-4 text-sm text-slate-500 dark:text-slate-400 font-medium whitespace-nowrap">
                         {format(new Date(req.date), 'dd-MM-yyyy')}
                       </td>
-                      <td className="py-4 px-4 text-sm text-slate-600 dark:text-slate-300 font-medium whitespace-nowrap">
+                      <td className="py-4 px-4 text-sm text-slate-500 dark:text-slate-400 font-medium whitespace-nowrap">
                         {req.toDate ? format(new Date(req.toDate), 'dd-MM-yyyy') : format(new Date(req.date), 'dd-MM-yyyy')}
                       </td>
-                      <td className="py-4 px-4 text-sm text-slate-600 dark:text-slate-300 font-medium text-center whitespace-nowrap">
+                      <td className="py-4 px-4 text-sm text-slate-500 dark:text-slate-400 font-medium text-center whitespace-nowrap">
                         {req.toDate ? Math.ceil((new Date(req.toDate).getTime() - new Date(req.date).getTime()) / (1000 * 3600 * 24)) + 1 : 1}
                       </td>
-                      <td className="py-4 px-4 text-sm text-slate-600 dark:text-slate-300 font-medium whitespace-nowrap">
+                      <td className="py-4 px-4 text-sm text-slate-500 dark:text-slate-400 font-medium whitespace-nowrap">
                         {req.leaveType}
                       </td>
                       <td className="py-4 px-4">
-                        <p className="text-sm text-slate-700 dark:text-slate-300 font-medium">{req.reason}</p>
+                        <p className="text-sm text-slate-500 dark:text-slate-400 font-medium">{req.reason}</p>
+                      </td>
+                      <td className="py-4 px-4 text-sm text-slate-500 dark:text-slate-400 whitespace-nowrap">
+                        {req.createdAt ? format(new Date(req.createdAt), 'dd-MMM-yyyy HH:mm') : '-'}
+                      </td>
+                      <td className="py-4 px-4 text-sm text-slate-500 dark:text-slate-400 whitespace-nowrap">
+                        {req.updatedAt ? format(new Date(req.updatedAt), 'dd-MMM-yyyy HH:mm') : '-'}
                       </td>
                       <td className="py-4 px-4">
                         <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-bold border ${req.status === 'Approved'
-                          ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-400 border-emerald-200 dark:border-emerald-500/20'
-                          : 'bg-red-100 text-red-700 dark:bg-red-500/10 dark:text-red-400 border-red-200 dark:border-red-500/20'
+                          ? 'bg-emerald-100 text-emerald-500 dark:bg-emerald-500/10 dark:text-emerald-400 border-emerald-200 dark:border-emerald-500/20'
+                          : req.status === 'Pending' ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-500/10 dark:text-yellow-400 border-yellow-200 dark:border-yellow-500/20'
+                            : 'bg-red-100 text-red-500 dark:bg-red-500/10 dark:text-red-400 border-red-200 dark:border-red-500/20'
                           }`}>
                           {req.status}
                         </span>
                       </td>
+
                     </tr>
                   );
                 })

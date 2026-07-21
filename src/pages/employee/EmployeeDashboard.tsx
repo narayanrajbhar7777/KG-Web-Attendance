@@ -17,6 +17,7 @@ const EmployeeDashboard: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [currentDate, setCurrentDate] = useState(new Date());
   const [empDetState, setEmpDetState] = useState<any>(null);
+  const [cachedRequests, setCachedRequests] = useState<any>(null);
 
   const fetchDashboardData = async () => {
     if (!user) return;
@@ -32,10 +33,13 @@ const EmployeeDashboard: React.FC = () => {
         if (currentEmpDet) setEmpDetState(currentEmpDet);
       }
 
-      const [requestsData, punchRes] = await Promise.all([
-        fetchEmployeeRequests(user.id),
-        fetchEmployeePunchDataExternal(user.id, frDate, toDate)
-      ]);
+      let currentRequests = cachedRequests;
+      if (!currentRequests) {
+        currentRequests = await fetchEmployeeRequests(user.id);
+        if (currentRequests) setCachedRequests(currentRequests);
+      }
+
+      const punchRes = await fetchEmployeePunchDataExternal(user.id, frDate, toDate);
 
       const empDet = currentEmpDet;
       const punchData = punchRes?.EMP_PUNCH_DATA || [];
@@ -60,7 +64,7 @@ const EmployeeDashboard: React.FC = () => {
 
       setDashboardData({
         attendance: { records },
-        requests: requestsData?.requests || [],
+        requests: currentRequests?.requests || [],
         managers
       });
     } catch (err) {

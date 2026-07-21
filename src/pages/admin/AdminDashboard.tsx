@@ -23,7 +23,12 @@ const AdminDashboard: React.FC = () => {
         const todayStr = format(new Date(), 'dd-MMM-yyyy');
 
         let reqsData = [];
-        try { reqsData = await fetchRequests(); } catch (e) { console.error("Failed fetchRequests:", e); }
+        try {
+          if (user) {
+            const managerId = user.code ? user.code.replace('FP', '') : '';
+            reqsData = await fetchRequests(managerId);
+          }
+        } catch (e) { console.error("Failed fetchRequests:", e); }
 
         let usersData = [];
         try { usersData = await fetchUsers(); } catch (e) { console.error("Failed fetchUsers:", e); }
@@ -55,6 +60,8 @@ const AdminDashboard: React.FC = () => {
               designation: user.designation
             });
           }
+
+          setUsers(allEmployees);
 
           const processed = allEmployees.map((emp: any) => {
             const p = punchData.find((p: any) => String(p.emp_id) === String(emp.code));
@@ -94,8 +101,8 @@ const AdminDashboard: React.FC = () => {
     }
   }, [user]);
 
-  const updateRequestStatus = async (id: string, status: AppRequest['status']) => {
-    await apiUpdateRequestStatus(id, status);
+  const updateRequestStatus = async (id: string, status: AppRequest['status'], reason: string, req?: AppRequest) => {
+    await apiUpdateRequestStatus(id, status, reason, req);
     setRequests(prev => prev.map(r => r.id === id ? { ...r, status } : r));
   };
 
@@ -103,6 +110,12 @@ const AdminDashboard: React.FC = () => {
   const [punchesSearch, setPunchesSearch] = useState('');
   const [leaveReportSearch, setLeaveReportSearch] = useState('');
   const [punchReportSearch, setPunchReportSearch] = useState('');
+
+  const [leavesPage, setLeavesPage] = useState(0);
+  const [punchesPage, setPunchesPage] = useState(0);
+  const [leaveReportPage, setLeaveReportPage] = useState(0);
+  const [punchReportPage, setPunchReportPage] = useState(0);
+  const itemsPerPage = 10;
 
   const pendingLeaves = requests.filter(r => r.type === 'Leave' && r.status === 'Pending').length;
   const approvedLeaves = requests.filter(r => r.type === 'Leave' && r.status === 'Approved').length;
@@ -116,37 +129,70 @@ const AdminDashboard: React.FC = () => {
 
   const pendingLeaveList = pendingRequestsList.filter(r => {
     if (r.type !== 'Leave') return false;
-    const user = users.find(u => u.id === r.userId);
-    return user?.name.toLowerCase().includes(leavesSearch.toLowerCase()) || user?.code.toLowerCase().includes(leavesSearch.toLowerCase());
+    if (!leavesSearch) return true;
+    const user = users.find(u => u.id === r.userId || u.code === r.userId);
+    const searchTarget = user ? `${user.name} ${user.code}` : r.userId;
+    return searchTarget.toLowerCase().includes(leavesSearch.toLowerCase());
   });
 
   const pendingPunchList = pendingRequestsList.filter(r => {
     if (r.type !== 'Misspunch') return false;
-    const user = users.find(u => u.id === r.userId);
-    return user?.name.toLowerCase().includes(punchesSearch.toLowerCase()) || user?.code.toLowerCase().includes(punchesSearch.toLowerCase());
+    if (!punchesSearch) return true;
+    const user = users.find(u => u.id === r.userId || u.code === r.userId);
+    const searchTarget = user ? `${user.name} ${user.code}` : r.userId;
+    return searchTarget.toLowerCase().includes(punchesSearch.toLowerCase());
   });
 
   const processedLeaveRequests = requests.filter(r => {
     if (r.status === 'Pending' || r.type !== 'Leave') return false;
-    const user = users.find(u => u.id === r.userId);
-    return user?.name.toLowerCase().includes(leaveReportSearch.toLowerCase()) || user?.code.toLowerCase().includes(leaveReportSearch.toLowerCase());
+    if (!leaveReportSearch) return true;
+    const user = users.find(u => u.id === r.userId || u.code === r.userId);
+    const searchTarget = user ? `${user.name} ${user.code}` : r.userId;
+    return searchTarget.toLowerCase().includes(leaveReportSearch.toLowerCase());
   });
 
   const processedMisspunchRequests = requests.filter(r => {
     if (r.status === 'Pending' || r.type !== 'Misspunch') return false;
-    const user = users.find(u => u.id === r.userId);
-    return user?.name.toLowerCase().includes(punchReportSearch.toLowerCase()) || user?.code.toLowerCase().includes(punchReportSearch.toLowerCase());
+    if (!punchReportSearch) return true;
+    const user = users.find(u => u.id === r.userId || u.code === r.userId);
+    const searchTarget = user ? `${user.name} ${user.code}` : r.userId;
+    return searchTarget.toLowerCase().includes(punchReportSearch.toLowerCase());
   });
 
+  const pagedPendingLeaveList = pendingLeaveList.slice(leavesPage * itemsPerPage, (leavesPage + 1) * itemsPerPage);
+  const pagedPendingPunchList = pendingPunchList.slice(punchesPage * itemsPerPage, (punchesPage + 1) * itemsPerPage);
+  const pagedProcessedLeaveRequests = processedLeaveRequests.slice(leaveReportPage * itemsPerPage, (leaveReportPage + 1) * itemsPerPage);
+  const pagedProcessedMisspunchRequests = processedMisspunchRequests.slice(punchReportPage * itemsPerPage, (punchReportPage + 1) * itemsPerPage);
+
+  const recentPresentCount = recentPunchesData.filter(r => ['P', 'P/MP', 'HD', 'M', 'In', 'PH'].includes(r.status)).length;
+  const recentAbsentCount = recentPunchesData.filter(r => r.status === 'A').length;
+  const recentLeaveCount = recentPunchesData.filter(r => r.status === 'L').length;
+
+  const PaginationFooter = ({ page, setPage, total, label }: any) => {
+    const totalPages = Math.ceil(total / itemsPerPage);
+    if (total === 0) return (
+      <div className="p-3 border-t border-slate-200 dark:border-slate-700/60 flex items-center justify-between text-[11px] font-medium text-slate-500 dark:text-slate-400 bg-slate-50/80 dark:bg-[#182333]/50 transition-colors">
+        <span>Showing 0 entries</span>
+      </div>
+    );
+    return (
+      <div className="p-3 border-t border-slate-200 dark:border-slate-700/60 flex items-center justify-between text-[11px] font-medium text-slate-500 dark:text-slate-400 bg-slate-50/80 dark:bg-[#182333]/50 transition-colors">
+        <span>Showing {Math.min(page * itemsPerPage + 1, total)} to {Math.min((page + 1) * itemsPerPage, total)} of {total} {label}</span>
+        <div className="flex gap-1">
+          <button onClick={() => setPage((p: number) => Math.max(0, p - 1))} disabled={page === 0} className="px-2 py-1 rounded bg-slate-200 disabled:opacity-50 dark:bg-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-300 dark:hover:bg-slate-600 transition-colors">Prev</button>
+          <button onClick={() => setPage((p: number) => Math.min(totalPages - 1, p + 1))} disabled={page >= totalPages - 1} className="px-2 py-1 rounded bg-slate-200 disabled:opacity-50 dark:bg-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-300 dark:hover:bg-slate-600 transition-colors">Next</button>
+        </div>
+      </div>
+    );
+  };
+
   const recentPunchesColumns: ColumnDef<any>[] = [
-    { key: 'code', label: 'Code' },
-    { key: 'name', label: 'Name', render: (item) => <span className="font-medium text-slate-500 dark:text-slate-400 text-[11px] uppercase whitespace-nowrap">{item.name}</span> },
-    { key: 'date', label: 'Date', render: (item) => <span className="font-medium text-slate-600 dark:text-slate-300">{format(new Date(item.date), 'dd MMM yyyy')}</span> },
-    { key: 'day', label: 'Day', render: (item) => <span className="font-medium text-slate-600 dark:text-slate-300">{format(new Date(item.date), 'EEEE')}</span> },
-    { key: 'checkIn', label: 'In', render: (item) => <span className="font-mono text-slate-600 dark:text-slate-300">{item.checkIn !== '-' ? item.checkIn : <span className="text-slate-400 dark:text-slate-600">-</span>}</span> },
-    { key: 'checkOut', label: 'Out', render: (item) => <span className="font-mono text-slate-600 dark:text-slate-300">{item.checkOut !== '-' ? item.checkOut : <span className="text-slate-400 dark:text-slate-600">-</span>}</span> },
-    { key: 'duration', label: 'Working Hr', render: (item) => <span className="font-medium text-blue-600 dark:text-blue-400">{item.duration !== '-' ? item.duration : <span className="text-slate-400 dark:text-slate-600">-</span>}</span> },
-    { key: 'status', label: 'Status', render: (item) => <span className={`text-[13px] ${getStatusColor(item.status)}`}>{item.status}</span> },
+    { key: 'code', label: 'Code', render: (item) => <span className="text-sm text-slate-500 dark:text-slate-400 font-medium whitespace-nowrap">{item.code || '-'}</span> },
+    { key: 'name', label: 'Name', render: (item) => <span className="font-medium text-slate-500 dark:text-slate-400 text-[13px] uppercase whitespace-nowrap">{item.name}</span> },
+    { key: 'checkIn', label: 'In', render: (item) => <span className="text-sm text-slate-500 dark:text-slate-400 font-medium whitespace-nowrap">{item.checkIn !== '-' ? item.checkIn : '-'}</span> },
+    { key: 'checkOut', label: 'Out', render: (item) => <span className="text-sm text-slate-500 dark:text-slate-400 font-medium whitespace-nowrap">{item.checkOut !== '-' ? item.checkOut : '-'}</span> },
+    { key: 'duration', label: 'Working Hr', render: (item) => <span className="text-sm text-slate-500 dark:text-slate-400 font-medium whitespace-nowrap">{item.duration !== '-' ? item.duration : '-'}</span> },
+    { key: 'status', label: 'Status', render: (item) => <span className={`text-sm font-medium ${getStatusColor(item.status)}`}>{item.status}</span> },
   ];
 
   return (
@@ -208,11 +254,11 @@ const AdminDashboard: React.FC = () => {
                 </div>
                 <div className="bg-slate-50 dark:bg-[#2a374a]/50 p-4 rounded-xl border border-slate-100 dark:border-slate-700/50 text-center transition-colors">
                   <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-1">Approved</p>
-                  <p className="text-2xl font-bold text-slate-800 dark:text-white">{approvedPunches}</p>
+                  <p className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">{approvedPunches}</p>
                 </div>
                 <div className="bg-slate-50 dark:bg-[#2a374a]/50 p-4 rounded-xl border border-slate-100 dark:border-slate-700/50 text-center transition-colors">
                   <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-1">Rejected</p>
-                  <p className="text-2xl font-bold text-slate-800 dark:text-white">{rejectedPunches}</p>
+                  <p className="text-2xl font-bold text-red-500 dark:text-red-400">{rejectedPunches}</p>
                 </div>
               </div>
             </div>
@@ -243,13 +289,16 @@ const AdminDashboard: React.FC = () => {
                 />
               </div>
             </div>
-            <div className="overflow-auto custom-scrollbar max-h-[340px] relative">
+            <div className="overflow-x-auto overflow-y-auto custom-scrollbar h-[310px] relative">
               <table className="w-full text-left border-collapse">
                 <thead className="sticky top-0 bg-white dark:bg-[#1e293b] z-10">
                   <tr className="bg-slate-50/80 dark:bg-[#182333]/50 text-slate-500 dark:text-slate-400 text-[10px] font-bold uppercase tracking-widest border-b border-slate-200 dark:border-slate-700/60 transition-colors">
-                    <th className="py-4 px-6">Employee</th>
-                    <th className="py-4 px-6">Date & Details</th>
-                    <th className="py-4 px-6 text-right">Actions</th>
+                    <th className="py-4 px-6">Code</th>
+                    <th className="py-4 px-6 ">Name</th>
+                    <th className="py-4 px-6">Date</th>
+                    <th className="py-4 px-6">Type</th>
+                    <th className="py-4 px-6">Reason</th>
+                    <th className="py-4 px-6 text-right">Action</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 dark:divide-slate-700/50">
@@ -260,24 +309,30 @@ const AdminDashboard: React.FC = () => {
                       </td>
                     </tr>
                   ) : (
-                    pendingLeaveList.map((req) => {
-                      const emp = users.find(u => u.id === req.userId);
+                    pagedPendingLeaveList.map((req) => {
+                      const emp = users.find(u => String(u.id).replace('FP', '') === String(req.userId).replace('FP', '') || String(u.code).replace('FP', '') === String(req.userId).replace('FP', ''));
                       return (
                         <tr key={req.id} className="hover:bg-slate-50 dark:hover:bg-[#2a374a]/30 transition-colors">
-                          <td className="py-4 px-6">
-                            <p className="font-bold text-slate-800 dark:text-slate-200 text-sm">{emp?.name}</p>
-                            <p className="text-[11px] text-slate-500 dark:text-slate-400">{emp?.code}</p>
+                          <td className="py-4 px-6 text-[11px] text-slate-500 dark:text-slate-400 font-medium whitespace-nowrap">
+                            {emp?.code || req.userId}
                           </td>
                           <td className="py-4 px-6">
-                            <p className="text-sm text-slate-600 dark:text-slate-300 font-medium">{format(new Date(req.date), 'MMM dd, yyyy')}</p>
-                            <p className="text-[11px] text-slate-700 dark:text-slate-300 mt-1">{req.reason}</p>
-                            <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">Type: {req.leaveType} Day</p>
+                            <span className="font-medium text-slate-500 dark:text-slate-400 text-[13px] uppercase whitespace-nowrap">{emp?.name || 'Unknown'}</span>
+                          </td>
+                          <td className="py-4 px-6 whitespace-nowrap">
+                            <p className="text-sm text-slate-500 dark:text-slate-400 font-medium">{req.date ? format(new Date(req.date), 'MMM dd, yyyy') : 'N/A'}</p>
+                          </td>
+                          <td className="py-4 px-6 whitespace-nowrap">
+                            <span className="text-sm text-slate-500 dark:text-slate-400 font-medium">{req.leaveType}</span>
+                          </td>
+                          <td className="py-4 px-6 text-sm text-slate-500 dark:text-slate-400">
+                            <p className="truncate max-w-[150px]" title={req.reason}>{req.reason}</p>
                           </td>
                           <td className="py-4 px-6 text-right">
                             <div className="flex flex-col sm:flex-row items-end justify-end gap-2">
                               <button
                                 onClick={() => {
-                                  updateRequestStatus(req.id, 'Approved');
+                                  updateRequestStatus(req.id, 'Approved', req.reason, req);
                                   addNotification(`Your Leave request on ${format(new Date(req.date), 'MMM dd')} has been Approved`, req.userId);
                                 }}
                                 className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-100 dark:hover:bg-emerald-500/20 rounded border border-emerald-200 dark:border-emerald-500/30 text-xs font-bold transition-colors"
@@ -286,7 +341,7 @@ const AdminDashboard: React.FC = () => {
                               </button>
                               <button
                                 onClick={() => {
-                                  updateRequestStatus(req.id, 'Rejected');
+                                  updateRequestStatus(req.id, 'Rejected', req.reason, req);
                                   addNotification(`Your Leave request on ${format(new Date(req.date), 'MMM dd')} has been Rejected`, req.userId);
                                 }}
                                 className="flex items-center gap-1.5 px-3 py-1.5 bg-red-50 dark:bg-red-500/10 text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-500/20 rounded border border-red-200 dark:border-red-500/30 text-xs font-bold transition-colors"
@@ -302,6 +357,7 @@ const AdminDashboard: React.FC = () => {
                 </tbody>
               </table>
             </div>
+            <PaginationFooter page={leavesPage} setPage={setLeavesPage} total={pendingLeaveList.length} label="entries" />
           </div>
 
           {/* Pending Missing Punch Requests */}
@@ -325,13 +381,17 @@ const AdminDashboard: React.FC = () => {
                 />
               </div>
             </div>
-            <div className="overflow-auto custom-scrollbar max-h-[340px] relative">
+            <div className="overflow-x-auto overflow-y-auto custom-scrollbar h-[310px] relative">
               <table className="w-full text-left border-collapse">
                 <thead className="sticky top-0 bg-white dark:bg-[#1e293b] z-10">
                   <tr className="bg-slate-50/80 dark:bg-[#182333]/50 text-slate-500 dark:text-slate-400 text-[10px] font-bold uppercase tracking-widest border-b border-slate-200 dark:border-slate-700/60 transition-colors">
-                    <th className="py-4 px-6">Employee</th>
-                    <th className="py-4 px-6">Date & Details</th>
-                    <th className="py-4 px-6 text-right">Actions</th>
+                    <th className="py-4 px-6">Code</th>
+                    <th className="py-4 px-6">Name</th>
+                    <th className="py-4 px-6">Date</th>
+                    <th className="py-4 px-6">In</th>
+                    <th className="py-4 px-6">Out</th>
+                    <th className="py-4 px-6">Reason</th>
+                    <th className="py-4 px-6 text-right">Action</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 dark:divide-slate-700/50">
@@ -342,26 +402,33 @@ const AdminDashboard: React.FC = () => {
                       </td>
                     </tr>
                   ) : (
-                    pendingPunchList.map((req) => {
-                      const emp = users.find(u => u.id === req.userId);
+                    pagedPendingPunchList.map((req) => {
+                      const emp = users.find(u => String(u.id).replace('FP', '') === String(req.userId).replace('FP', '') || String(u.code).replace('FP', '') === String(req.userId).replace('FP', ''));
                       return (
                         <tr key={req.id} className="hover:bg-slate-50 dark:hover:bg-[#2a374a]/30 transition-colors">
-                          <td className="py-4 px-6">
-                            <p className="font-bold text-slate-800 dark:text-slate-200 text-sm">{emp?.name}</p>
-                            <p className="text-[11px] text-slate-500 dark:text-slate-400">{emp?.code}</p>
+                          <td className="py-4 px-6 text-[11px] text-slate-500 dark:text-slate-400 font-medium whitespace-nowrap">
+                            {emp?.code || req.userId}
                           </td>
                           <td className="py-4 px-6">
-                            <p className="text-sm text-slate-600 dark:text-slate-300 font-medium">{format(new Date(req.date), 'MMM dd, yyyy')}</p>
-                            <p className="text-[11px] text-slate-700 dark:text-slate-300 mt-1">{req.reason}</p>
-                            <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">
-                              In: {req.inTime || 'N/A'} | Out: {req.outTime || 'N/A'}
-                            </p>
+                            <span className="font-medium text-slate-500 dark:text-slate-400 text-[13px] uppercase whitespace-nowrap">{emp?.name || 'Unknown'}</span>
+                          </td>
+                          <td className="py-4 px-6 whitespace-nowrap">
+                            <p className="text-sm text-slate-500 dark:text-slate-400 font-medium">{req.date ? format(new Date(req.date), 'MMM dd, yyyy') : 'N/A'}</p>
+                          </td>
+                          <td className="py-4 px-6 whitespace-nowrap">
+                            <span className="text-sm text-slate-500 dark:text-slate-400 font-medium">{req.inTime || '-'}</span>
+                          </td>
+                          <td className="py-4 px-6 whitespace-nowrap">
+                            <span className="text-sm text-slate-500 dark:text-slate-400 font-medium">{req.outTime || '-'}</span>
+                          </td>
+                          <td className="py-4 px-6 text-sm text-slate-500 dark:text-slate-400">
+                            <p className="truncate max-w-[150px]" title={req.reason}>{req.reason}</p>
                           </td>
                           <td className="py-4 px-6 text-right">
                             <div className="flex flex-col sm:flex-row items-end justify-end gap-2">
                               <button
                                 onClick={() => {
-                                  updateRequestStatus(req.id, 'Approved');
+                                  updateRequestStatus(req.id, 'Approved', req.reason, req);
                                   addNotification(`Your Misspunch request on ${format(new Date(req.date), 'MMM dd')} has been Approved`, req.userId);
                                 }}
                                 className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-100 dark:hover:bg-emerald-500/20 rounded border border-emerald-200 dark:border-emerald-500/30 text-xs font-bold transition-colors"
@@ -370,7 +437,7 @@ const AdminDashboard: React.FC = () => {
                               </button>
                               <button
                                 onClick={() => {
-                                  updateRequestStatus(req.id, 'Rejected');
+                                  updateRequestStatus(req.id, 'Rejected', req.reason, req);
                                   addNotification(`Your Misspunch request on ${format(new Date(req.date), 'MMM dd')} has been Rejected`, req.userId);
                                 }}
                                 className="flex items-center gap-1.5 px-3 py-1.5 bg-red-50 dark:bg-red-500/10 text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-500/20 rounded border border-red-200 dark:border-red-500/30 text-xs font-bold transition-colors"
@@ -386,6 +453,7 @@ const AdminDashboard: React.FC = () => {
                 </tbody>
               </table>
             </div>
+            <PaginationFooter page={punchesPage} setPage={setPunchesPage} total={pendingPunchList.length} label="entries" />
           </div>
         </div>
 
@@ -415,7 +483,7 @@ const AdminDashboard: React.FC = () => {
 
             </div>
 
-            <div className="overflow-auto custom-scrollbar max-h-[340px] relative">
+            <div className="overflow-x-auto overflow-y-auto custom-scrollbar h-[310px] relative">
               <table className="w-full text-left border-collapse">
                 <thead className="sticky top-0 bg-white dark:bg-[#1e293b] z-10">
                   <tr className="bg-slate-50/80 dark:bg-[#182333]/50 text-slate-500 dark:text-slate-400 text-[10px] font-bold uppercase tracking-widest border-b border-slate-200 dark:border-slate-700/60 transition-colors">
@@ -437,30 +505,32 @@ const AdminDashboard: React.FC = () => {
                       </td>
                     </tr>
                   ) : (
-                    processedLeaveRequests.map((req) => {
-                      const emp = users.find(u => u.id === req.userId);
+                    pagedProcessedLeaveRequests.map((req) => {
+                      const emp = users.find(u => String(u.id).replace('FP', '') === String(req.userId).replace('FP', '') || String(u.code).replace('FP', '') === String(req.userId).replace('FP', ''));
                       return (
                         <tr key={req.id} className="hover:bg-slate-50 dark:hover:bg-[#2a374a]/30 transition-colors group">
-                          <td className="py-4 px-4 text-sm text-slate-600 dark:text-slate-300 font-medium whitespace-nowrap">
-                            {emp?.code}
+                          <td className="py-4 px-4 text-sm text-slate-500 dark:text-slate-400 font-medium whitespace-nowrap">
+                            {emp?.code || req.userId}
                           </td>
-                          <td className="py-4 px-4 whitespace-nowrap">
-                            <p className="font-bold text-slate-800 dark:text-slate-200 text-sm">{emp?.name}</p>
+                          <td className="py-4 px-6 whitespace-nowrap">
+                            <p className="font-medium text-slate-500 dark:text-slate-400 text-[13px] uppercase whitespace-nowrap">
+                              {emp?.name ? <span className="capitalize">{emp.name}</span> : 'Unknown'}
+                            </p>
                           </td>
-                          <td className="py-4 px-4 text-sm text-slate-600 dark:text-slate-300 font-medium whitespace-nowrap">
+                          <td className="py-4 px-4 text-sm text-slate-500 dark:text-slate-400 font-medium whitespace-nowrap">
                             {format(new Date(req.date), 'dd-MM-yyyy')}
                           </td>
-                          <td className="py-4 px-4 text-sm text-slate-600 dark:text-slate-300 font-medium whitespace-nowrap">
+                          <td className="py-4 px-4 text-sm text-slate-500 dark:text-slate-400 font-medium whitespace-nowrap">
                             {req.toDate ? format(new Date(req.toDate), 'dd-MM-yyyy') : format(new Date(req.date), 'dd-MM-yyyy')}
                           </td>
-                          <td className="py-4 px-4 text-sm text-slate-600 dark:text-slate-300 font-medium text-center whitespace-nowrap">
+                          <td className="py-4 px-4 text-sm text-slate-500 dark:text-slate-400 font-medium text-center whitespace-nowrap">
                             {req.toDate ? Math.ceil((new Date(req.toDate).getTime() - new Date(req.date).getTime()) / (1000 * 3600 * 24)) + 1 : 1}
                           </td>
-                          <td className="py-4 px-4 text-sm text-slate-600 dark:text-slate-300 font-medium whitespace-nowrap">
+                          <td className="py-4 px-4 text-sm text-slate-500 dark:text-slate-400 font-medium whitespace-nowrap">
                             {req.leaveType}
                           </td>
-                          <td className="py-4 px-4">
-                            <p className="text-sm text-slate-700 dark:text-slate-300 font-medium">{req.reason}</p>
+                          <td className="py-4 px-4 text-sm text-slate-500 dark:text-slate-400">
+                            <p className="truncate max-w-[150px]" title={req.reason}>{req.reason}</p>
                           </td>
                           <td className="py-4 px-4">
                             <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-bold border ${req.status === 'Approved'
@@ -479,9 +549,7 @@ const AdminDashboard: React.FC = () => {
                 </tbody>
               </table>
             </div>
-            <div className="p-3 border-t border-slate-200 dark:border-slate-700/60 flex items-center justify-between text-[11px] font-medium text-slate-500 dark:text-slate-400 bg-slate-50/80 dark:bg-[#182333]/50 transition-colors">
-              <span>Showing {processedLeaveRequests.length} entries</span>
-            </div>
+            <PaginationFooter page={leaveReportPage} setPage={setLeaveReportPage} total={processedLeaveRequests.length} label="entries" />
           </div>
 
           {/* Missing Punch Report Table */}
@@ -509,7 +577,7 @@ const AdminDashboard: React.FC = () => {
 
             </div>
 
-            <div className="overflow-auto custom-scrollbar max-h-[340px] relative">
+            <div className="overflow-x-auto overflow-y-auto custom-scrollbar h-[310px] relative">
               <table className="w-full text-left border-collapse">
                 <thead className="sticky top-0 bg-white dark:bg-[#1e293b] z-10">
                   <tr className="bg-slate-50/80 dark:bg-[#182333]/50 text-slate-500 dark:text-slate-400 text-[10px] font-bold uppercase tracking-widest border-b border-slate-200 dark:border-slate-700/60 transition-colors">
@@ -530,27 +598,29 @@ const AdminDashboard: React.FC = () => {
                       </td>
                     </tr>
                   ) : (
-                    processedMisspunchRequests.map((req) => {
-                      const emp = users.find(u => u.id === req.userId);
+                    pagedProcessedMisspunchRequests.map((req) => {
+                      const emp = users.find(u => String(u.id).replace('FP', '') === String(req.userId).replace('FP', '') || String(u.code).replace('FP', '') === String(req.userId).replace('FP', ''));
                       return (
                         <tr key={req.id} className="hover:bg-slate-50 dark:hover:bg-[#2a374a]/30 transition-colors group">
-                          <td className="py-4 px-4 text-sm text-slate-600 dark:text-slate-300 font-medium whitespace-nowrap">
-                            {emp?.code}
+                          <td className="py-4 px-4 text-sm text-slate-500 dark:text-slate-400 font-medium whitespace-nowrap">
+                            {emp?.code || req.userId}
                           </td>
-                          <td className="py-4 px-4 whitespace-nowrap">
-                            <p className="font-bold text-slate-800 dark:text-slate-200 text-sm">{emp?.name}</p>
+                          <td className="py-4 px-6 whitespace-nowrap">
+                            <p className="font-medium text-slate-500 dark:text-slate-400 text-[13px] uppercase whitespace-nowrap">
+                              {emp?.name ? <span className="capitalize">{emp.name}</span> : 'Unknown'}
+                            </p>
                           </td>
-                          <td className="py-4 px-4 text-sm text-slate-600 dark:text-slate-300 font-medium whitespace-nowrap">
+                          <td className="py-4 px-4 text-sm text-slate-500 dark:text-slate-400 font-medium whitespace-nowrap">
                             {format(new Date(req.date), 'dd-MM-yyyy')}
                           </td>
-                          <td className="py-4 px-4 text-sm text-slate-600 dark:text-slate-300 font-medium whitespace-nowrap">
+                          <td className="py-4 px-4 text-sm text-slate-500 dark:text-slate-400 font-medium whitespace-nowrap">
                             {req.inTime || '-'}
                           </td>
-                          <td className="py-4 px-4 text-sm text-slate-600 dark:text-slate-300 font-medium whitespace-nowrap">
+                          <td className="py-4 px-4 text-sm text-slate-500 dark:text-slate-400 font-medium whitespace-nowrap">
                             {req.outTime || '-'}
                           </td>
                           <td className="py-4 px-4">
-                            <p className="text-sm text-slate-600 dark:text-slate-300 font-medium max-w-[200px] truncate" title={req.reason}>
+                            <p className="text-sm text-slate-500 dark:text-slate-400 font-medium max-w-[200px] truncate" title={req.reason}>
                               {req.reason}
                             </p>
                           </td>
@@ -571,9 +641,7 @@ const AdminDashboard: React.FC = () => {
                 </tbody>
               </table>
             </div>
-            <div className="p-3 border-t border-slate-200 dark:border-slate-700/60 flex items-center justify-between text-[11px] font-medium text-slate-500 dark:text-slate-400 bg-slate-50/80 dark:bg-[#182333]/50 transition-colors">
-              <span>Showing {processedMisspunchRequests.length} entries</span>
-            </div>
+            <PaginationFooter page={punchReportPage} setPage={setPunchReportPage} total={processedMisspunchRequests.length} label="entries" />
           </div>
         </div>
 
@@ -582,14 +650,28 @@ const AdminDashboard: React.FC = () => {
           <AttendanceTable
             data={recentPunchesData}
             columns={recentPunchesColumns}
+            className="!bg-white dark:!bg-[#1e293b] shadow-sm hover:shadow-md transition-all duration-300 dark:!border-slate-700/60"
             searchable={true}
             searchPlaceholder="Search Employee..."
             customTopLeft={
-              <div className="flex items-center gap-3">
-                <div onClick={() => navigate('/admin/summary')} className="bg-blue-50 dark:bg-white/10 p-1.5 rounded-lg text-blue-500 dark:text-white cursor-pointer hover:bg-blue-100 dark:hover:bg-white/20 transition-colors" title="Open Full Page">
-                  <Table className="w-4 h-4" />
+              <div className="flex items-center gap-6">
+                <div className="flex items-center gap-3">
+                  <div onClick={() => navigate('/admin/summary')} className="bg-blue-50 dark:bg-white/10 p-1.5 rounded-lg text-blue-500 dark:text-white cursor-pointer hover:bg-blue-100 dark:hover:bg-white/20 transition-colors" title="Open Full Page">
+                    <Table className="w-4 h-4" />
+                  </div>
+                  <h2 className="text-[17px] font-bold text-slate-800 dark:text-white">Recent Punching</h2>
                 </div>
-                <h2 className="text-[17px] font-bold text-slate-800 dark:text-white">Recent Punching</h2>
+                <div className="hidden sm:flex items-center gap-4 text-[11px] font-bold bg-slate-50 dark:bg-slate-800/50 px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700">
+                  <span className="text-emerald-600 dark:text-emerald-400">Present: {recentPresentCount}</span>
+                  <span className="text-red-600 dark:text-red-400">Absent: {recentAbsentCount}</span>
+                  <span className="text-amber-600 dark:text-amber-400">Leave: {recentLeaveCount}</span>
+                </div>
+              </div>
+            }
+            customBottomLeft={
+              <div className="flex items-center gap-2 text-xs font-bold text-blue-600 dark:text-blue-400">
+                <Calendar className="w-4 h-4" />
+                <span>{format(new Date(), 'EEEE, dd-MM-yyyy')}</span>
               </div>
             }
             searchFn={(item, query) =>

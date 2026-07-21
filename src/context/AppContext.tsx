@@ -21,7 +21,7 @@ interface AppContextType {
   // Expose these via context to make it easier for components to call the API 
   // without importing the API directly, or they can just import the API directly.
   applyRequest: (req: Omit<AppRequest, 'id' | 'status'>) => Promise<void>;
-  updateRequestStatus: (id: string, status: AppRequest['status']) => Promise<void>;
+  updateRequestStatus: (id: string, status: AppRequest['status'], reason: string, req?: AppRequest) => Promise<void>;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -107,9 +107,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
-  const updateRequestStatus = async (id: string, status: AppRequest['status']) => {
+  const updateRequestStatus = async (id: string, status: AppRequest['status'], reason: string, req?: AppRequest) => {
     try {
-      await updateRequestStatusAPI(id, status);
+      await updateRequestStatusAPI(id, status, reason, req);
     } catch (err) {
       console.error(err);
     }
@@ -138,7 +138,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const addNotification = async (message: string, targetUserId?: string) => {
     try {
       const newNotif = await createNotification(message, targetUserId);
-      setNotifications(prev => [newNotif, ...prev]);
+      // setNotifications(prev => [newNotif, ...prev]);
     } catch (err) {
       console.error(err);
     }

@@ -43,6 +43,7 @@ export interface AppRequest {
   date: string; // Used as 'From Date' for leaves
   toDate?: string; // Used as 'To Date' for leaves
   createdAt?: string;
+  updatedAt?: string;
   reason: string;
   status: RequestStatus;
   // For Misspunch

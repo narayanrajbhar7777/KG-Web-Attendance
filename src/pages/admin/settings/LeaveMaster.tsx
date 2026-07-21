@@ -8,7 +8,7 @@ const LeaveMaster: React.FC = () => {
   const [leaveTypes, setLeaveTypes] = useState<LeaveType[]>([]);
   const [employeeLeaves, setEmployeeLeaves] = useState<EmployeeLeave[]>([]);
   const [loading, setLoading] = useState(true);
-  
+
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
 
@@ -24,8 +24,8 @@ const LeaveMaster: React.FC = () => {
         fetchEmployeeLeaves()
       ]);
       setUsers((usersData || []).filter((u: User) => u.role === 'Employee'));
-      setLeaveTypes((typesData || []).filter((lt: LeaveType) => lt.isActive));
-      setEmployeeLeaves(leavesData || []);
+      // setLeaveTypes((typesData || []).filter((lt: LeaveType) => lt.isActive));
+      // setEmployeeLeaves(leavesData || []);
     } catch (err) {
       console.error(err);
     } finally {
@@ -38,8 +38,8 @@ const LeaveMaster: React.FC = () => {
   }, []);
 
   const filteredUsers = useMemo(() => {
-    return users.filter(u => 
-      u.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
+    return users.filter(u =>
+      u.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       u.code.toLowerCase().includes(searchTerm.toLowerCase())
     );
   }, [users, searchTerm]);
@@ -49,7 +49,7 @@ const LeaveMaster: React.FC = () => {
     if (selectedUserId) {
       const userLeaves = employeeLeaves.filter(el => el.employeeId === selectedUserId);
       const formState: Record<string, { enabled: boolean; days: number }> = {};
-      
+
       leaveTypes.forEach(lt => {
         const existing = userLeaves.find(el => el.leaveTypeId === lt.id);
         formState[lt.id] = {
@@ -57,21 +57,21 @@ const LeaveMaster: React.FC = () => {
           days: existing ? existing.allocatedDays : 0
         };
       });
-      
+
       setAllocationForm(formState);
     }
   }, [selectedUserId, employeeLeaves, leaveTypes]);
 
   const handleSave = async () => {
     if (!selectedUserId) return;
-    
+
     try {
       const userLeaves = employeeLeaves.filter(el => el.employeeId === selectedUserId);
-      
+
       const promises = leaveTypes.map(async (lt) => {
         const existing = userLeaves.find(el => el.leaveTypeId === lt.id);
         const alloc = allocationForm[lt.id] || { enabled: false, days: 0 };
-        
+
         if (alloc.enabled) {
           if (existing) {
             if (existing.allocatedDays !== alloc.days) {
@@ -91,9 +91,9 @@ const LeaveMaster: React.FC = () => {
           }
         }
       });
-      
+
       await Promise.all(promises);
-      
+
       alert('Leave allocation saved successfully!');
       loadData(); // refresh data
     } catch (error) {
@@ -130,17 +130,16 @@ const LeaveMaster: React.FC = () => {
               />
             </div>
           </div>
-          
+
           <div className="flex-1 overflow-y-auto custom-scrollbar p-2 space-y-1">
             {filteredUsers.map(user => (
               <button
                 key={user.id}
                 onClick={() => setSelectedUserId(user.id)}
-                className={`w-full text-left p-3 rounded-lg flex items-center gap-3 transition-colors ${
-                  selectedUserId === user.id
+                className={`w-full text-left p-3 rounded-lg flex items-center gap-3 transition-colors ${selectedUserId === user.id
                     ? 'bg-blue-50 dark:bg-blue-500/10 border border-blue-200 dark:border-blue-500/30'
                     : 'hover:bg-slate-50 dark:hover:bg-slate-800 border border-transparent'
-                }`}
+                  }`}
               >
                 <div className="w-10 h-10 rounded-full bg-slate-200 dark:bg-slate-700 flex items-center justify-center font-bold text-slate-600 dark:text-slate-300 shrink-0">
                   {user.name.charAt(0)}
@@ -178,7 +177,7 @@ const LeaveMaster: React.FC = () => {
                   <Save className="w-4 h-4" /> Save Allocation
                 </button>
               </div>
-              
+
               <div className="p-6 flex-1 overflow-y-auto">
                 <h4 className="font-semibold text-slate-700 dark:text-slate-300 mb-6 flex items-center gap-2">
                   Leave Allocation for {new Date().getFullYear()}
@@ -193,30 +192,31 @@ const LeaveMaster: React.FC = () => {
                     {leaveTypes.map(lt => {
                       const alloc = allocationForm[lt.id] || { enabled: false, days: 0 };
                       return (
-                      <div key={lt.id} className="p-4 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-[#182333]/30">
-                        <div className="flex items-center gap-3 mb-3">
-                          <label className="relative inline-flex items-center cursor-pointer">
-                            <input
-                              type="checkbox"
-                              className="sr-only peer"
-                              checked={alloc.enabled}
-                              onChange={e => setAllocationForm({ ...allocationForm, [lt.id]: { ...alloc, enabled: e.target.checked } })}
-                            />
-                            <div className="w-9 h-5 bg-slate-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all dark:border-gray-600 peer-checked:bg-blue-600"></div>
-                            <span className="ml-3 text-sm font-semibold text-slate-700 dark:text-slate-300">{lt.name} ({lt.code})</span>
-                          </label>
+                        <div key={lt.id} className="p-4 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-[#182333]/30">
+                          <div className="flex items-center gap-3 mb-3">
+                            <label className="relative inline-flex items-center cursor-pointer">
+                              <input
+                                type="checkbox"
+                                className="sr-only peer"
+                                checked={alloc.enabled}
+                                onChange={e => setAllocationForm({ ...allocationForm, [lt.id]: { ...alloc, enabled: e.target.checked } })}
+                              />
+                              <div className="w-9 h-5 bg-slate-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all dark:border-gray-600 peer-checked:bg-blue-600"></div>
+                              <span className="ml-3 text-sm font-semibold text-slate-700 dark:text-slate-300">{lt.name} ({lt.code})</span>
+                            </label>
+                          </div>
+                          <p className="text-xs text-slate-500 dark:text-slate-400 mb-2">Total days allocated per year</p>
+                          <input
+                            type="number"
+                            min="0"
+                            disabled={!alloc.enabled}
+                            value={alloc.days}
+                            onChange={e => setAllocationForm({ ...allocationForm, [lt.id]: { ...alloc, days: parseInt(e.target.value) || 0 } })}
+                            className={`w-full px-4 py-2 bg-white dark:bg-[#0b1120] border border-slate-300 dark:border-slate-600 rounded-lg text-slate-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 transition-colors ${!alloc.enabled ? 'opacity-50 cursor-not-allowed bg-slate-100 dark:bg-slate-800' : ''}`}
+                          />
                         </div>
-                        <p className="text-xs text-slate-500 dark:text-slate-400 mb-2">Total days allocated per year</p>
-                        <input
-                          type="number"
-                          min="0"
-                          disabled={!alloc.enabled}
-                          value={alloc.days}
-                          onChange={e => setAllocationForm({ ...allocationForm, [lt.id]: { ...alloc, days: parseInt(e.target.value) || 0 } })}
-                          className={`w-full px-4 py-2 bg-white dark:bg-[#0b1120] border border-slate-300 dark:border-slate-600 rounded-lg text-slate-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 transition-colors ${!alloc.enabled ? 'opacity-50 cursor-not-allowed bg-slate-100 dark:bg-slate-800' : ''}`}
-                        />
-                      </div>
-                    )})}
+                      )
+                    })}
                   </div>
                 )}
               </div>

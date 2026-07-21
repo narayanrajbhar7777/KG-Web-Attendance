@@ -115,8 +115,17 @@ const EmployeeRequests: React.FC = () => {
     setEditReason(req.reason);
   };
 
-  const saveEdit = async (id: string) => {
-    await updateRequestAPI(id, { reason: editReason });
+  const saveEdit = async (req: AppRequest) => {
+    await updateRequestAPI(req.id, { 
+      status: req.status,
+      reason: editReason,
+      date: req.date,
+      toDate: req.toDate,
+      type: req.type,
+      leaveType: req.leaveType,
+      inTime: req.inTime,
+      outTime: req.outTime
+    });
     setEditingId(null);
     fetchRequests();
   };
@@ -223,7 +232,7 @@ const EmployeeRequests: React.FC = () => {
                         <div className="flex items-center justify-center gap-2">
                           {editingId === req.id ? (
                             <>
-                              <button onClick={() => saveEdit(req.id)} className="p-1.5 text-green-600 hover:bg-green-50 dark:hover:bg-green-500/10 rounded transition-colors" title="Save">
+                              <button onClick={() => saveEdit(req)} className="p-1.5 text-green-600 hover:bg-green-50 dark:hover:bg-green-500/10 rounded transition-colors" title="Save">
                                 <Check className="w-4 h-4" />
                               </button>
                               <button onClick={() => setEditingId(null)} className="p-1.5 text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 rounded transition-colors" title="Cancel">

@@ -20,6 +20,7 @@ interface AttendanceTableProps<T> {
   className?: string;
   customTopRight?: React.ReactNode;
   customTopLeft?: React.ReactNode;
+  customBottomLeft?: React.ReactNode;
 }
 
 export function AttendanceTable<T>({
@@ -32,7 +33,8 @@ export function AttendanceTable<T>({
   itemsPerPage = 10,
   className = '',
   customTopRight,
-  customTopLeft
+  customTopLeft,
+  customBottomLeft
 }: AttendanceTableProps<T>) {
   const [searchQuery, setSearchQuery] = useState('');
   const [sortKey, setSortKey] = useState<string | null>(null);
@@ -168,9 +170,12 @@ export function AttendanceTable<T>({
 
       {pagination && totalPages > 0 && (
         <div className="p-4 border-t border-slate-200 dark:border-slate-700/60 flex items-center justify-between bg-white dark:bg-[#1e293b]">
-          <p className="text-xs font-medium text-slate-500 dark:text-slate-400">
-            Showing <span className="font-bold text-slate-800 dark:text-slate-200">{(currentPage - 1) * itemsPerPage + 1}</span> to <span className="font-bold text-slate-800 dark:text-slate-200">{Math.min(currentPage * itemsPerPage, sortedData.length)}</span> of <span className="font-bold text-slate-800 dark:text-slate-200">{sortedData.length}</span> entries
-          </p>
+          <div className="flex items-center gap-4">
+            {customBottomLeft}
+            <p className="text-xs font-medium text-slate-500 dark:text-slate-400">
+              Showing <span className="font-bold text-slate-800 dark:text-slate-200">{(currentPage - 1) * itemsPerPage + 1}</span> to <span className="font-bold text-slate-800 dark:text-slate-200">{Math.min(currentPage * itemsPerPage, sortedData.length)}</span> of <span className="font-bold text-slate-800 dark:text-slate-200">{sortedData.length}</span> entries
+            </p>
+          </div>
           <div className="flex gap-2">
             <button
               onClick={() => setCurrentPage(p => Math.max(1, p - 1))}

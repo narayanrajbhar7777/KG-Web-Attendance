@@ -24,12 +24,20 @@ const MyAttendance: React.FC = () => {
     weekOffs: 0
   });
 
+  const [cachedRequests, setCachedRequests] = useState<any[] | null>(null);
+  const [cachedPolicy, setCachedPolicy] = useState<any>(null);
+
   const fetchData = async () => {
     if (!user) return;
     try {
       setLoading(true);
-      const requestsData = await fetchEmployeeRequests(user.id);
-      const empRequests = requestsData?.requests || [];
+      
+      let empRequests = cachedRequests;
+      if (!empRequests) {
+        const requestsData = await fetchEmployeeRequests(user.id);
+        empRequests = requestsData?.requests || [];
+        setCachedRequests(empRequests);
+      }
 
       const frDate = format(startOfMonth(currentDate), 'dd-MMM-yyyy');
       const toDate = format(new Date(currentDate.getFullYear(), currentDate.getMonth(), getDaysInMonth(currentDate)), 'dd-MMM-yyyy');
@@ -37,8 +45,12 @@ const MyAttendance: React.FC = () => {
       const extData = await fetchEmployeePunchDataExternal(user.id, frDate, toDate);
       const punchData = extData?.EMP_PUNCH_DATA || [];
 
-      const policies = await fetchEmployeePolicies();
-      const myPolicy = policies.find((p: any) => p.employeeId === user.id) || { inTime: '09:00', outTime: '18:00', weekOffs: [0] };
+      let myPolicy = cachedPolicy;
+      if (!myPolicy) {
+        const policies = await fetchEmployeePolicies();
+        myPolicy = policies.find((p: any) => p.employeeId === user.id) || { inTime: '09:00', outTime: '18:00', weekOffs: [0] };
+        setCachedPolicy(myPolicy);
+      }
 
       const [pInH, pInM] = myPolicy.inTime.split(':').map(Number);
       const [pOutH, pOutM] = myPolicy.outTime.split(':').map(Number);
