@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import type { User, AppRequest, EmployeeAttendance, AppNotification } from '../types';
+import type { AppRequest, AppNotification } from '../types';
 import { fetchNotifications, fetchSettings, updateSettings, createNotification, markNotificationsAsReadAPI, createRequest, updateRequestStatusAPI, fetchMasterConfig, updateMasterConfig as updateMasterConfigAPI } from '../api';
 import { useAuth } from './AuthContext';
 
@@ -57,18 +57,18 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           user.role === 'Admin' ? fetchSettings(user.id) : Promise.resolve(null),
           fetchMasterConfig()
         ]);
-        if (n && !n.message) {
-          setNotifications(n);
+        if (n && !(n as any).message) {
+          setNotifications(n as any);
         }
         if (s && s.customColors) {
           setCustomColors(s.customColors);
         }
-        if (s && s.theme) {
-          setTheme(s.theme);
+        if (s && (s as any).theme) {
+          setTheme((s as any).theme);
         } else {
           setTheme(window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
         }
-        if (mConfig && !mConfig.message) {
+        if (mConfig && !(mConfig as any).message) {
           setMasterConfigState(mConfig);
         }
       } catch (err) {
@@ -88,8 +88,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const intervalId = setInterval(async () => {
       try {
         const n = await fetchNotifications();
-        if (n && !n.message) {
-          setNotifications(n);
+        if (n && !(n as any).message) {
+          setNotifications(n as any);
         }
       } catch (err) {
         console.error("Failed to poll notifications", err);
@@ -137,8 +137,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const addNotification = async (message: string, targetUserId?: string) => {
     try {
-      const newNotif = await createNotification(message, targetUserId);
-      // setNotifications(prev => [newNotif, ...prev]);
+      await createNotification(message, targetUserId);
+      // setNotifications(prev => [_newNotif, ...prev]);
     } catch (err) {
       console.error(err);
     }

@@ -249,7 +249,7 @@ export default function MissingPunchReportPage() {
                 </tr>
               ) : (
                 currentItems.map((req: any) => {
-                  const emp = users.find(u => u.id === req.userId);
+                  const emp = users.find((u: any) => u.id === req.userId);
                   return (
                     <tr key={req.id} className="hover:bg-slate-50 dark:hover:bg-[#2a374a]/30 transition-colors group">
                       <td className="py-4 px-4 text-sm text-slate-500 dark:text-slate-400 font-medium whitespace-nowrap">

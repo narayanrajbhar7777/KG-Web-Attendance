@@ -30,7 +30,7 @@ const AdminDashboard: React.FC = () => {
           }
         } catch (e) { console.error("Failed fetchRequests:", e); }
 
-        let usersData = [];
+        let usersData: any[] = [];
         try { usersData = await fetchUsers(); } catch (e) { console.error("Failed fetchUsers:", e); }
 
         let extData = null;
@@ -89,7 +89,7 @@ const AdminDashboard: React.FC = () => {
             };
           });
 
-          processed.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+          processed.sort((a: any, b: any) => (a.name || '').localeCompare(b.name || ''));
           setRecentPunchesData(processed);
         }
       } catch (error) {

@@ -46,7 +46,7 @@ const EmployeeRequests: React.FC = () => {
       result = result.filter(r => {
         let match = false;
         if (masterConfig?.myRequests?.columns?.type?.searchable !== false) {
-          match = match || r.type.toLowerCase().includes(q) || (r.leaveType && r.leaveType.toLowerCase().includes(q));
+          match = match || r.type.toLowerCase().includes(q) || Boolean(r.leaveType && r.leaveType.toLowerCase().includes(q));
         }
         if (masterConfig?.myRequests?.columns?.reason?.searchable !== false) {
           match = match || r.reason.toLowerCase().includes(q);

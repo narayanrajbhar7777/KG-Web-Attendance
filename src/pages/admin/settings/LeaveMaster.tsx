@@ -5,8 +5,8 @@ import type { User, LeaveType, EmployeeLeave } from '../../../types';
 
 const LeaveMaster: React.FC = () => {
   const [users, setUsers] = useState<User[]>([]);
-  const [leaveTypes, setLeaveTypes] = useState<LeaveType[]>([]);
-  const [employeeLeaves, setEmployeeLeaves] = useState<EmployeeLeave[]>([]);
+  const [leaveTypes, _setLeaveTypes] = useState<LeaveType[]>([]);
+  const [employeeLeaves, _setEmployeeLeaves] = useState<EmployeeLeave[]>([]);
   const [loading, setLoading] = useState(true);
 
   const [searchTerm, setSearchTerm] = useState('');
@@ -18,7 +18,7 @@ const LeaveMaster: React.FC = () => {
   const loadData = async () => {
     try {
       setLoading(true);
-      const [usersData, typesData, leavesData] = await Promise.all([
+      const [usersData, _typesData, _leavesData] = await Promise.all([
         fetchUsers(),
         fetchLeaveTypes(),
         fetchEmployeeLeaves()

@@ -3,7 +3,7 @@ import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useAppData } from '../context/AppContext';
 import { ATTENDANCE_STATUSES } from '../constants';
-import { LogOut, LayoutDashboard, CalendarCheck, FileText, Search, Bell, HelpCircle, Building2, Moon, Sun, Clock, Settings, ClipboardList } from 'lucide-react';
+import { LogOut, LayoutDashboard, CalendarCheck, FileText, Bell, HelpCircle, Building2, Moon, Sun, Clock, Settings } from 'lucide-react';
 import { formatDistanceToNow, format } from 'date-fns';
 import { ToggleLeft, ToggleRight, ArrowRightLeft } from 'lucide-react';
 

@@ -32,7 +32,9 @@ const AttendancePolicyPage: React.FC = () => {
         ]);
 
         // Ensure only Employees are shown, or all users if desired. Let's show all for flexibility.
-        setEmployees(allUsers.filter((u: User) => u.role !== 'Admin')); // typically admins don't need policies
+        if (allUsers) {
+          setEmployees(allUsers.filter((u: User) => u.role !== 'Admin')); // typically admins don't need policies
+        }
 
         const policyMap: Record<string, AttendancePolicy> = {};
         allPolicies.forEach((p: AttendancePolicy) => {
@@ -91,13 +93,13 @@ const AttendancePolicyPage: React.FC = () => {
       } else {
         // Create new
         const policyToSave = existingPolicy || { employeeId, inTime: '09:00', outTime: '18:00', weekOffs: [0] };
-        const created = await createEmployeePolicy({
+        await createEmployeePolicy({
           employeeId: policyToSave.employeeId,
           inTime: policyToSave.inTime,
           outTime: policyToSave.outTime,
           weekOffs: policyToSave.weekOffs
         });
-        setPolicies(null);
+        setPolicies(prev => ({ ...prev, [employeeId]: policyToSave as AttendancePolicy }));
       }
 
       addNotification(`Policy updated successfully`, 'admin1');

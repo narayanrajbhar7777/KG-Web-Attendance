@@ -19,7 +19,7 @@ const LeavePolicy: React.FC = () => {
     try {
       setLoading(true);
       const data = await fetchLeaveTypes();
-      setLeaveTypes(data || []);
+      setLeaveTypes((data as any) || []);
     } catch (err) {
       console.error(err);
     } finally {

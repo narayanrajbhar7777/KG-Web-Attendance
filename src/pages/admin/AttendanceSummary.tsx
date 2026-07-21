@@ -12,7 +12,7 @@ const AttendanceSummary: React.FC = () => {
   const { user } = useAuth();
 
   const [summaryData, setSummaryData] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
+  const [_loading, setLoading] = useState(true);
   const [currentDate, setCurrentDate] = useState<Date>(new Date());
   const [employeesList, setEmployeesList] = useState<any[]>([]);
 

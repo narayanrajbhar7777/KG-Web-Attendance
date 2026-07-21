@@ -93,8 +93,8 @@ const MyAttendance: React.FC = () => {
 
           return { date, dayOfWeek, status, checkIn, checkOut, totalHours, overTime, diffMs };
         }).map((r: any) => {
-          const approvedMispunch = empRequests.find((req: any) => req.type === 'Misspunch' && req.date === r.date && req.status === 'Approved');
-          const approvedLeave = empRequests.find((req: any) => req.type === 'Leave' && req.date === r.date && req.status === 'Approved');
+          const approvedMispunch = (empRequests || []).find((req: any) => req.type === 'Misspunch' && req.date === r.date && req.status === 'Approved');
+          const approvedLeave = (empRequests || []).find((req: any) => req.type === 'Leave' && req.date === r.date && req.status === 'Approved');
 
           let finalStatus = r.status;
           if (approvedMispunch) finalStatus = 'P/MP';

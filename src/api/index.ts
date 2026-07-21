@@ -3,7 +3,7 @@ import type { AppRequest } from '../types';
 import { format } from 'date-fns';
 
 export const fetchUsers = async () => {
-  return null;
+  return [];
   // const res = await fetchWithAuth(`${API_BASE_URL}/users`);
   // return res.json();
 };
@@ -136,7 +136,7 @@ export const deleteRequestAPI = async (id: string) => {
   }
 };
 
-export const createNotification = async (message: string, targetUserId?: string) => {
+export const createNotification = async (_message: string, _targetUserId?: string) => {
   // const res = await fetchWithAuth(`${API_BASE_URL}/notifications`, {
   //   method: 'POST',
   //   headers: { 'Content-Type': 'application/json' },
@@ -145,12 +145,12 @@ export const createNotification = async (message: string, targetUserId?: string)
   // return res.json();
 };
 
-export const markNotificationsAsReadAPI = async (userId: string) => {
+export const markNotificationsAsReadAPI = async (_userId: string) => {
   // const res = await fetchWithAuth(`${API_BASE_URL}/notifications/read/${userId}`, { method: 'PATCH' });
   // return res.json();
 };
 
-export const fetchSettings = async (userId: string) => {
+export const fetchSettings = async (_userId: string) => {
   return { customColors: {} };
   // try {
   //   const response = await fetchWithAuth(`${API_BASE_URL}/settings/${userId}`);
@@ -160,7 +160,7 @@ export const fetchSettings = async (userId: string) => {
   // }
 };
 
-export const updateSettings = async (userId: string, data: any) => {
+export const updateSettings = async (_userId: string, data: any) => {
   return data;
   // try {
   //   const response = await fetchWithAuth(`${API_BASE_URL}/settings/${userId}`, {
@@ -201,7 +201,7 @@ export const fetchEmployeePolicies = async () => {
   // }
 };
 
-export const createEmployeePolicy = async (policy: any) => {
+export const createEmployeePolicy = async (_policy: any) => {
   // const res = await fetchWithAuth(`${API_BASE_URL}/employeePolicies`, {
   //   method: 'POST',
   //   headers: { 'Content-Type': 'application/json' },
@@ -210,7 +210,7 @@ export const createEmployeePolicy = async (policy: any) => {
   // return res.json();
 };
 
-export const updateEmployeePolicy = async (id: string, policy: any) => {
+export const updateEmployeePolicy = async (_id: string, _policy: any) => {
   // const res = await fetchWithAuth(`${API_BASE_URL}/employeePolicies/${id}`, {
   //   method: 'PUT',
   //   headers: { 'Content-Type': 'application/json' },
@@ -323,7 +323,7 @@ export const fetchLeaveTypes = async () => {
   // return res.json();
 };
 
-export const addLeaveType = async (data: any) => {
+export const addLeaveType = async (_data: any) => {
   // const res = await fetchWithAuth(`${API_BASE_URL}/leaveTypes`, {
   //   method: 'POST',
   //   headers: { 'Content-Type': 'application/json' },
@@ -332,7 +332,7 @@ export const addLeaveType = async (data: any) => {
   // return res.json();
 };
 
-export const updateLeaveType = async (id: string, data: any) => {
+export const updateLeaveType = async (_id: string, _data: any) => {
   // const res = await fetchWithAuth(`${API_BASE_URL}/leaveTypes/${id}`, {
   //   method: 'PATCH',
   //   headers: { 'Content-Type': 'application/json' },
@@ -341,7 +341,7 @@ export const updateLeaveType = async (id: string, data: any) => {
   // return res.json();
 };
 
-export const deleteLeaveType = async (id: string) => {
+export const deleteLeaveType = async (_id: string) => {
   // const res = await fetchWithAuth(`${API_BASE_URL}/leaveTypes/${id}`, {
   //   method: 'DELETE'
   // });

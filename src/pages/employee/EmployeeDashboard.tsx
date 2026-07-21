@@ -150,17 +150,17 @@ const EmployeeDashboard: React.FC = () => {
     fetchDashboardData();
   };
 
-  const currentMonthRecords = myAttendance.filter(r => {
+  const currentMonthRecords = myAttendance.filter((r: any) => {
     const d = new Date(r.date);
     return d.getMonth() === currentDate.getMonth() && d.getFullYear() === currentDate.getFullYear();
   });
 
   const pastAndPresentRecords = currentMonthRecords
-    .filter(r => {
+    .filter((r: any) => {
       const d = new Date(r.date);
       return !isAfter(startOfDay(d), today);
     })
-    .map(r => {
+    .map((r: any) => {
       const approvedMispunch = empRequests.find((req: any) => req.type === 'Misspunch' && req.date === r.date && req.status === 'Approved');
       const approvedLeave = empRequests.find((req: any) => req.type === 'Leave' && req.date === r.date && req.status === 'Approved');
 
@@ -171,15 +171,15 @@ const EmployeeDashboard: React.FC = () => {
       return { ...r, status: finalStatus };
     });
 
-  const presentDays = pastAndPresentRecords.filter(r => r.status === 'P' || r.status === 'In' || r.status === 'PH' || r.status === 'P/MP').length;
-  const weeklyOffs = pastAndPresentRecords.filter(r => r.status === 'WO').length;
-  const halfDays = pastAndPresentRecords.filter(r => r.status === 'HD').length;
-  const earlyOuts = pastAndPresentRecords.filter(r => r.status === 'EO').length;
-  const absents = pastAndPresentRecords.filter(r => r.status === 'A').length;
+  const presentDays = pastAndPresentRecords.filter((r: any) => r.status === 'P' || r.status === 'In' || r.status === 'PH' || r.status === 'P/MP').length;
+  const weeklyOffs = pastAndPresentRecords.filter((r: any) => r.status === 'WO').length;
+  const halfDays = pastAndPresentRecords.filter((r: any) => r.status === 'HD').length;
+  const earlyOuts = pastAndPresentRecords.filter((r: any) => r.status === 'EO').length;
+  const absents = pastAndPresentRecords.filter((r: any) => r.status === 'A').length;
 
   let totalHours = 0;
   let presentDaysCount = 0;
-  pastAndPresentRecords.forEach(r => {
+  pastAndPresentRecords.forEach((r: any) => {
     if (r.status === 'P' || r.status === 'PH' || r.status === 'P/MP') {
       presentDaysCount++;
       if (r.checkIn && r.checkOut) {
@@ -260,9 +260,8 @@ const EmployeeDashboard: React.FC = () => {
                   const isFuture = isAfter(currentIterDate, today);
 
                   let status = '-';
-                  let isMispunch = false;
                   if (!isFuture) {
-                    const record = myAttendance.find(r => r.date === dateStr);
+                    const record = myAttendance.find((r: any) => r.date === dateStr);
                     status = record?.status || '-';
 
                     if (!record?.checkIn && !record?.checkOut) {
@@ -275,7 +274,6 @@ const EmployeeDashboard: React.FC = () => {
 
                     const approvedMispunch = empRequests.find((r: any) => r.type === 'Misspunch' && r.date === dateStr && r.status === 'Approved');
                     if (approvedMispunch) {
-                      isMispunch = true;
                       status = 'P/MP';
                     }
                   }

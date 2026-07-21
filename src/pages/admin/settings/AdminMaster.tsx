@@ -31,18 +31,9 @@ const AdminMaster: React.FC = () => {
     setSaving(false);
   };
 
-  const updateTableConfig = (tableName: string, field: string, value: any) => {
-    setLocalConfig((prev: any) => ({
-      ...prev,
-      [tableName]: {
-        ...prev[tableName],
-        [field]: value
-      }
-    }));
-  };
 
   const handleColumnChange = (tableName: string, colKey: string, field: 'label' | 'searchable' | 'sortable', value: string | boolean) => {
-    setLocalConfig(prev => ({
+    setLocalConfig((prev: any) => ({
       ...prev,
       [tableName]: {
         ...prev[tableName],
