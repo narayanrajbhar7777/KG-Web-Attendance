@@ -70,10 +70,10 @@ export const createRequest = async (req: any) => {
   }
 };
 
-export const updateRequestStatusAPI = async (id: string, status: AppRequest['status'], reason: string, req?: AppRequest) => {
+export const updateRequestStatusAPI = async (id: string, status: AppRequest['status'], reason: string, req?: AppRequest, approverNotes?: string) => {
   try {
-    let reqData: any = { id: Number(id), status, reason, approver_notes: "OK" };
-    if (req?.type === 'Misspunch') {
+    let reqData: any = { id: Number(id), status, reason, approver_notes: approverNotes || "" };
+    if (req?.type === 'Missed Punch') {
       reqData.request_date = req.date ? format(new Date(req.date), 'dd-MMM-yyyy') : undefined;
       reqData.in_time = req.inTime;
       reqData.out_time = req.outTime;
@@ -103,7 +103,7 @@ export const updateRequestAPI = async (id: string, data: any) => {
       request_type: data.type,
       leave_type: data.leaveType
     };
-    if (data.type === 'Misspunch') {
+    if (data.type === 'Missed Punch') {
       payload.in_time = data.inTime;
       payload.out_time = data.outTime;
     }
@@ -256,7 +256,8 @@ export const fetchEmployeeRequests = async (userId: string) => {
       inTime: req.in_time,
       outTime: req.out_time,
       createdAt: req.created_at ? req.created_at.replace('[UTC]', '') : undefined,
-      updatedAt: req.updated_at ? req.updated_at.replace('[UTC]', '') : undefined
+      updatedAt: req.updated_at ? req.updated_at.replace('[UTC]', '') : undefined,
+      approver_notes: req.approver_notes
     }));
     return { requests: mappedRequests };
   } catch (err) {

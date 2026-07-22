@@ -4,7 +4,7 @@ import { useAuth } from '../../context/AuthContext';
 import { useAppData } from '../../context/AppContext';
 import { fetchRequests, fetchUsers, fetchEmployeeDataExternal } from '../../api';
 import type { AppRequest, User } from '../../types';
-import { Calendar, EyeOff, Table, Check, X, Clock, Search } from 'lucide-react';
+import { Calendar, EyeOff, Table, Check, X, Clock, Search, ExternalLink } from 'lucide-react';
 import { format } from 'date-fns';
 import { AttendanceTable, type ColumnDef } from '../../components/AttendanceTable';
 import { getStatusColor, normalizeAttendanceStatus, calculateTime } from '../../utils/attendanceUtils';
@@ -14,6 +14,7 @@ const AdminDashboard: React.FC = () => {
   const { user } = useAuth();
   const { updateRequestStatus: apiUpdateRequestStatus, addNotification } = useAppData();
   const [requests, setRequests] = useState<AppRequest[]>([]);
+  const [actionNotes, setActionNotes] = useState<{ [key: string]: string }>({});
   const [users, setUsers] = useState<User[]>([]);
   const [recentPunchesData, setRecentPunchesData] = useState<any[]>([]);
 
@@ -102,8 +103,9 @@ const AdminDashboard: React.FC = () => {
   }, [user]);
 
   const updateRequestStatus = async (id: string, status: AppRequest['status'], reason: string, req?: AppRequest) => {
-    await apiUpdateRequestStatus(id, status, reason, req);
+    await apiUpdateRequestStatus(id, status, reason, req, actionNotes[id]);
     setRequests(prev => prev.map(r => r.id === id ? { ...r, status } : r));
+    setActionNotes(prev => { const next = { ...prev }; delete next[id]; return next; });
   };
 
   const [leavesSearch, setLeavesSearch] = useState('');
@@ -121,9 +123,9 @@ const AdminDashboard: React.FC = () => {
   const approvedLeaves = requests.filter(r => r.type === 'Leave' && r.status === 'Approved').length;
   const rejectedLeaves = requests.filter(r => r.type === 'Leave' && r.status === 'Rejected').length;
 
-  const pendingPunches = requests.filter(r => r.type === 'Misspunch' && r.status === 'Pending').length;
-  const approvedPunches = requests.filter(r => r.type === 'Misspunch' && r.status === 'Approved').length;
-  const rejectedPunches = requests.filter(r => r.type === 'Misspunch' && r.status === 'Rejected').length;
+  const pendingPunches = requests.filter(r => r.type === 'Missed Punch' && r.status === 'Pending').length;
+  const approvedPunches = requests.filter(r => r.type === 'Missed Punch' && r.status === 'Approved').length;
+  const rejectedPunches = requests.filter(r => r.type === 'Missed Punch' && r.status === 'Rejected').length;
 
   const pendingRequestsList = requests.filter(r => r.status === 'Pending');
 
@@ -136,7 +138,8 @@ const AdminDashboard: React.FC = () => {
   });
 
   const pendingPunchList = pendingRequestsList.filter(r => {
-    if (r.type !== 'Misspunch') return false;
+    // console.log(`Type: ${r.type}`);
+    if (r.type !== 'Missed Punch' && r.type !== 'Misspunch') return false;
     if (!punchesSearch) return true;
     const user = users.find(u => u.id === r.userId || u.code === r.userId);
     const searchTarget = user ? `${user.name} ${user.code}` : r.userId;
@@ -151,8 +154,9 @@ const AdminDashboard: React.FC = () => {
     return searchTarget.toLowerCase().includes(leaveReportSearch.toLowerCase());
   });
 
-  const processedMisspunchRequests = requests.filter(r => {
-    if (r.status === 'Pending' || r.type !== 'Misspunch') return false;
+  const processedMissedPunchRequests = requests.filter(r => {
+    // console.log(`${r.id} | ${r.type} | ${r.reason} | ${r.inTime} | ${r.outTime}`)
+    if (r.status === 'Pending' || (r.type !== 'Missed Punch' && r.type !== 'Misspunch')) return false;
     if (!punchReportSearch) return true;
     const user = users.find(u => u.id === r.userId || u.code === r.userId);
     const searchTarget = user ? `${user.name} ${user.code}` : r.userId;
@@ -162,7 +166,7 @@ const AdminDashboard: React.FC = () => {
   const pagedPendingLeaveList = pendingLeaveList.slice(leavesPage * itemsPerPage, (leavesPage + 1) * itemsPerPage);
   const pagedPendingPunchList = pendingPunchList.slice(punchesPage * itemsPerPage, (punchesPage + 1) * itemsPerPage);
   const pagedProcessedLeaveRequests = processedLeaveRequests.slice(leaveReportPage * itemsPerPage, (leaveReportPage + 1) * itemsPerPage);
-  const pagedProcessedMisspunchRequests = processedMisspunchRequests.slice(punchReportPage * itemsPerPage, (punchReportPage + 1) * itemsPerPage);
+  const pagedprocessedMissedPunchRequests = processedMissedPunchRequests.slice(punchReportPage * itemsPerPage, (punchReportPage + 1) * itemsPerPage);
 
   const recentPresentCount = recentPunchesData.filter(r => ['P', 'P/MP', 'HD', 'M', 'In', 'PH'].includes(r.status)).length;
   const recentAbsentCount = recentPunchesData.filter(r => r.status === 'A').length;
@@ -234,12 +238,12 @@ const AdminDashboard: React.FC = () => {
             </div>
           </div>
 
-          {/* Missing Punch Card */}
+          {/* Missed Punch Card */}
           <div className="bg-white dark:bg-[#1e293b] rounded-2xl shadow-sm hover:shadow-md border border-slate-200 dark:border-slate-700/60 overflow-hidden flex flex-col transition-all duration-300 hover:-translate-y-1">
             <div className="p-6 pb-4">
               <div className="flex justify-between items-start mb-6">
                 <div>
-                  <h3 className="text-[17px] font-bold text-slate-800 dark:text-white">Missing Punch</h3>
+                  <h3 className="text-[17px] font-bold text-slate-800 dark:text-white">Missed Punch</h3>
                   <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Attendance discrepancy tracking</p>
                 </div>
                 <div className="bg-slate-100 dark:bg-white/10 p-2.5 rounded-lg text-slate-600 dark:text-white">
@@ -293,18 +297,19 @@ const AdminDashboard: React.FC = () => {
               <table className="w-full text-left border-collapse">
                 <thead className="sticky top-0 bg-white dark:bg-[#1e293b] z-10">
                   <tr className="bg-slate-50/80 dark:bg-[#182333]/50 text-slate-500 dark:text-slate-400 text-[10px] font-bold uppercase tracking-widest border-b border-slate-200 dark:border-slate-700/60 transition-colors">
+                    <th className="py-4 px-6 text-right">Action</th>
                     <th className="py-4 px-6">Code</th>
                     <th className="py-4 px-6 ">Name</th>
                     <th className="py-4 px-6">Date</th>
-                    <th className="py-4 px-6">Type</th>
+                    {/* <th className="py-4 px-6">Type</th> */}
                     <th className="py-4 px-6">Reason</th>
-                    <th className="py-4 px-6 text-right">Action</th>
+                    <th className="py-4 px-6">Note</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 dark:divide-slate-700/50">
                   {pendingLeaveList.length === 0 ? (
                     <tr>
-                      <td colSpan={3} className="py-8 text-center text-slate-500 dark:text-slate-400">
+                      <td colSpan={6} className="py-8 text-center text-slate-500 dark:text-slate-400">
                         No pending leave requests found.
                       </td>
                     </tr>
@@ -313,22 +318,7 @@ const AdminDashboard: React.FC = () => {
                       const emp = users.find(u => String(u.id).replace('FP', '') === String(req.userId).replace('FP', '') || String(u.code).replace('FP', '') === String(req.userId).replace('FP', ''));
                       return (
                         <tr key={req.id} className="hover:bg-slate-50 dark:hover:bg-[#2a374a]/30 transition-colors">
-                          <td className="py-4 px-6 text-[11px] text-slate-500 dark:text-slate-400 font-medium whitespace-nowrap">
-                            {emp?.code || req.userId}
-                          </td>
-                          <td className="py-4 px-6">
-                            <span className="font-medium text-slate-500 dark:text-slate-400 text-[13px] uppercase whitespace-nowrap">{emp?.name || 'Unknown'}</span>
-                          </td>
-                          <td className="py-4 px-6 whitespace-nowrap">
-                            <p className="text-sm text-slate-500 dark:text-slate-400 font-medium">{req.date ? format(new Date(req.date), 'MMM dd, yyyy') : 'N/A'}</p>
-                          </td>
-                          <td className="py-4 px-6 whitespace-nowrap">
-                            <span className="text-sm text-slate-500 dark:text-slate-400 font-medium">{req.leaveType}</span>
-                          </td>
-                          <td className="py-4 px-6 text-sm text-slate-500 dark:text-slate-400">
-                            <p className="truncate max-w-[150px]" title={req.reason}>{req.reason}</p>
-                          </td>
-                          <td className="py-4 px-6 text-right">
+                          <td className="py-4 px-4 text-right">
                             <div className="flex flex-col sm:flex-row items-end justify-end gap-2">
                               <button
                                 onClick={() => {
@@ -337,7 +327,7 @@ const AdminDashboard: React.FC = () => {
                                 }}
                                 className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-100 dark:hover:bg-emerald-500/20 rounded border border-emerald-200 dark:border-emerald-500/30 text-xs font-bold transition-colors"
                               >
-                                <Check className="w-3.5 h-3.5" /> Approve
+                                <Check className="w-3.5 h-3.5" />
                               </button>
                               <button
                                 onClick={() => {
@@ -346,9 +336,33 @@ const AdminDashboard: React.FC = () => {
                                 }}
                                 className="flex items-center gap-1.5 px-3 py-1.5 bg-red-50 dark:bg-red-500/10 text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-500/20 rounded border border-red-200 dark:border-red-500/30 text-xs font-bold transition-colors"
                               >
-                                <X className="w-3.5 h-3.5" /> Reject
+                                <X className="w-3.5 h-3.5" />
                               </button>
                             </div>
+                          </td>
+                          <td className="py-4 px-4 text-[11px] text-slate-500 dark:text-slate-400 font-medium whitespace-nowrap">
+                            {emp?.code || req.userId}
+                          </td>
+                          <td className="py-4 px-4">
+                            <span className="font-medium text-slate-500 dark:text-slate-400 text-[13px] uppercase whitespace-nowrap">{emp?.name || 'Unknown'}</span>
+                          </td>
+                          <td className="py-4 px-4 whitespace-nowrap">
+                            <p className="text-sm text-slate-500 dark:text-slate-400 font-medium">{req.date ? format(new Date(req.date), 'MMM dd, yyyy') : 'N/A'}</p>
+                          </td>
+                          {/* <td className="py-4 px-6 whitespace-nowrap">
+                            <span className="text-sm text-slate-500 dark:text-slate-400 font-medium">{req.leaveType}</span>
+                          </td> */}
+                          <td className="py-4 px-4 text-sm text-slate-500 dark:text-slate-400">
+                            <p className="truncate max-w-[150px]" title={req.reason}>{req.reason}</p>
+                          </td>
+                          <td className="py-4 px-4">
+                            <input
+                              type="text"
+                              placeholder="Note (optional)"
+                              value={actionNotes[req.id] || ''}
+                              onChange={(e) => setActionNotes(prev => ({ ...prev, [req.id]: e.target.value }))}
+                              className="w-32 text-xs px-2 py-1.5 bg-white dark:bg-[#0b1120] border border-slate-200 dark:border-slate-700 rounded outline-none focus:ring-1 focus:ring-blue-500 dark:text-white placeholder:text-slate-400"
+                            />
                           </td>
                         </tr>
                       );
@@ -360,7 +374,7 @@ const AdminDashboard: React.FC = () => {
             <PaginationFooter page={leavesPage} setPage={setLeavesPage} total={pendingLeaveList.length} label="entries" />
           </div>
 
-          {/* Pending Missing Punch Requests */}
+          {/* Pending Missed Punch Requests */}
           <div className="flex flex-col bg-white dark:bg-[#1e293b] rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700/60 overflow-hidden transition-colors duration-300">
             <div className="p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200 dark:border-slate-700/60 bg-yellow-50/50 dark:bg-yellow-900/10">
               <div className="flex items-center gap-3">
@@ -385,19 +399,20 @@ const AdminDashboard: React.FC = () => {
               <table className="w-full text-left border-collapse">
                 <thead className="sticky top-0 bg-white dark:bg-[#1e293b] z-10">
                   <tr className="bg-slate-50/80 dark:bg-[#182333]/50 text-slate-500 dark:text-slate-400 text-[10px] font-bold uppercase tracking-widest border-b border-slate-200 dark:border-slate-700/60 transition-colors">
+                    <th className="py-4 px-6 text-right">Action</th>
                     <th className="py-4 px-6">Code</th>
                     <th className="py-4 px-6">Name</th>
                     <th className="py-4 px-6">Date</th>
                     <th className="py-4 px-6">In</th>
                     <th className="py-4 px-6">Out</th>
                     <th className="py-4 px-6">Reason</th>
-                    <th className="py-4 px-6 text-right">Action</th>
+                    <th className="py-4 px-6">Note</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 dark:divide-slate-700/50">
                   {pendingPunchList.length === 0 ? (
                     <tr>
-                      <td colSpan={3} className="py-8 text-center text-slate-500 dark:text-slate-400">
+                      <td colSpan={8} className="py-8 text-center text-slate-500 dark:text-slate-400">
                         No pending punch requests found.
                       </td>
                     </tr>
@@ -406,45 +421,54 @@ const AdminDashboard: React.FC = () => {
                       const emp = users.find(u => String(u.id).replace('FP', '') === String(req.userId).replace('FP', '') || String(u.code).replace('FP', '') === String(req.userId).replace('FP', ''));
                       return (
                         <tr key={req.id} className="hover:bg-slate-50 dark:hover:bg-[#2a374a]/30 transition-colors">
-                          <td className="py-4 px-6 text-[11px] text-slate-500 dark:text-slate-400 font-medium whitespace-nowrap">
-                            {emp?.code || req.userId}
-                          </td>
-                          <td className="py-4 px-6">
-                            <span className="font-medium text-slate-500 dark:text-slate-400 text-[13px] uppercase whitespace-nowrap">{emp?.name || 'Unknown'}</span>
-                          </td>
-                          <td className="py-4 px-6 whitespace-nowrap">
-                            <p className="text-sm text-slate-500 dark:text-slate-400 font-medium">{req.date ? format(new Date(req.date), 'MMM dd, yyyy') : 'N/A'}</p>
-                          </td>
-                          <td className="py-4 px-6 whitespace-nowrap">
-                            <span className="text-sm text-slate-500 dark:text-slate-400 font-medium">{req.inTime || '-'}</span>
-                          </td>
-                          <td className="py-4 px-6 whitespace-nowrap">
-                            <span className="text-sm text-slate-500 dark:text-slate-400 font-medium">{req.outTime || '-'}</span>
-                          </td>
-                          <td className="py-4 px-6 text-sm text-slate-500 dark:text-slate-400">
-                            <p className="truncate max-w-[150px]" title={req.reason}>{req.reason}</p>
-                          </td>
-                          <td className="py-4 px-6 text-right">
+                          <td className="py-4 px-3 text-right">
                             <div className="flex flex-col sm:flex-row items-end justify-end gap-2">
                               <button
                                 onClick={() => {
                                   updateRequestStatus(req.id, 'Approved', req.reason, req);
-                                  addNotification(`Your Misspunch request on ${format(new Date(req.date), 'MMM dd')} has been Approved`, req.userId);
+                                  addNotification(`Your Missed Punch request on ${format(new Date(req.date), 'MMM dd')} has been Approved`, req.userId);
                                 }}
                                 className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-100 dark:hover:bg-emerald-500/20 rounded border border-emerald-200 dark:border-emerald-500/30 text-xs font-bold transition-colors"
                               >
-                                <Check className="w-3.5 h-3.5" /> Approve
+                                <Check className="w-3.5 h-3.5" />
                               </button>
                               <button
                                 onClick={() => {
                                   updateRequestStatus(req.id, 'Rejected', req.reason, req);
-                                  addNotification(`Your Misspunch request on ${format(new Date(req.date), 'MMM dd')} has been Rejected`, req.userId);
+                                  addNotification(`Your Missed Punch request on ${format(new Date(req.date), 'MMM dd')} has been Rejected`, req.userId);
                                 }}
                                 className="flex items-center gap-1.5 px-3 py-1.5 bg-red-50 dark:bg-red-500/10 text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-500/20 rounded border border-red-200 dark:border-red-500/30 text-xs font-bold transition-colors"
                               >
-                                <X className="w-3.5 h-3.5" /> Reject
+                                <X className="w-3.5 h-3.5" />
                               </button>
                             </div>
+                          </td>
+                          <td className="py-4 px-3 text-[11px] text-slate-500 dark:text-slate-400 font-medium whitespace-nowrap">
+                            {emp?.code || req.userId}
+                          </td>
+                          <td className="py-4 px-3">
+                            <span className="font-medium text-slate-500 dark:text-slate-400 text-[13px] uppercase whitespace-nowrap">{emp?.name || 'Unknown'}</span>
+                          </td>
+                          <td className="py-4 px-3 whitespace-nowrap">
+                            <p className="text-sm text-slate-500 dark:text-slate-400 font-medium">{req.date ? format(new Date(req.date), 'MMM dd, yyyy') : 'N/A'}</p>
+                          </td>
+                          <td className="py-4 px-3 whitespace-nowrap">
+                            <span className="text-sm text-slate-500 dark:text-slate-400 font-medium">{req.inTime || '-'}</span>
+                          </td>
+                          <td className="py-4 px-3 whitespace-nowrap">
+                            <span className="text-sm text-slate-500 dark:text-slate-400 font-medium">{req.outTime || '-'}</span>
+                          </td>
+                          <td className="py-4 px-3 text-sm text-slate-500 dark:text-slate-400">
+                            <p className="truncate max-w-[150px]" title={req.reason}>{req.reason}</p>
+                          </td>
+                          <td className="py-4 px-3">
+                            <input
+                              type="text"
+                              placeholder="Note (optional)"
+                              value={actionNotes[req.id] || ''}
+                              onChange={(e) => setActionNotes(prev => ({ ...prev, [req.id]: e.target.value }))}
+                              className="w-32 text-xs px-2 py-1.5 bg-white dark:bg-[#0b1120] border border-slate-200 dark:border-slate-700 rounded outline-none focus:ring-1 focus:ring-blue-500 dark:text-white placeholder:text-slate-400"
+                            />
                           </td>
                         </tr>
                       );
@@ -462,23 +486,25 @@ const AdminDashboard: React.FC = () => {
           <div className="flex flex-col bg-white dark:bg-[#1e293b] rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700/60 overflow-hidden transition-colors duration-300">
             <div className="p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200 dark:border-slate-700/60">
               <div className="flex items-center gap-3">
-                <div
-                  className="bg-purple-50 dark:bg-purple-500/10 p-1.5 rounded-lg text-purple-600 dark:text-purple-400 hover:bg-purple-100 dark:hover:bg-purple-500/20 transition-colors cursor-pointer"
-                  onClick={() => navigate('/admin/leave-requests-report')}
-                >
+                <div className="bg-purple-50 dark:bg-purple-500/10 p-1.5 rounded-lg text-purple-600 dark:text-purple-400">
                   <Table className="w-4 h-4" />
                 </div>
                 <h3 className="text-[17px] font-bold text-slate-800 dark:text-white">Leave Requests Report</h3>
               </div>
-              <div className="relative">
-                <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-                <input
-                  type="text"
-                  placeholder="Search Employee..."
-                  value={leaveReportSearch}
-                  onChange={(e) => setLeaveReportSearch(e.target.value)}
-                  className="pl-9 pr-4 py-1.5 bg-white dark:bg-[#0b1120] border border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none dark:text-white transition-all placeholder:text-slate-400"
-                />
+              <div className="flex items-center gap-3">
+                <button onClick={() => navigate('/admin/leave-requests-report')} title="Show Report" className="p-1.5 hover:bg-purple-100 dark:hover:bg-purple-500/20 text-purple-600 dark:text-purple-400 rounded transition-colors flex items-center justify-center">
+                  <ExternalLink className="w-5 h-5" />
+                </button>
+                <div className="relative">
+                  <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                  <input
+                    type="text"
+                    placeholder="Search Employee..."
+                    value={leaveReportSearch}
+                    onChange={(e) => setLeaveReportSearch(e.target.value)}
+                    className="pl-9 pr-4 py-1.5 bg-white dark:bg-[#0b1120] border border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none dark:text-white transition-all placeholder:text-slate-400"
+                  />
+                </div>
               </div>
 
             </div>
@@ -552,27 +578,29 @@ const AdminDashboard: React.FC = () => {
             <PaginationFooter page={leaveReportPage} setPage={setLeaveReportPage} total={processedLeaveRequests.length} label="entries" />
           </div>
 
-          {/* Missing Punch Report Table */}
+          {/* Missed Punch Report Table */}
           <div className="flex flex-col bg-white dark:bg-[#1e293b] rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700/60 overflow-hidden transition-colors duration-300">
             <div className="p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200 dark:border-slate-700/60">
               <div className="flex items-center gap-3">
-                <div
-                  className="bg-indigo-50 dark:bg-indigo-500/10 p-1.5 rounded-lg text-indigo-600 dark:text-indigo-400 hover:bg-indigo-100 dark:hover:bg-indigo-500/20 transition-colors cursor-pointer"
-                  onClick={() => navigate('/admin/missing-punch-report')}
-                >
+                <div className="bg-indigo-50 dark:bg-indigo-500/10 p-1.5 rounded-lg text-indigo-600 dark:text-indigo-400">
                   <Table className="w-4 h-4" />
                 </div>
-                <h3 className="text-[17px] font-bold text-slate-800 dark:text-white">Missing Punch Report</h3>
+                <h3 className="text-[17px] font-bold text-slate-800 dark:text-white">Missed Punch Report</h3>
               </div>
-              <div className="relative">
-                <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-                <input
-                  type="text"
-                  placeholder="Search Employee..."
-                  value={punchReportSearch}
-                  onChange={(e) => setPunchReportSearch(e.target.value)}
-                  className="pl-9 pr-4 py-1.5 bg-white dark:bg-[#0b1120] border border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none dark:text-white transition-all placeholder:text-slate-400"
-                />
+              <div className="flex items-center gap-3">
+                <button onClick={() => navigate('/admin/missing-punch-report')} title="Show Report" className="p-1.5 hover:bg-indigo-100 dark:hover:bg-indigo-500/20 text-indigo-600 dark:text-indigo-400 rounded transition-colors flex items-center justify-center">
+                  <ExternalLink className="w-5 h-5" />
+                </button>
+                <div className="relative">
+                  <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                  <input
+                    type="text"
+                    placeholder="Search Employee..."
+                    value={punchReportSearch}
+                    onChange={(e) => setPunchReportSearch(e.target.value)}
+                    className="pl-9 pr-4 py-1.5 bg-white dark:bg-[#0b1120] border border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none dark:text-white transition-all placeholder:text-slate-400"
+                  />
+                </div>
               </div>
 
             </div>
@@ -591,14 +619,14 @@ const AdminDashboard: React.FC = () => {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 dark:divide-slate-700/50">
-                  {processedMisspunchRequests.length === 0 ? (
+                  {processedMissedPunchRequests.length === 0 ? (
                     <tr>
                       <td colSpan={7} className="py-8 text-center text-slate-500 dark:text-slate-400">
-                        No missing punch reports found.
+                        No Missed Punch reports found.
                       </td>
                     </tr>
                   ) : (
-                    pagedProcessedMisspunchRequests.map((req) => {
+                    pagedprocessedMissedPunchRequests.map((req) => {
                       const emp = users.find(u => String(u.id).replace('FP', '') === String(req.userId).replace('FP', '') || String(u.code).replace('FP', '') === String(req.userId).replace('FP', ''));
                       return (
                         <tr key={req.id} className="hover:bg-slate-50 dark:hover:bg-[#2a374a]/30 transition-colors group">
@@ -641,7 +669,7 @@ const AdminDashboard: React.FC = () => {
                 </tbody>
               </table>
             </div>
-            <PaginationFooter page={punchReportPage} setPage={setPunchReportPage} total={processedMisspunchRequests.length} label="entries" />
+            <PaginationFooter page={punchReportPage} setPage={setPunchReportPage} total={processedMissedPunchRequests.length} label="entries" />
           </div>
         </div>
 

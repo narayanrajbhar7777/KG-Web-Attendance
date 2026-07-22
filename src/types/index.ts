@@ -32,7 +32,7 @@ export interface AttendancePolicy {
   weekOffs: number[];
 }
 
-export type RequestType = 'Leave' | 'Misspunch';
+export type RequestType = 'Leave' | 'Missed Punch' | 'Misspunch';
 export type RequestStatus = 'Pending' | 'Approved' | 'Rejected';
 
 export interface AppRequest {
@@ -46,11 +46,13 @@ export interface AppRequest {
   updatedAt?: string;
   reason: string;
   status: RequestStatus;
-  // For Misspunch
+  // For Missed Punch
   inTime?: string;
   outTime?: string;
   // For Leave
   leaveType?: string;
+  approver_notes?: string;
+  actionedDate?: string;
 }
 
 export interface LeaveType {

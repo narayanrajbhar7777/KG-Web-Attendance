@@ -22,7 +22,7 @@ export const getStatusColor = (status: string) => {
     case 'LWP': return 'text-pink-600 font-bold';
     case 'P/MP': return 'text-yellow-600 font-bold';
     case 'M':
-    case 'Misspunch': return 'text-yellow-600 font-bold';
+    case 'Missed Punch': return 'text-yellow-600 font-bold';
     case '-': return 'text-slate-400 font-bold';
     default: return 'text-slate-400 font-bold';
   }
@@ -32,7 +32,7 @@ export const normalizeAttendanceStatus = (rawStatus: string, checkIn: string, ch
   let status = rawStatus || '-';
   if (status === 'PRESENT') status = 'P';
   else if (status === 'ABSENT') status = 'A';
-  else if (status === 'MISPUNCH') status = 'P/MP';
+  else if (status === 'MISPUNCH') status = 'M';
   else if (status === 'WEEK OFF' || status === 'WEEKOFF') status = 'WO';
   else if (status === 'HOLIDAY') status = 'H';
   else if (status === 'LEAVE') status = 'L';
@@ -100,8 +100,8 @@ export const getFullStatus = (status: string) => {
     case 'H': return 'Holiday';
     case 'L': return 'Leave';
     case 'EO': return 'Early Out';
-    case 'P/MP': return 'Present/Misspunch';
-    case 'M': return 'Misspunch';
+    case 'P/MP': return 'Present/Missed Punch';
+    case 'M': return 'Missed Punch';
     case 'HD': return 'Half Day';
     case 'PH': return 'Present on Holiday';
     case 'EL': return 'Earned Leave';

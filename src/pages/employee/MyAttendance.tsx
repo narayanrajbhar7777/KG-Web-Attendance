@@ -31,7 +31,7 @@ const MyAttendance: React.FC = () => {
     if (!user) return;
     try {
       setLoading(true);
-      
+
       let empRequests = cachedRequests;
       if (!empRequests) {
         const requestsData = await fetchEmployeeRequests(user.id);

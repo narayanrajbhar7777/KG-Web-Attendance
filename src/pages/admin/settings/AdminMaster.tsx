@@ -50,10 +50,10 @@ const AdminMaster: React.FC = () => {
 
   const tableLabels: Record<string, string> = {
     leaveRequests: 'Leave Requests (Admin Dashboard)',
-    missingPunch: 'Missing Punch (Admin Dashboard)',
+    missingPunch: 'Missed Punch (Admin Dashboard)',
     recentPunching: 'Recent Punching (Admin Dashboard)',
     leaveReport: 'Leave Report (Admin Dashboard)',
-    missingPunchReport: 'Missing Punch Report (Admin Dashboard)',
+    missingPunchReport: 'Missed Punch Report (Admin Dashboard)',
     myRequests: 'My Requests (Employee Dashboard)',
     employeeAttendance: 'Employee Attendance (Employee Dashboard)'
   };

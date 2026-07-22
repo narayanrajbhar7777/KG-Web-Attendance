@@ -1,4 +1,5 @@
 import React from 'react';
+import { Toaster } from 'react-hot-toast';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
 import { AppProvider } from './context/AppContext';
@@ -29,7 +30,9 @@ const LoadingFallback = () => (
 
 function App() {
   return (
-    <AuthProvider>
+    <>
+      <Toaster position="top-right" />
+      <AuthProvider>
       <AppProvider>
         <BrowserRouter>
           <React.Suspense fallback={<LoadingFallback />}>
@@ -58,6 +61,7 @@ function App() {
         </BrowserRouter>
       </AppProvider>
     </AuthProvider>
+    </>
   );
 }
 

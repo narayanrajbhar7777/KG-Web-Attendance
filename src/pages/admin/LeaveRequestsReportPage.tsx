@@ -235,6 +235,7 @@ export default function LeaveRequestsReportPage() {
                 <th className="py-4 px-4">Reason</th>
                 <th className="py-4 px-4">Requested Date</th>
                 <th className="py-4 px-4">Actioned Date</th>
+                <th className="py-4 px-4">Note</th>
                 <th className={`py-4 px-4 ${masterConfig?.leaveReport?.columns?.status?.sortable !== false ? 'cursor-pointer hover:bg-slate-100 dark:hover:bg-[#2a374a]' : ''}`} onClick={() => handleLeaveReportSort('status')}>
                   Status <SortIconLeaveReport columnKey="status" />
                 </th>
@@ -244,7 +245,7 @@ export default function LeaveRequestsReportPage() {
             <tbody className="divide-y divide-slate-100 dark:divide-slate-700/50">
               {processedLeaveRequests.length === 0 ? (
                 <tr>
-                  <td colSpan={10} className="py-8 text-center text-slate-500 dark:text-slate-400">
+                  <td colSpan={11} className="py-8 text-center text-slate-500 dark:text-slate-400">
                     No leave reports found.
                   </td>
                 </tr>
@@ -279,6 +280,9 @@ export default function LeaveRequestsReportPage() {
                       </td>
                       <td className="py-4 px-4 text-sm text-slate-500 dark:text-slate-400 whitespace-nowrap">
                         {req.updatedAt ? format(new Date(req.updatedAt), 'dd-MMM-yyyy HH:mm') : '-'}
+                      </td>
+                      <td className="py-4 px-4 text-sm text-slate-500 dark:text-slate-400">
+                        {req.approver_notes || '-'}
                       </td>
                       <td className="py-4 px-4">
                         <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-bold border ${req.status === 'Approved'

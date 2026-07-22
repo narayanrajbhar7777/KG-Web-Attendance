@@ -101,8 +101,9 @@ export default function MissingPunchReportPage() {
   const processedRequestsList = dashboardData?.processedRequestsList || [];
   const users = dashboardData?.users || [];
 
-  let processedMisspunchRequests = processedRequestsList.filter((r: any) => {
-    if (r.type !== 'Misspunch') return false;
+  let processedMissedPunchRequests = processedRequestsList.filter((r: any) => {
+    // console.log(`${r.id} | ${r.type} | ${r.reason} | ${r.inTime} | ${r.outTime}`)
+    if (r.type !== 'Missed Punch' && r.type !== 'Misspunch') return false;
     const emp = users.find((u: any) => u.id === r.userId || u.code === r.userId);
     let matchSearch = false;
     if (masterConfig?.missingPunchReport?.columns?.employeeName?.searchable !== false) {
@@ -121,7 +122,7 @@ export default function MissingPunchReportPage() {
   });
 
   if (punchReportSort && masterConfig?.punchReport?.columns?.[punchReportSort.key]?.sortable !== false) {
-    processedMisspunchRequests.sort((a: any, b: any) => {
+    processedMissedPunchRequests.sort((a: any, b: any) => {
       const empA = users.find((u: any) => u.id === a.userId || u.code === a.userId);
       const empB = users.find((u: any) => u.id === b.userId || u.code === b.userId);
 
@@ -164,8 +165,8 @@ export default function MissingPunchReportPage() {
   const itemsPerPage = 15;
   const indexOfLastItem = (currentPage + 1) * itemsPerPage;
   const indexOfFirstItem = indexOfLastItem - itemsPerPage;
-  const currentItems = processedMisspunchRequests.slice(indexOfFirstItem, indexOfLastItem);
-  const totalPages = Math.ceil(processedMisspunchRequests.length / itemsPerPage);
+  const currentItems = processedMissedPunchRequests.slice(indexOfFirstItem, indexOfLastItem);
+  const totalPages = Math.ceil(processedMissedPunchRequests.length / itemsPerPage);
 
   return (
     <div className="flex flex-col h-[calc(100vh-100px)] animate-in fade-in slide-in-from-bottom-4 duration-500">
@@ -175,7 +176,7 @@ export default function MissingPunchReportPage() {
             <div className="p-2 bg-indigo-100 dark:bg-indigo-500/20 rounded-lg text-indigo-600 dark:text-indigo-400">
               <Grid className="w-5 h-5" />
             </div>
-            <h3 className="text-lg font-bold text-slate-800 dark:text-white">Missing Punch Report</h3>
+            <h3 className="text-lg font-bold text-slate-800 dark:text-white">Missed Punch Report</h3>
           </div>
 
           <div className="flex flex-wrap items-center gap-3">
@@ -234,6 +235,7 @@ export default function MissingPunchReportPage() {
                 <th className="py-4 px-4">Reason</th>
                 <th className="py-4 px-4">Requested Date</th>
                 <th className="py-4 px-4">Actioned Date</th>
+                <th className="py-4 px-4">Note</th>
                 <th className={`py-4 px-4 ${masterConfig?.missingPunchReport?.columns?.status?.sortable !== false ? 'cursor-pointer hover:bg-slate-100 dark:hover:bg-[#2a374a]' : ''}`} onClick={() => handlePunchReportSort('status')}>
                   Status <SortIconPunchReport columnKey="status" />
                 </th>
@@ -241,10 +243,10 @@ export default function MissingPunchReportPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-slate-700/50">
-              {processedMisspunchRequests.length === 0 ? (
+              {processedMissedPunchRequests.length === 0 ? (
                 <tr>
-                  <td colSpan={9} className="py-8 text-center text-slate-500 dark:text-slate-400">
-                    No missing punch reports found.
+                  <td colSpan={10} className="py-8 text-center text-slate-500 dark:text-slate-400">
+                    No Missed Punch reports found.
                   </td>
                 </tr>
               ) : (
@@ -276,11 +278,14 @@ export default function MissingPunchReportPage() {
                       <td className="py-4 px-4 text-sm text-slate-500 dark:text-slate-400 whitespace-nowrap">
                         {req.updatedAt ? format(new Date(req.updatedAt), 'dd-MMM-yyyy HH:mm') : '-'}
                       </td>
+                      <td className="py-4 px-4 text-sm text-slate-500 dark:text-slate-400">
+                        {req.approver_notes || '-'}
+                      </td>
                       <td className="py-4 px-4">
                         <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-bold border ${req.status === 'Approved'
-                          ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-400 border-emerald-200 dark:border-emerald-500/20'
+                          ? 'bg-emerald-100 text-emerald-500 dark:bg-emerald-500/10 dark:text-emerald-400 border-emerald-200 dark:border-emerald-500/20'
                           : req.status === 'Pending' ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-500/10 dark:text-yellow-400 border-yellow-200 dark:border-yellow-500/20'
-                            : 'bg-red-100 text-red-700 dark:bg-red-500/10 dark:text-red-400 border-red-200 dark:border-red-500/20'
+                            : 'bg-red-100 text-red-500 dark:bg-red-500/10 dark:text-red-400 border-red-200 dark:border-red-500/20'
                           }`}>
                           {req.status}
                         </span>
@@ -293,7 +298,7 @@ export default function MissingPunchReportPage() {
           </table>
         </div>
         <div className="p-4 border-t border-slate-200 dark:border-slate-700/60 flex items-center justify-between text-[11px] font-medium text-slate-500 dark:text-slate-400 bg-slate-50/80 dark:bg-[#182333]/50 transition-colors">
-          <span>Showing {processedMisspunchRequests.length === 0 ? 0 : indexOfFirstItem + 1} to {Math.min(indexOfLastItem, processedMisspunchRequests.length)} of {processedMisspunchRequests.length} entries</span>
+          <span>Showing {processedMissedPunchRequests.length === 0 ? 0 : indexOfFirstItem + 1} to {Math.min(indexOfLastItem, processedMissedPunchRequests.length)} of {processedMissedPunchRequests.length} entries</span>
           {totalPages > 1 && (
             <div className="flex items-center gap-2">
               <button

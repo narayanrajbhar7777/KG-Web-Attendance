@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { useAppData } from '../../context/AppContext';
 import { format, getDaysInMonth, addMonths, subMonths, isAfter, startOfDay, startOfMonth } from 'date-fns';
-import { ChevronLeft, ChevronRight, Search, X } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Search, X, ExternalLink } from 'lucide-react';
 import { fetchEmployeePunchDataExternal, fetchEmployeeDetailsExternal } from '../../api';
 import { AttendanceTable } from '../../components/AttendanceTable';
 import { calculateTime, calculateTimeNum, formatDur, getFullStatus, getStatusColor, normalizeAttendanceStatus } from '../../utils/attendanceUtils';
@@ -287,7 +287,12 @@ const AttendanceDetails: React.FC = () => {
             <thead>
               <tr className="bg-[#f9fbfc] dark:bg-slate-900/80 text-slate-500 dark:text-slate-400 text-[10px] font-bold uppercase tracking-widest transition-colors">
                 <th className="py-3 px-4 border-b border-slate-200 dark:border-slate-700 whitespace-nowrap sticky top-0 left-0 bg-[#f9fbfc] dark:bg-slate-900 z-30 shadow-[1px_1px_0_#e2e8f0] dark:shadow-[1px_1px_0_#334155]">Code</th>
-                <th className="py-3 px-4 border-b border-slate-200 dark:border-slate-700 whitespace-nowrap sticky top-0 left-[80px] bg-[#f9fbfc] dark:bg-slate-900 z-30 shadow-[1px_1px_0_#e2e8f0] dark:shadow-[1px_1px_0_#334155]">Name</th>
+                <th className="py-3 px-4 border-b border-slate-200 dark:border-slate-700 whitespace-nowrap sticky top-0 left-[80px] bg-[#f9fbfc] dark:bg-slate-900 z-30 shadow-[1px_1px_0_#e2e8f0] dark:shadow-[1px_1px_0_#334155]">
+                  <div className="flex items-center justify-between gap-2">
+                    <span>Name</span>
+                    <span>Report</span>
+                  </div>
+                </th>
                 {days.map(day => (
                   <th key={day} className="py-3 px-2 border-b border-slate-200 dark:border-slate-700 text-center min-w-[32px] sticky top-0 bg-[#f9fbfc] dark:bg-slate-900 z-20 shadow-[0_1px_0_#e2e8f0] dark:shadow-[0_1px_0_#334155]">{day}</th>
                 ))}
@@ -303,7 +308,18 @@ const AttendanceDetails: React.FC = () => {
                     className="hover:bg-slate-50/50 dark:hover:bg-slate-700/50 transition-colors text-[11px] cursor-pointer"
                   >
                     <td className="py-3 px-4 font-bold text-slate-800 dark:text-slate-200 sticky left-0 bg-white dark:bg-slate-800 shadow-[1px_0_0_#f1f5f9] dark:shadow-[1px_0_0_#334155] group-hover:bg-slate-50/50 dark:group-hover:bg-slate-700/50 z-10 transition-colors">{emp.code}</td>
-                    <td className="py-3 px-4 font-medium text-slate-500 dark:text-slate-400 sticky left-[80px] bg-white dark:bg-slate-800 shadow-[1px_0_0_#f1f5f9] dark:shadow-[1px_0_0_#334155] whitespace-nowrap group-hover:bg-slate-50/50 dark:group-hover:bg-slate-700/50 z-10 transition-colors">{emp.name}</td>
+                    <td className="py-2 px-4 font-medium text-slate-500 dark:text-slate-400 sticky left-[80px] bg-white dark:bg-slate-800 shadow-[1px_0_0_#f1f5f9] dark:shadow-[1px_0_0_#334155] whitespace-nowrap group-hover:bg-slate-50/50 dark:group-hover:bg-slate-700/50 z-10 transition-colors">
+                      <div className="flex items-center justify-between gap-2">
+                        <span>{emp.name}</span>
+                        <button
+                          onClick={(e) => { e.stopPropagation(); setSelectedEmployee(emp); }}
+                          className="p-1 hover:bg-slate-200 dark:hover:bg-slate-600 rounded text-slate-400 hover:text-blue-500 transition-colors"
+                          title="View Details"
+                        >
+                          <ExternalLink className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    </td>
                     {days.map(day => {
                       const dateStr = format(new Date(currentDate.getFullYear(), currentDate.getMonth(), day), 'yyyy-MM-dd');
                       const currentIterDate = new Date(currentDate.getFullYear(), currentDate.getMonth(), day);

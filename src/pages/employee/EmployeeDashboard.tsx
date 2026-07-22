@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
+import { toast } from 'react-hot-toast';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { useAppData } from '../../context/AppContext';
 import { format, startOfMonth, getDay, getDaysInMonth, addMonths, subMonths, isAfter, startOfDay, isSameMonth } from 'date-fns';
-import { Calendar as CalendarIcon, Send, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Calendar as CalendarIcon, Send, ChevronLeft, ChevronRight, ExternalLink } from 'lucide-react';
 import { ATTENDANCE_STATUS_MAP, DEFAULT_ATTENDANCE_COLORS } from '../../constants';
-import { fetchEmployeePunchDataExternal, fetchEmployeeDetailsExternal, fetchEmployeeRequests } from '../../api';
+import { fetchEmployeePunchDataExternal, fetchEmployeeDetailsExternal } from '../../api';
 import { normalizeAttendanceStatus, calculateTimeNum } from '../../utils/attendanceUtils';
 
 const EmployeeDashboard: React.FC = () => {
@@ -17,7 +18,16 @@ const EmployeeDashboard: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [currentDate, setCurrentDate] = useState(new Date());
   const [empDetState, setEmpDetState] = useState<any>(null);
-  const [cachedRequests, setCachedRequests] = useState<any>(null);
+
+
+  const [requestType, setRequestType] = useState<'Leave' | 'Missed Punch'>('Leave');
+  const [date, setDate] = useState('');
+  const [toDate, setToDate] = useState('');
+  const [reason, setReason] = useState('');
+  const [inTime, setInTime] = useState('');
+  const [outTime, setOutTime] = useState('');
+  const [leaveType, setLeaveType] = useState<string>('PL');
+  const [managerId, setManagerId] = useState<string>('');
 
   const fetchDashboardData = async () => {
     if (!user) return;
@@ -33,11 +43,7 @@ const EmployeeDashboard: React.FC = () => {
         if (currentEmpDet) setEmpDetState(currentEmpDet);
       }
 
-      let currentRequests = cachedRequests;
-      if (!currentRequests) {
-        currentRequests = await fetchEmployeeRequests(user.id);
-        if (currentRequests) setCachedRequests(currentRequests);
-      }
+
 
       const punchRes = await fetchEmployeePunchDataExternal(user.id, frDate, toDate);
 
@@ -62,9 +68,13 @@ const EmployeeDashboard: React.FC = () => {
 
       const managers = empDet?.s_mgrcd ? [{ id: empDet.s_mgrcd.toString(), name: empDet.mgrname }] : [];
 
+      if (managers.length > 0) {
+        setManagerId(prev => prev || managers[0].id);
+      }
+
       setDashboardData({
         attendance: { records },
-        requests: currentRequests?.requests || [],
+        requests: [],
         managers
       });
     } catch (err) {
@@ -77,15 +87,6 @@ const EmployeeDashboard: React.FC = () => {
   useEffect(() => {
     fetchDashboardData();
   }, [user, currentDate]);
-
-  const [requestType, setRequestType] = useState<'Leave' | 'Misspunch'>('Leave');
-  const [date, setDate] = useState('');
-  const [toDate, setToDate] = useState('');
-  const [reason, setReason] = useState('');
-  const [inTime, setInTime] = useState('');
-  const [outTime, setOutTime] = useState('');
-  const [leaveType, setLeaveType] = useState<string>('PL');
-  const [managerId, setManagerId] = useState<string>('');
 
   if (loading && !dashboardData) {
     return <div className="flex justify-center p-8"><div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div></div>;
@@ -109,45 +110,52 @@ const EmployeeDashboard: React.FC = () => {
     e.preventDefault();
     if (!user) return;
     if (!managerId) {
-      alert("Please select a manager to approve this request.");
+      toast.error("Please select a manager to approve this request.");
       return;
     }
 
-    if (requestType === 'Leave') {
-      await applyRequest({
-        userId: user.id,
-        managerId,
-        type: 'Leave',
-        date,
-        toDate,
-        reason,
-        leaveType
-      });
-      addNotification(`New Leave Request applied by ${user.name}`, managerId);
-      addNotification(`New Leave Request applied by ${user.name}`); // for Admin
-    } else {
-      await applyRequest({
-        userId: user.id,
-        managerId,
-        type: 'Misspunch',
-        date,
-        reason,
-        inTime,
-        outTime
-      });
-      addNotification(`New Misspunch Request applied by ${user.name}`, managerId);
-      addNotification(`New Misspunch Request applied by ${user.name}`); // for Admin
+    try {
+      if (requestType === 'Leave') {
+        await applyRequest({
+          userId: user.id,
+          managerId,
+          type: 'Leave',
+          date,
+          toDate,
+          reason,
+          leaveType
+        });
+        addNotification(`New Leave Request applied by ${user.name}`, managerId);
+        addNotification(`New Leave Request applied by ${user.name}`); // for Admin
+      } else {
+        await applyRequest({
+          userId: user.id,
+          managerId,
+          type: 'Misspunch',
+          date,
+          reason,
+          inTime,
+          outTime
+        });
+        addNotification(`New Missed Punch Request applied by ${user.name}`, managerId);
+        addNotification(`New Missed Punch Request applied by ${user.name}`); // for Admin
+      }
+
+      toast.success(`${requestType} request submitted successfully!`);
+
+      // Reset
+      setDate('');
+      setToDate('');
+      setReason('');
+      setInTime('');
+      setOutTime('');
+
+      // Refresh data
+      fetchDashboardData();
+    } catch (error) {
+      toast.error("Failed to submit request. Please try again.");
+      console.error(error);
     }
-
-    // Reset
-    setDate('');
-    setToDate('');
-    setReason('');
-    setInTime('');
-    setOutTime('');
-
-    // Refresh data
-    fetchDashboardData();
   };
 
   const currentMonthRecords = myAttendance.filter((r: any) => {
@@ -161,7 +169,7 @@ const EmployeeDashboard: React.FC = () => {
       return !isAfter(startOfDay(d), today);
     })
     .map((r: any) => {
-      const approvedMispunch = empRequests.find((req: any) => req.type === 'Misspunch' && req.date === r.date && req.status === 'Approved');
+      const approvedMispunch = empRequests.find((req: any) => req.type === 'Missed Punch' && req.date === r.date && req.status === 'Approved');
       const approvedLeave = empRequests.find((req: any) => req.type === 'Leave' && req.date === r.date && req.status === 'Approved');
 
       let finalStatus = r.status;
@@ -192,7 +200,12 @@ const EmployeeDashboard: React.FC = () => {
 
 
   return (
-    <div className="space-y-4 animate-fade-in-up h-full flex flex-col">
+    <div className="space-y-4 animate-fade-in-up h-full flex flex-col relative">
+      {loading && dashboardData && (
+        <div className="absolute inset-0 bg-white/50 dark:bg-slate-900/50 flex items-center justify-center z-50 rounded-2xl">
+          <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+        </div>
+      )}
       <div>
         <h2 className="text-2xl font-bold text-slate-800 dark:text-white transition-colors">Welcome, {user?.name}</h2>
         <p className="text-slate-500 dark:text-slate-400 transition-colors">Employee Code: {user?.code}</p>
@@ -222,12 +235,13 @@ const EmployeeDashboard: React.FC = () => {
           <div className="bg-white dark:bg-[#1e293b] rounded-xl shadow-sm border border-slate-200 dark:border-slate-700/60 overflow-hidden transition-colors duration-300 h-full flex flex-col">
             <div className="p-4 border-b border-slate-200 dark:border-slate-700/60 bg-slate-50 dark:bg-[#182333]/50 flex items-center justify-between transition-colors shrink-0">
               <h3 className="font-semibold text-slate-800 dark:text-white flex items-center gap-2">
-                <button onClick={() => navigate('/employee/attendance')} title="Show Report" className="hover:opacity-80 transition-opacity flex items-center justify-center">
-                  <CalendarIcon className="w-5 h-5 text-blue-500 dark:text-blue-400" />
-                </button>
+                <CalendarIcon className="w-5 h-5 text-blue-500 dark:text-blue-400" />
                 My Attendance ({format(currentDate, 'MMMM yyyy')})
               </h3>
               <div className="flex gap-3 items-center">
+                <button onClick={() => navigate('/employee/attendance')} title="Show Report" className="p-1.5 hover:bg-blue-100 dark:hover:bg-blue-500/20 text-blue-600 dark:text-blue-400 rounded transition-colors flex items-center justify-center">
+                  <ExternalLink className="w-5 h-5" />
+                </button>
                 <div className="flex gap-1">
                   <button onClick={handlePrevMonth} className="p-1.5 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-500 dark:text-slate-400 rounded transition-colors"><ChevronLeft className="w-4 h-4" /></button>
                   <button
@@ -272,7 +286,7 @@ const EmployeeDashboard: React.FC = () => {
                       }
                     }
 
-                    const approvedMispunch = empRequests.find((r: any) => r.type === 'Misspunch' && r.date === dateStr && r.status === 'Approved');
+                    const approvedMispunch = empRequests.find((r: any) => r.type === 'Missed Punch' && r.date === dateStr && r.status === 'Approved');
                     if (approvedMispunch) {
                       status = 'P/MP';
                     }
@@ -334,11 +348,11 @@ const EmployeeDashboard: React.FC = () => {
                 </button>
                 <button
                   type="button"
-                  onClick={() => setRequestType('Misspunch')}
-                  className={`flex-1 py-2 text-sm font-medium rounded-md transition-colors ${requestType === 'Misspunch' ? 'bg-white dark:bg-[#1e293b] shadow dark:shadow-none text-blue-600 dark:text-blue-400' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300'
+                  onClick={() => setRequestType('Missed Punch')}
+                  className={`flex-1 py-2 text-sm font-medium rounded-md transition-colors ${requestType === 'Missed Punch' ? 'bg-white dark:bg-[#1e293b] shadow dark:shadow-none text-blue-600 dark:text-blue-400' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300'
                     }`}
                 >
-                  Misspunch
+                  Missed Punch
                 </button>
               </div>
 
@@ -413,7 +427,7 @@ const EmployeeDashboard: React.FC = () => {
                   </div>
                 )}
 
-                {requestType === 'Misspunch' && (
+                {requestType === 'Missed Punch' && (
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">In</label>

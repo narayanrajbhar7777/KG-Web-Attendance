@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import type { AppRequest, AppNotification } from '../types';
 import { fetchNotifications, fetchSettings, updateSettings, createNotification, markNotificationsAsReadAPI, createRequest, updateRequestStatusAPI, fetchMasterConfig, updateMasterConfig as updateMasterConfigAPI } from '../api';
 import { useAuth } from './AuthContext';
+import { toast } from 'react-hot-toast';
 
 type Theme = 'light' | 'dark';
 
@@ -21,7 +22,7 @@ interface AppContextType {
   // Expose these via context to make it easier for components to call the API 
   // without importing the API directly, or they can just import the API directly.
   applyRequest: (req: Omit<AppRequest, 'id' | 'status'>) => Promise<void>;
-  updateRequestStatus: (id: string, status: AppRequest['status'], reason: string, req?: AppRequest) => Promise<void>;
+  updateRequestStatus: (id: string, status: AppRequest['status'], reason: string, req?: AppRequest, approverNotes?: string) => Promise<void>;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -107,11 +108,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
-  const updateRequestStatus = async (id: string, status: AppRequest['status'], reason: string, req?: AppRequest) => {
+  const updateRequestStatus = async (id: string, status: AppRequest['status'], reason: string, req?: AppRequest, approverNotes?: string) => {
     try {
-      await updateRequestStatusAPI(id, status, reason, req);
+      await updateRequestStatusAPI(id, status, reason, req, approverNotes);
+      toast.success(`Request ${status.toLowerCase()} successfully!`);
     } catch (err) {
       console.error(err);
+      toast.error("Failed to update request.");
     }
   };
 
