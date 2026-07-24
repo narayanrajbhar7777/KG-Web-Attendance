@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Edit2, Check, X, Trash2 } from 'lucide-react';
+import { Plus, Trash2, Edit2, Check, X } from 'lucide-react';
+import Loader from '../../../components/Loader';
 import { fetchLeaveTypes, addLeaveType, updateLeaveType, deleteLeaveType } from '../../../api';
 import type { LeaveType } from '../../../types';
 
@@ -87,7 +88,7 @@ const LeavePolicy: React.FC = () => {
   };
 
   if (loading) {
-    return <div className="flex justify-center p-8"><div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div></div>;
+    return <div className="flex items-center justify-center min-h-[70vh]"><Loader /></div>;
   }
 
   return (

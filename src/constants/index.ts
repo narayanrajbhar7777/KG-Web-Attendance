@@ -1,4 +1,5 @@
 export const KG_WEB_APP0_API_URL = `http://192.168.100.22:8080/KG_WEB_APP0/KGAPI`;
+export const KG_WEB_APP_API_URL = ` http://172.16.34.22:8080/kg_web_app/KGAPI`
 export const ATTENDANCE_STATUSES = [
   { code: 'P', label: 'Present' },
   { code: 'H', label: 'Holiday' },

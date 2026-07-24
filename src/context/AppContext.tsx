@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import Loader from '../components/Loader';
 import type { AppRequest, AppNotification } from '../types';
-import { fetchNotifications, fetchSettings, updateSettings, createNotification, markNotificationsAsReadAPI, createRequest, updateRequestStatusAPI, fetchMasterConfig, updateMasterConfig as updateMasterConfigAPI } from '../api';
+import { fetchNotifications, fetchSettings, updateSettings, createNotification, markNotificationsAsReadAPI, createRequest, updateRequestStatusAPI, fetchMasterConfig, updateMasterConfig as updateMasterConfigAPI, sendEmailNotification, fetchEmployeeDetailsExternal } from '../api';
 import { useAuth } from './AuthContext';
 import { toast } from 'react-hot-toast';
 
@@ -54,7 +55,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const loadData = async () => {
       try {
         const [n, s, mConfig] = await Promise.all([
-          isNotificationsEnabled ? fetchNotifications() : Promise.resolve([]),
+          isNotificationsEnabled ? fetchNotifications(user.id) : Promise.resolve([]),
           user.role === 'Admin' ? fetchSettings(user.id) : Promise.resolve(null),
           fetchMasterConfig()
         ]);
@@ -88,7 +89,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     const intervalId = setInterval(async () => {
       try {
-        const n = await fetchNotifications();
+        const n = await fetchNotifications(user.id, true);
         if (n && !(n as any).message) {
           setNotifications(n as any);
         }
@@ -141,7 +142,29 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const addNotification = async (message: string, targetUserId?: string) => {
     try {
       await createNotification(message, targetUserId);
-      // setNotifications(prev => [_newNotif, ...prev]);
+      if (user && ((targetUserId && targetUserId === user.id) || (!targetUserId && user.role === 'Admin'))) {
+        const newNotif: AppNotification = {
+          id: Date.now().toString(),
+          message,
+          targetUserId,
+          isRead: false,
+          createdAt: new Date().toISOString()
+        };
+        setNotifications(prev => [newNotif, ...prev]);
+      }
+
+      if (targetUserId) {
+        // Send email to target user
+        try {
+          const empDet = await fetchEmployeeDetailsExternal(targetUserId);
+          const email = empDet?.EMP_DATA?.[0]?.e_email;
+          if (email) {
+            await sendEmailNotification(email, "New Notification from KG Workforce Portal", message);
+          }
+        } catch (e) {
+          console.error("Failed to send email notification", e);
+        }
+      }
     } catch (err) {
       console.error(err);
     }
@@ -149,7 +172,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const markNotificationsAsRead = async (userId: string, role: string) => {
     try {
-      await markNotificationsAsReadAPI(userId);
+      const unreadNotifs = notifications.filter(n => !n.isRead && (n.targetUserId === userId || (!n.targetUserId && role === 'Admin')));
+      if (unreadNotifs.length > 0) {
+        // Here we could call markNotificationsAsReadAPI with all unreadNotifs if the API supports it.
+        // For now we will update them individually or send an array depending on our api/index.ts implementation.
+        // Assuming we update api/index.ts to accept an array of IDs.
+        await markNotificationsAsReadAPI(unreadNotifs.map(n => n.id));
+      }
+      
       setNotifications(prev => prev.map(n => {
         if (!n.targetUserId && role === 'Admin') return { ...n, isRead: true };
         if (n.targetUserId === userId) return { ...n, isRead: true };
@@ -185,10 +215,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-[#f4f7f6] dark:bg-[#0b1120] text-slate-500">
-        <div className="flex flex-col items-center">
-          <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mb-4"></div>
-          <p className="font-bold">Connecting to backend server...</p>
-        </div>
+        <Loader />
       </div>
     );
   }

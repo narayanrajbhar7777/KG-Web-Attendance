@@ -3,6 +3,7 @@ import { toast } from 'react-hot-toast';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { useAppData } from '../../context/AppContext';
+import Loader from '../../components/Loader';
 import { format, startOfMonth, getDay, getDaysInMonth, addMonths, subMonths, isAfter, startOfDay, isSameMonth } from 'date-fns';
 import { Calendar as CalendarIcon, Send, ChevronLeft, ChevronRight, ExternalLink } from 'lucide-react';
 import { ATTENDANCE_STATUS_MAP, DEFAULT_ATTENDANCE_COLORS } from '../../constants';
@@ -89,7 +90,7 @@ const EmployeeDashboard: React.FC = () => {
   }, [user, currentDate]);
 
   if (loading && !dashboardData) {
-    return <div className="flex justify-center p-8"><div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div></div>;
+    return <div className="flex items-center justify-center min-h-[70vh]"><Loader /></div>;
   }
 
   const { attendance: empAttendance, requests: empRequests = [], managers = [] } = dashboardData || {};
@@ -182,8 +183,8 @@ const EmployeeDashboard: React.FC = () => {
   const presentDays = pastAndPresentRecords.filter((r: any) => r.status === 'P' || r.status === 'In' || r.status === 'PH' || r.status === 'P/MP').length;
   const weeklyOffs = pastAndPresentRecords.filter((r: any) => r.status === 'WO').length;
   const halfDays = pastAndPresentRecords.filter((r: any) => r.status === 'HD').length;
-  const earlyOuts = pastAndPresentRecords.filter((r: any) => r.status === 'EO').length;
   const absents = pastAndPresentRecords.filter((r: any) => r.status === 'A').length;
+  const misspunchCount = pastAndPresentRecords.filter((r: any) => r.status === 'M' || r.status === 'P/MP').length;
 
   let totalHours = 0;
   let presentDaysCount = 0;
@@ -203,7 +204,7 @@ const EmployeeDashboard: React.FC = () => {
     <div className="space-y-4 animate-fade-in-up h-full flex flex-col relative">
       {loading && dashboardData && (
         <div className="absolute inset-0 bg-white/50 dark:bg-slate-900/50 flex items-center justify-center z-50 rounded-2xl">
-          <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+          <Loader />
         </div>
       )}
       <div>
@@ -219,7 +220,7 @@ const EmployeeDashboard: React.FC = () => {
           { label: 'Absent', value: absents, color: 'text-rose-600 dark:text-rose-400', bg: 'bg-rose-50 dark:bg-rose-500/10 border-rose-100 dark:border-rose-500/20' },
           { label: 'Half Day', value: halfDays, color: 'text-purple-600 dark:text-purple-400', bg: 'bg-purple-50 dark:bg-purple-500/10 border-purple-100 dark:border-purple-500/20' },
           { label: 'Week Off', value: weeklyOffs, color: 'text-slate-600 dark:text-slate-400', bg: 'bg-slate-50 dark:bg-slate-500/10 border-slate-200 dark:border-slate-500/20' },
-          { label: 'Early Out', value: earlyOuts, color: 'text-red-600 dark:text-red-400', bg: 'bg-red-50 dark:bg-red-500/10 border-red-100 dark:border-red-500/20' }
+          { label: 'Misspunch', value: misspunchCount, color: 'text-red-600 dark:text-red-400', bg: 'bg-red-50 dark:bg-red-500/10 border-red-100 dark:border-red-500/20' }
         ].map((stat, i) => (
           <div key={i} className={`p-4 rounded-xl border flex flex-col justify-center transition-colors ${stat.bg}`}>
             <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">{stat.label}</span>
@@ -366,7 +367,7 @@ const EmployeeDashboard: React.FC = () => {
                         required
                         value={date}
                         onChange={e => setDate(e.target.value)}
-                        className="w-full px-3 py-2 bg-white dark:bg-[#0b1120] border border-slate-300 dark:border-slate-600 rounded-lg text-slate-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 transition-colors"
+                        className="w-full px-3 py-2 bg-white dark:bg-[#0b1120] border border-slate-300 dark:border-slate-600 rounded-lg text-slate-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 transition-colors dark:[color-scheme:dark]"
                       />
                     </div>
                     <div>
@@ -377,7 +378,7 @@ const EmployeeDashboard: React.FC = () => {
                         value={toDate}
                         onChange={e => setToDate(e.target.value)}
                         min={date}
-                        className="w-full px-3 py-2 bg-white dark:bg-[#0b1120] border border-slate-300 dark:border-slate-600 rounded-lg text-slate-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 transition-colors"
+                        className="w-full px-3 py-2 bg-white dark:bg-[#0b1120] border border-slate-300 dark:border-slate-600 rounded-lg text-slate-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 transition-colors dark:[color-scheme:dark]"
                       />
                     </div>
                   </div>
@@ -389,7 +390,7 @@ const EmployeeDashboard: React.FC = () => {
                       required
                       value={date}
                       onChange={e => setDate(e.target.value)}
-                      className="w-full px-3 py-2 bg-white dark:bg-[#0b1120] border border-slate-300 dark:border-slate-600 rounded-lg text-slate-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 transition-colors"
+                      className="w-full px-3 py-2 bg-white dark:bg-[#0b1120] border border-slate-300 dark:border-slate-600 rounded-lg text-slate-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 transition-colors dark:[color-scheme:dark]"
                     />
                   </div>
                 )}
@@ -436,7 +437,7 @@ const EmployeeDashboard: React.FC = () => {
                         required
                         value={inTime}
                         onChange={e => setInTime(e.target.value)}
-                        className="w-full px-3 py-2 bg-white dark:bg-[#0b1120] border border-slate-300 dark:border-slate-600 rounded-lg text-slate-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 transition-colors"
+                        className="w-full px-3 py-2 bg-white dark:bg-[#0b1120] border border-slate-300 dark:border-slate-600 rounded-lg text-slate-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 transition-colors dark:[color-scheme:dark]"
                       />
                     </div>
                     <div>
@@ -446,7 +447,7 @@ const EmployeeDashboard: React.FC = () => {
                         required
                         value={outTime}
                         onChange={e => setOutTime(e.target.value)}
-                        className="w-full px-3 py-2 bg-white dark:bg-[#0b1120] border border-slate-300 dark:border-slate-600 rounded-lg text-slate-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 transition-colors"
+                        className="w-full px-3 py-2 bg-white dark:bg-[#0b1120] border border-slate-300 dark:border-slate-600 rounded-lg text-slate-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 transition-colors dark:[color-scheme:dark]"
                       />
                     </div>
                   </div>

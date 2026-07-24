@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useAppData } from '../../context/AppContext';
 import { format } from 'date-fns';
 import { Filter, Calendar, Grid, ArrowUpDown, ChevronUp, ChevronDown, ChevronLeft, ChevronRight, X } from 'lucide-react';
+import Loader from '../../components/Loader';
 import { fetchEmployeeRequests, fetchEmployeeDataExternal } from '../../api';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
@@ -21,6 +22,7 @@ export default function MissingPunchReportPage() {
   const [dateRange, setDateRange] = useState<[Date | null, Date | null]>([null, null]);
   const [startDate, endDate] = dateRange;
   const [punchReportSort, setPunchReportSort] = useState<{ key: string, direction: 'asc' | 'desc' } | null>(null);
+  const [filterStatus, setFilterStatus] = useState('All');
   const [currentPage, setCurrentPage] = useState(0);
 
   useEffect(() => {
@@ -66,7 +68,7 @@ export default function MissingPunchReportPage() {
       if (user) {
         const managerId = user.code ? user.code.replace('FP', '') : user.id;
         const todayStr = format(new Date(), 'dd-MMM-yyyy');
-        Promise.all([fetchEmployeeRequests(managerId), fetchEmployeeDataExternal(user.id, todayStr, todayStr)]).then(([reqData, extData]) => {
+        Promise.all([fetchEmployeeRequests(managerId, true), fetchEmployeeDataExternal(user.id, todayStr, todayStr, true)]).then(([reqData, extData]) => {
           const empList = extData?.empDet?.EMP_DATA || [];
           let usersData = empList.map((e: any) => ({
             id: e.e_code,
@@ -95,7 +97,7 @@ export default function MissingPunchReportPage() {
   }, []);
 
   if (loading && !dashboardData) {
-    return <div className="flex justify-center p-8"><div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div></div>;
+    return <div className="flex items-center justify-center min-h-[70vh]"><Loader /></div>;
   }
 
   const processedRequestsList = dashboardData?.processedRequestsList || [];
@@ -118,7 +120,13 @@ export default function MissingPunchReportPage() {
     if (endDate) {
       matchDate = matchDate && new Date(r.date) <= endDate;
     }
-    return matchSearch && matchDate;
+
+    let matchStatus = true;
+    if (filterStatus !== 'All') {
+      matchStatus = r.status === filterStatus;
+    }
+    
+    return matchSearch && matchDate && matchStatus;
   });
 
   if (punchReportSort && masterConfig?.punchReport?.columns?.[punchReportSort.key]?.sortable !== false) {
@@ -180,6 +188,17 @@ export default function MissingPunchReportPage() {
           </div>
 
           <div className="flex flex-wrap items-center gap-3">
+            <div className="hidden md:flex bg-slate-100/50 dark:bg-[#0b1120] p-1 rounded-lg border border-slate-200/60 dark:border-slate-700/60 mr-2">
+              {(['All', 'Pending', 'Approved', 'Rejected'] as const).map(f => (
+                <button
+                  key={f}
+                  onClick={() => { setFilterStatus(f); setCurrentPage(0); }}
+                  className={`px-4 py-1.5 text-xs font-semibold rounded-md transition-all ${filterStatus === f ? 'bg-white dark:bg-[#1e293b] text-blue-600 dark:text-blue-400 shadow-sm ring-1 ring-slate-200 dark:ring-slate-700' : 'text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 hover:bg-slate-200/50 dark:hover:bg-slate-800/50'}`}
+                >
+                  {f}
+                </button>
+              ))}
+            </div>
             {(!masterConfig?.missingPunchReport?.columns || Object.values(masterConfig.missingPunchReport.columns).some((c: any) => c.searchable !== false)) && (
               <div className="relative">
                 <Filter className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />

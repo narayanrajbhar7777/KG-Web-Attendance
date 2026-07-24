@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Save, Search } from 'lucide-react';
+import Loader from '../../../components/Loader';
 import { fetchUsers, fetchEmployeePolicies, createEmployeePolicy, updateEmployeePolicy } from '../../../api';
 import { useAppData } from '../../../context/AppContext';
 import type { User, AttendancePolicy } from '../../../types';
@@ -144,7 +145,7 @@ const AttendancePolicyPage: React.FC = () => {
         {/* Table Content */}
         <div className="flex-1 overflow-y-auto custom-scrollbar p-0">
           {loading ? (
-            <div className="py-20 flex justify-center"><div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div></div>
+            <div className="flex items-center justify-center min-h-[70vh]"><Loader /></div>
           ) : (
             <table className="w-full text-left border-collapse min-w-[800px]">
               <thead className="sticky top-0 z-10 bg-slate-50 dark:bg-[#111827] shadow-sm">

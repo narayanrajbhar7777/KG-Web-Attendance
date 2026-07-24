@@ -4,6 +4,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
 import { AppProvider } from './context/AppContext';
 import Layout from './components/Layout';
+import Loader from './components/Loader';
 const LoginPage = React.lazy(() => import('./pages/auth/LoginPage'));
 const AdminDashboard = React.lazy(() => import('./pages/admin/AdminDashboard'));
 const AdminMaster = React.lazy(() => import('./pages/admin/settings/AdminMaster'));
@@ -14,6 +15,7 @@ const LeavePolicy = React.lazy(() => import('./pages/admin/settings/LeavePolicy'
 const LeaveMaster = React.lazy(() => import('./pages/admin/settings/LeaveMaster'));
 const LeaveRequestsReportPage = React.lazy(() => import('./pages/admin/LeaveRequestsReportPage'));
 const MissingPunchReportPage = React.lazy(() => import('./pages/admin/MissingPunchReportPage'));
+const EmailConfiguration = React.lazy(() => import('./pages/admin/settings/EmailConfiguration'));
 
 const EmployeeDashboard = React.lazy(() => import('./pages/employee/EmployeeDashboard'));
 const EmployeeRequests = React.lazy(() => import('./pages/employee/EmployeeRequests'));
@@ -21,10 +23,7 @@ const MyAttendance = React.lazy(() => import('./pages/employee/MyAttendance'));
 
 const LoadingFallback = () => (
   <div className="min-h-screen flex items-center justify-center bg-[#f4f7f6] dark:bg-[#0b1120] text-slate-500">
-    <div className="flex flex-col items-center">
-      <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mb-4"></div>
-      <p className="font-bold">Loading Page...</p>
-    </div>
+    <Loader />
   </div>
 );
 
@@ -49,6 +48,7 @@ function App() {
                 <Route path="/admin/leave-master" element={<LeaveMaster />} />
                 <Route path="/admin/leave-requests-report" element={<LeaveRequestsReportPage />} />
                 <Route path="/admin/missing-punch-report" element={<MissingPunchReportPage />} />
+                <Route path="/settings/email-configuration" element={<EmailConfiguration />} />
 
                 <Route path="/employee" element={<EmployeeDashboard />} />
                 <Route path="/employee/attendance" element={<MyAttendance />} />

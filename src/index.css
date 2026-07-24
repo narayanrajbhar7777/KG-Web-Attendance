@@ -14,3 +14,40 @@
     font-family: 'Inter', system-ui, -apple-system, sans-serif;
   }
 }
+
+@keyframes loader-stretch {
+
+  0%,
+  40%,
+  100% {
+    transform: scaleY(0.4);
+  }
+
+  20% {
+    transform: scaleY(1);
+  }
+}
+
+.loader-bar {
+  animation: loader-stretch 1.2s infinite ease-in-out;
+}
+
+.loader-bar-1 {
+  animation-delay: -1.1s;
+}
+
+.loader-bar-2 {
+  animation-delay: -1.0s;
+}
+
+.loader-bar-3 {
+  animation-delay: -0.9s;
+}
+
+.loader-bar-4 {
+  animation-delay: -0.8s;
+}
+
+.loader-bar-5 {
+  animation-delay: -0.7s;
+}

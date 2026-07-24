@@ -89,6 +89,8 @@ const Layout: React.FC = () => {
 
   if (location.pathname.startsWith('/employee/attendance')) {
     pageTitle = 'Employee Dashboard';
+  } else if (location.pathname.startsWith('/admin/leave-requests-report') || location.pathname.startsWith('/admin/missing-punch-report')) {
+    pageTitle = 'Admin Dashboard';
   }
 
   const myNotifications = notifications.filter(n => {
@@ -251,15 +253,25 @@ const Layout: React.FC = () => {
                       </div>
                     ) : (
                       <div className="divide-y divide-slate-100 dark:divide-slate-700/50">
-                        {myNotifications.map((notif) => (
-                          <div key={notif.id} className={`p-4 hover:bg-slate-50 dark:hover:bg-[#2a374a]/30 transition-colors ${!notif.isRead ? 'bg-blue-50/50 dark:bg-blue-900/10' : ''}`}>
-                            <p className="text-sm text-slate-700 dark:text-slate-300 mb-1">{notif.message}</p>
-                            <p className="text-[10px] text-slate-400 dark:text-slate-500 flex items-center gap-1 font-medium">
-                              <Clock className="w-3 h-3" />
-                              {formatDistanceToNow(new Date(notif.createdAt), { addSuffix: true })}
-                            </p>
-                          </div>
-                        ))}
+                        {myNotifications.map((notif) => {
+                          const notifDate = new Date(notif.createdAt);
+                          const diffInMinutes = (Date.now() - notifDate.getTime()) / 60000;
+
+                          // Handle server clock being slightly behind or ahead of client clock
+                          const timeDisplay = Math.abs(diffInMinutes) < 5
+                            ? 'just now'
+                            : formatDistanceToNow(notifDate, { addSuffix: true });
+
+                          return (
+                            <div key={notif.id} className={`p-4 hover:bg-slate-50 dark:hover:bg-[#2a374a]/30 transition-colors ${!notif.isRead ? 'bg-blue-50/50 dark:bg-blue-900/10' : ''}`}>
+                              <p className="text-sm text-slate-700 dark:text-slate-300 mb-1">{notif.message}</p>
+                              <p className="text-[10px] text-slate-400 dark:text-slate-500 flex items-center gap-1 font-medium">
+                                <Clock className="w-3 h-3" />
+                                {timeDisplay}
+                              </p>
+                            </div>
+                          );
+                        })}
                       </div>
                     )}
                   </div>
@@ -310,9 +322,18 @@ const Layout: React.FC = () => {
                           navigate('/admin/leave-master');
                           setIsAdminMenuOpen(false);
                         }}
-                        className="w-full text-left px-4 py-2.5 text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
+                        className="w-full text-left px-4 py-2.5 text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors border-b border-slate-100 dark:border-slate-700"
                       >
                         Leave Master
+                      </button>
+                      <button
+                        onClick={() => {
+                          navigate('/settings/email-configuration');
+                          setIsAdminMenuOpen(false);
+                        }}
+                        className="w-full text-left px-4 py-2.5 text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
+                      >
+                        Email Configuration
                       </button>
                     </div>
                   </div>

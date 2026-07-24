@@ -6,6 +6,7 @@ import { fetchEmployeePunchDataExternal, fetchEmployeeRequests, fetchEmployeePol
 import { ATTENDANCE_STATUS_MAP, DEFAULT_ATTENDANCE_COLORS } from '../../constants';
 import { useAppData } from '../../context/AppContext';
 import { ChevronLeft, ChevronRight, X } from 'lucide-react';
+import Loader from '../../components/Loader';
 import { AttendanceTable } from '../../components/AttendanceTable';
 import { calculateTime, calculateTimeNum, normalizeAttendanceStatus } from '../../utils/attendanceUtils';
 
@@ -143,8 +144,8 @@ const MyAttendance: React.FC = () => {
   return (
     <div className="h-[calc(100vh-120px)] flex flex-col relative">
       {loading && (
-        <div className="absolute inset-0 bg-white/50 dark:bg-slate-900/50 flex items-center justify-center z-50 rounded-2xl">
-          <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+        <div className="absolute inset-0 z-50 bg-white/80 dark:bg-[#0b1120]/80 backdrop-blur-sm flex flex-col items-center justify-center rounded-2xl">
+          <Loader />
         </div>
       )}
       <div className="bg-white dark:bg-[#1e293b] rounded-2xl shadow-sm border border-slate-200 dark:border-slate-800 flex flex-col h-full overflow-hidden">

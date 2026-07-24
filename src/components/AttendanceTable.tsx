@@ -1,5 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { Search, ArrowUp, ArrowDown, ArrowUpDown } from 'lucide-react';
+import Loader from './Loader';
 
 export interface ColumnDef<T> {
   key: string;
@@ -21,6 +22,7 @@ interface AttendanceTableProps<T> {
   customTopRight?: React.ReactNode;
   customTopLeft?: React.ReactNode;
   customBottomLeft?: React.ReactNode;
+  loading?: boolean;
 }
 
 export function AttendanceTable<T>({
@@ -34,7 +36,8 @@ export function AttendanceTable<T>({
   className = '',
   customTopRight,
   customTopLeft,
-  customBottomLeft
+  customBottomLeft,
+  loading = false
 }: AttendanceTableProps<T>) {
   const [searchQuery, setSearchQuery] = useState('');
   const [sortKey, setSortKey] = useState<string | null>(null);
@@ -147,7 +150,13 @@ export function AttendanceTable<T>({
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100 dark:divide-slate-700/50">
-            {currentData.length === 0 ? (
+            {loading ? (
+              <tr>
+                <td colSpan={columns.length} className="py-16">
+                  <Loader />
+                </td>
+              </tr>
+            ) : currentData.length === 0 ? (
               <tr>
                 <td colSpan={columns.length} className="py-8 text-center text-slate-500 dark:text-slate-400">
                   No records found.

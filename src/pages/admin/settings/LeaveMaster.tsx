@@ -1,12 +1,13 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Search, Save, Check } from 'lucide-react';
+import Loader from '../../../components/Loader';
 import { fetchUsers, fetchLeaveTypes, fetchEmployeeLeaves, addEmployeeLeave, updateEmployeeLeave, deleteEmployeeLeave } from '../../../api';
 import type { User, LeaveType, EmployeeLeave } from '../../../types';
 
 const LeaveMaster: React.FC = () => {
   const [users, setUsers] = useState<User[]>([]);
-  const [leaveTypes, _setLeaveTypes] = useState<LeaveType[]>([]);
-  const [employeeLeaves, _setEmployeeLeaves] = useState<EmployeeLeave[]>([]);
+  const [leaveTypes, setLeaveTypes] = useState<LeaveType[]>([]);
+  const [employeeLeaves, setEmployeeLeaves] = useState<EmployeeLeave[]>([]);
   const [loading, setLoading] = useState(true);
 
   const [searchTerm, setSearchTerm] = useState('');
@@ -18,14 +19,14 @@ const LeaveMaster: React.FC = () => {
   const loadData = async () => {
     try {
       setLoading(true);
-      const [usersData, _typesData, _leavesData] = await Promise.all([
+      const [usersData, typesData, leavesData] = await Promise.all([
         fetchUsers(),
         fetchLeaveTypes(),
         fetchEmployeeLeaves()
       ]);
       setUsers((usersData || []).filter((u: User) => u.role === 'Employee'));
-      // setLeaveTypes((typesData || []).filter((lt: LeaveType) => lt.isActive));
-      // setEmployeeLeaves(leavesData || []);
+      setLeaveTypes((typesData || []).filter((lt: LeaveType) => lt.isActive));
+      setEmployeeLeaves(leavesData || []);
     } catch (err) {
       console.error(err);
     } finally {
@@ -103,7 +104,7 @@ const LeaveMaster: React.FC = () => {
   };
 
   if (loading) {
-    return <div className="flex justify-center p-8"><div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div></div>;
+    return <div className="flex items-center justify-center min-h-[70vh]"><Loader /></div>;
   }
 
   const selectedUser = users.find(u => u.id === selectedUserId);

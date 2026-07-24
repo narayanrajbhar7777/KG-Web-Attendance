@@ -4,13 +4,15 @@ import { format, differenceInDays } from 'date-fns';
 import DatePicker from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
 import { Trash2, Edit2, X, Check, Search, ArrowUpDown, ChevronUp, ChevronDown, Calendar } from 'lucide-react';
+import Loader from '../../components/Loader';
 import type { AppRequest } from '../../types';
 import { fetchEmployeeRequests, deleteRequestAPI, updateRequestAPI } from '../../api';
 import { useAppData } from '../../context/AppContext';
+import { toast } from 'react-hot-toast';
 
 const EmployeeRequests: React.FC = () => {
   const { user } = useAuth();
-  const { masterConfig } = useAppData();
+  const { masterConfig, addNotification } = useAppData();
 
   const [myRequests, setMyRequests] = useState<AppRequest[]>([]);
   const [loading, setLoading] = useState(true);
@@ -128,11 +130,52 @@ const EmployeeRequests: React.FC = () => {
     return <ArrowUpDown className="w-4 h-4 inline-block ml-1 text-slate-300 dark:text-slate-600" />;
   };
 
-  const handleDelete = async (id: string) => {
-    if (window.confirm('Are you sure you want to delete this request?')) {
+  const confirmDelete = async (id: string) => {
+    try {
+      const req = myRequests.find(r => r.id === id);
       await deleteRequestAPI(id);
+      toast.success('Request deleted successfully!');
+      if (req && user) {
+        if (req.managerId) {
+          addNotification(`A ${req.type} request was deleted by ${user.name}`, req.managerId);
+        }
+        addNotification(`A ${req.type} request was deleted by ${user.name}`); // for Admin
+      }
       fetchRequests();
+    } catch (error) {
+      toast.error('Failed to delete request. Please try again.');
+      console.error('Error deleting request:', error);
     }
+  };
+
+  const handleDelete = (id: string) => {
+    toast(
+      (t) => (
+        <div className="flex flex-col gap-3">
+          <p className="text-sm font-medium text-slate-800 dark:text-slate-200">
+            Are you sure you want to delete this request?
+          </p>
+          <div className="flex justify-end gap-2">
+            <button
+              onClick={() => toast.dismiss(t.id)}
+              className="px-3 py-1.5 text-xs font-medium text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-md transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={() => {
+                toast.dismiss(t.id);
+                confirmDelete(id);
+              }}
+              className="px-3 py-1.5 text-xs font-medium text-white bg-red-500 hover:bg-red-600 rounded-md transition-colors"
+            >
+              Delete
+            </button>
+          </div>
+        </div>
+      ),
+      { duration: Infinity, position: 'top-right' }
+    );
   };
 
   const startEdit = (req: AppRequest) => {
@@ -141,22 +184,35 @@ const EmployeeRequests: React.FC = () => {
   };
 
   const saveEdit = async (req: AppRequest) => {
-    await updateRequestAPI(req.id, {
-      status: req.status,
+    const currentRequestData = myRequests.find((item) => item.id === req.id);
+    if (!currentRequestData) return;
+    console.log(`${req.id} | MYREQUEST: ===============>${JSON.stringify(currentRequestData)}`)
+    const payload = {
+      status: currentRequestData.status,
       reason: editReason,
-      date: req.date,
-      toDate: req.toDate,
-      type: req.type,
-      leaveType: req.leaveType,
-      inTime: req.inTime,
-      outTime: req.outTime
-    });
+      date: currentRequestData.date,
+      toDate: currentRequestData.toDate,
+      type: currentRequestData.type,
+      leaveType: currentRequestData.leaveType,
+      inTime: currentRequestData?.inTime,
+      outTime: currentRequestData?.outTime
+    }
+    console.log(`payload: ${JSON.stringify(payload)}`)
+    await updateRequestAPI(req.id, payload);
+
+    if (user) {
+      if (currentRequestData.managerId) {
+        addNotification(`A ${currentRequestData.type} request was updated by ${user.name}`, currentRequestData.managerId);
+      }
+      addNotification(`A ${currentRequestData.type} request was updated by ${user.name}`); // for Admin
+    }
+
     setEditingId(null);
     fetchRequests();
   };
 
   if (loading) {
-    return <div className="flex justify-center p-8"><div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div></div>;
+    return <div className="flex items-center justify-center min-h-[70vh]"><Loader /></div>;
   }
 
   return (

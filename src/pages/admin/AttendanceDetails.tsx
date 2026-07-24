@@ -3,6 +3,7 @@ import { useAuth } from '../../context/AuthContext';
 import { useAppData } from '../../context/AppContext';
 import { format, getDaysInMonth, addMonths, subMonths, isAfter, startOfDay, startOfMonth } from 'date-fns';
 import { ChevronLeft, ChevronRight, Search, X, ExternalLink } from 'lucide-react';
+import Loader from '../../components/Loader';
 import { fetchEmployeePunchDataExternal, fetchEmployeeDetailsExternal } from '../../api';
 import { AttendanceTable } from '../../components/AttendanceTable';
 import { calculateTime, calculateTimeNum, formatDur, getFullStatus, getStatusColor, normalizeAttendanceStatus } from '../../utils/attendanceUtils';
@@ -86,7 +87,7 @@ const AttendanceDetails: React.FC = () => {
   }, [user, currentDate]);
 
   if (!detailsData) {
-    return <div className="flex justify-center p-8"><div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div></div>;
+    return <div className="flex items-center justify-center min-h-[70vh]"><Loader /></div>;
   }
 
   const { employees, attendance } = detailsData;
@@ -144,7 +145,7 @@ const AttendanceDetails: React.FC = () => {
       <div className="h-[calc(100vh-120px)] flex flex-col animate-fade-in-up relative">
         {loading && (
           <div className="absolute inset-0 bg-white/50 dark:bg-slate-900/50 flex items-center justify-center z-50 rounded-2xl">
-            <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+            <Loader />
           </div>
         )}
         <div className="bg-white dark:bg-[#1e293b] rounded-2xl shadow-sm border border-slate-200 dark:border-slate-800 flex flex-col h-full overflow-hidden">
@@ -250,8 +251,8 @@ const AttendanceDetails: React.FC = () => {
   return (
     <div className="w-full h-full flex flex-col relative">
       {loading && (
-        <div className="absolute inset-0 bg-white/50 dark:bg-slate-900/50 flex items-center justify-center z-50 rounded-xl">
-          <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+        <div className="absolute inset-0 bg-white/80 dark:bg-slate-900/80 flex items-center justify-center z-50 rounded-xl">
+          <Loader />
         </div>
       )}
       <div className="bg-white dark:bg-slate-800 shadow-sm rounded-xl border border-slate-200 dark:border-slate-700/60 flex flex-col h-[calc(100vh-112px)] overflow-hidden transition-colors duration-200">

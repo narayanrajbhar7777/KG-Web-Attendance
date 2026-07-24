@@ -3,6 +3,7 @@ import { useAuth } from '../../context/AuthContext';
 import { useAppData } from '../../context/AppContext';
 import { Users, UserX, CalendarOff, ChevronLeft, ChevronRight, Clock } from 'lucide-react';
 import { addDays, format, subDays } from 'date-fns';
+import Loader from '../../components/Loader';
 import { fetchEmployeePunchDataExternal, fetchEmployeeDetailsExternal } from '../../api';
 import { AttendanceTable, type ColumnDef } from '../../components/AttendanceTable';
 import { calculateTime, getFullStatus, getStatusColor, normalizeAttendanceStatus } from '../../utils/attendanceUtils';
@@ -12,9 +13,10 @@ const AttendanceSummary: React.FC = () => {
   const { user } = useAuth();
 
   const [summaryData, setSummaryData] = useState<any>(null);
-  const [_loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(true);
   const [currentDate, setCurrentDate] = useState<Date>(new Date());
   const [employeesList, setEmployeesList] = useState<any[]>([]);
+  const [attendanceFilter, setAttendanceFilter] = useState<'All' | 'Present' | 'Absent' | 'Leave'>('All');
 
   const fetchSummaryData = async () => {
     if (!user) return;
@@ -79,8 +81,8 @@ const AttendanceSummary: React.FC = () => {
     fetchSummaryData();
   }, [user, currentDate]);
 
-  if (!summaryData) {
-    return <div className="flex justify-center p-8"><div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div></div>;
+  if (loading) {
+    return <div className="flex items-center justify-center min-h-[70vh]"><Loader /></div>;
   }
 
   const { employees, attendance, date: todayStr } = summaryData;
@@ -199,29 +201,63 @@ const AttendanceSummary: React.FC = () => {
         <div className="flex-1 min-h-0 flex flex-col">
           <AttendanceTable
             className="border-0 shadow-none rounded-none"
-            data={todayRecords}
+            data={todayRecords.filter(item => {
+              const status = item.record?.status || '-';
+              if (attendanceFilter === 'Present') return ['P', 'HD', 'PH', 'In', 'P/MP'].includes(status);
+              if (attendanceFilter === 'Absent') return status === 'A';
+              if (attendanceFilter === 'Leave') return ['L', 'EL', 'HDEL'].includes(status);
+              return true; // 'All'
+            })}
             columns={columns}
             searchable={true}
             searchPlaceholder="Search Employee..."
             customTopLeft={
-              <div className="flex items-center gap-4">
-                <h3 className="text-[17px] font-bold text-slate-800 dark:text-white">Employee Logins Details</h3>
-                <div className="flex items-center gap-1 bg-white dark:bg-[#0b1120] border border-slate-200 dark:border-slate-700 rounded-lg p-1 shadow-sm">
-                  <button
-                    onClick={() => setCurrentDate(prev => subDays(prev, 1))}
-                    className="p-1 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-md transition-colors text-slate-600 dark:text-slate-400"
+              <div className="flex items-center gap-6">
+                <div className="flex items-center gap-4">
+                  <h3 className="text-[17px] font-bold text-slate-800 dark:text-white">Employee Logins Details</h3>
+                  <div className="flex items-center gap-1 bg-white dark:bg-[#0b1120] border border-slate-200 dark:border-slate-700 rounded-lg p-1 shadow-sm">
+                    <button
+                      onClick={() => setCurrentDate(prev => subDays(prev, 1))}
+                      className="p-1 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-md transition-colors text-slate-600 dark:text-slate-400"
+                    >
+                      <ChevronLeft className="w-4 h-4" />
+                    </button>
+                    <span className="text-sm font-bold px-2 text-slate-700 dark:text-slate-300">
+                      {format(currentDate, 'dd MMM yyyy')}
+                    </span>
+                    <button
+                      onClick={() => setCurrentDate(prev => addDays(prev, 1))}
+                      disabled={format(currentDate, 'yyyy-MM-dd') === format(new Date(), 'yyyy-MM-dd')}
+                      className="p-1 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-md transition-colors text-slate-600 dark:text-slate-400 disabled:opacity-30 disabled:cursor-not-allowed"
+                    >
+                      <ChevronRight className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+                <div className="hidden sm:flex items-center gap-2 text-[11px] font-bold">
+                  <button 
+                    onClick={() => setAttendanceFilter('All')} 
+                    className={`px-3 py-1.5 rounded-lg border transition-colors ${attendanceFilter === 'All' ? 'bg-slate-200 dark:bg-slate-700 border-slate-300 dark:border-slate-600 text-slate-800 dark:text-white' : 'bg-slate-50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700/50'}`}
                   >
-                    <ChevronLeft className="w-4 h-4" />
+                    All: {todayRecords.length}
                   </button>
-                  <span className="text-sm font-bold px-2 text-slate-700 dark:text-slate-300">
-                    {format(currentDate, 'dd MMM yyyy')}
-                  </span>
-                  <button
-                    onClick={() => setCurrentDate(prev => addDays(prev, 1))}
-                    disabled={format(currentDate, 'yyyy-MM-dd') === format(new Date(), 'yyyy-MM-dd')}
-                    className="p-1 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-md transition-colors text-slate-600 dark:text-slate-400 disabled:opacity-30 disabled:cursor-not-allowed"
+                  <button 
+                    onClick={() => setAttendanceFilter('Present')} 
+                    className={`px-3 py-1.5 rounded-lg border transition-colors ${attendanceFilter === 'Present' ? 'bg-emerald-100 dark:bg-emerald-900/40 border-emerald-300 dark:border-emerald-700 text-emerald-700 dark:text-emerald-300' : 'bg-slate-50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/20'}`}
                   >
-                    <ChevronRight className="w-4 h-4" />
+                    Present: {present}
+                  </button>
+                  <button 
+                    onClick={() => setAttendanceFilter('Absent')} 
+                    className={`px-3 py-1.5 rounded-lg border transition-colors ${attendanceFilter === 'Absent' ? 'bg-red-100 dark:bg-red-900/40 border-red-300 dark:border-red-700 text-red-700 dark:text-red-300' : 'bg-slate-50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20'}`}
+                  >
+                    Absent: {absent}
+                  </button>
+                  <button 
+                    onClick={() => setAttendanceFilter('Leave')} 
+                    className={`px-3 py-1.5 rounded-lg border transition-colors ${attendanceFilter === 'Leave' ? 'bg-amber-100 dark:bg-amber-900/40 border-amber-300 dark:border-amber-700 text-amber-700 dark:text-amber-300' : 'bg-slate-50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700 text-amber-600 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-900/20'}`}
+                  >
+                    Leave: {onLeave}
                   </button>
                 </div>
               </div>
