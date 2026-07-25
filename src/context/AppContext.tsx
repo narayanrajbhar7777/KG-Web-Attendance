@@ -17,6 +17,8 @@ interface AppContextType {
   toggleTheme: () => void;
   isNotificationsEnabled: boolean;
   setIsNotificationsEnabled: (enabled: boolean) => void;
+  isEmailNotificationsEnabled: boolean;
+  setIsEmailNotificationsEnabled: (enabled: boolean) => void;
   masterConfig: any;
   setMasterConfig: (config: any) => void;
 
@@ -35,11 +37,19 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [isNotificationsEnabled, setIsNotificationsEnabledState] = useState(() => {
     return localStorage.getItem('notifications_enabled') !== 'false';
   });
+  const [isEmailNotificationsEnabled, setIsEmailNotificationsEnabledState] = useState(() => {
+    return localStorage.getItem('email_notifications_enabled') !== 'false';
+  });
   const [masterConfig, setMasterConfigState] = useState<any>(null);
 
   const setIsNotificationsEnabled = (enabled: boolean) => {
     setIsNotificationsEnabledState(enabled);
     localStorage.setItem('notifications_enabled', String(enabled));
+  };
+
+  const setIsEmailNotificationsEnabled = (enabled: boolean) => {
+    setIsEmailNotificationsEnabledState(enabled);
+    localStorage.setItem('email_notifications_enabled', String(enabled));
   };
   const [loading, setLoading] = useState(true);
 
@@ -54,14 +64,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     const loadData = async () => {
       try {
-        const [n, s, mConfig] = await Promise.all([
-          isNotificationsEnabled ? fetchNotifications(user.id) : Promise.resolve([]),
+        const [s, mConfig] = await Promise.all([
           user.role === 'Admin' ? fetchSettings(user.id) : Promise.resolve(null),
           fetchMasterConfig()
         ]);
-        if (n && !(n as any).message) {
-          setNotifications(n as any);
-        }
         if (s && s.customColors) {
           setCustomColors(s.customColors);
         }
@@ -82,10 +88,25 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     setLoading(true);
     loadData();
+  }, [user]);
 
-    if (!isNotificationsEnabled) {
+  useEffect(() => {
+    if (!user || !isNotificationsEnabled) {
       return;
     }
+
+    const fetchNotifs = async () => {
+      try {
+        const n = await fetchNotifications(user.id);
+        if (n && !(n as any).message) {
+          setNotifications(n as any);
+        }
+      } catch (err) {
+        console.error("Failed to fetch notifications", err);
+      }
+    };
+
+    fetchNotifs();
 
     const intervalId = setInterval(async () => {
       try {
@@ -224,6 +245,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     <AppContext.Provider value={{
       notifications, addNotification, markNotificationsAsRead,
       isNotificationsEnabled, setIsNotificationsEnabled,
+      isEmailNotificationsEnabled, setIsEmailNotificationsEnabled,
       customColors, updateCustomColor, theme, toggleTheme,
       applyRequest, updateRequestStatus, masterConfig, setMasterConfig
     }}>

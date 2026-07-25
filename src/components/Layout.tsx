@@ -5,7 +5,7 @@ import { useAppData } from '../context/AppContext';
 import { ATTENDANCE_STATUSES } from '../constants';
 import { LogOut, LayoutDashboard, CalendarCheck, FileText, Bell, HelpCircle, Building2, Moon, Sun, Clock, Settings } from 'lucide-react';
 import { formatDistanceToNow, format } from 'date-fns';
-import { ToggleLeft, ToggleRight, ArrowRightLeft } from 'lucide-react';
+import { ToggleLeft, ToggleRight, ArrowRightLeft, Mail } from 'lucide-react';
 
 const Layout: React.FC = () => {
   const { user, logout } = useAuth();
@@ -17,7 +17,9 @@ const Layout: React.FC = () => {
     theme,
     toggleTheme,
     isNotificationsEnabled,
-    setIsNotificationsEnabled
+    setIsNotificationsEnabled,
+    isEmailNotificationsEnabled,
+    setIsEmailNotificationsEnabled
   } = useAppData();
   const navigate = useNavigate();
   const location = useLocation();
@@ -49,6 +51,11 @@ const Layout: React.FC = () => {
   const toggleNotifications = (e: React.MouseEvent) => {
     e.stopPropagation();
     setIsNotificationsEnabled(!isNotificationsEnabled);
+  };
+
+  const toggleEmailNotifications = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setIsEmailNotificationsEnabled(!isEmailNotificationsEnabled);
   };
 
   useEffect(() => {
@@ -233,13 +240,25 @@ const Layout: React.FC = () => {
                           {unreadCount} New
                         </span>
                       )}
-                      <button
-                        onClick={toggleNotifications}
-                        title={isNotificationsEnabled ? "Disable Notifications" : "Enable Notifications"}
-                        className="text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 transition-colors"
-                      >
-                        {isNotificationsEnabled ? <ToggleRight className="w-6 h-6 text-blue-500" /> : <ToggleLeft className="w-6 h-6" />}
-                      </button>
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={toggleEmailNotifications}
+                          title={isEmailNotificationsEnabled ? "Disable Email Notifications" : "Enable Email Notifications"}
+                          className="flex items-center gap-1 text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 transition-colors"
+                        >
+                          <Mail className="w-4 h-4" />
+                          {isEmailNotificationsEnabled ? <ToggleRight className="w-5 h-5 text-blue-500" /> : <ToggleLeft className="w-5 h-5" />}
+                        </button>
+                        <div className="w-px h-4 bg-slate-300 dark:bg-slate-600"></div>
+                        <button
+                          onClick={toggleNotifications}
+                          title={isNotificationsEnabled ? "Disable App Notifications" : "Enable App Notifications"}
+                          className="flex items-center gap-1 text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 transition-colors"
+                        >
+                          <Bell className="w-4 h-4" />
+                          {isNotificationsEnabled ? <ToggleRight className="w-5 h-5 text-blue-500" /> : <ToggleLeft className="w-5 h-5" />}
+                        </button>
+                      </div>
                     </div>
                   </div>
                   <div className="max-h-80 overflow-y-auto">
