@@ -201,7 +201,7 @@ const AttendanceSummary: React.FC = () => {
         <div className="flex-1 min-h-0 flex flex-col">
           <AttendanceTable
             className="border-0 shadow-none rounded-none"
-            data={todayRecords.filter(item => {
+            data={todayRecords.filter((item: any) => {
               const status = item.record?.status || '-';
               if (attendanceFilter === 'Present') return ['P', 'HD', 'PH', 'In', 'P/MP'].includes(status);
               if (attendanceFilter === 'Absent') return status === 'A';
