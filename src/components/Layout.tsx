@@ -164,7 +164,7 @@ const Layout: React.FC = () => {
       <div className="w-[260px] bg-white dark:bg-[#111827] border-r border-slate-200 dark:border-slate-800 flex flex-col hidden md:flex shrink-0 transition-colors duration-300 relative z-20">
         <div className="p-6 flex items-center gap-3">
           <div className="w-10 h-10 rounded flex items-center justify-center overflow-hidden shrink-0">
-            <img src="http://192.168.100.22:8877/assets/kgLogo.png" alt="KG Logo" className="w-full h-full object-contain" />
+            <img src="/favicon.svg" alt="KG Logo" className="w-full h-full object-contain" />
           </div>
           <div>
             <h1 className="text-slate-900 dark:text-white font-bold text-lg leading-tight">KG-Web</h1>
