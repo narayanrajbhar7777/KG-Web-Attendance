@@ -2,11 +2,13 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { useAppData } from '../../context/AppContext';
 import { format, getDaysInMonth, addMonths, subMonths, isAfter, startOfDay, startOfMonth } from 'date-fns';
-import { ChevronLeft, ChevronRight, Search, X, ExternalLink } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Search, X, ExternalLink, Loader2, FileSpreadsheet, FileText } from 'lucide-react';
+import toast from 'react-hot-toast';
+import { transformAttendanceRowsForExport, exportAttendanceToExcel, exportAttendanceToCsv, exportAttendanceToPdf } from '../../utils/exportUtils';
 import Loader from '../../components/Loader';
-import { fetchEmployeePunchDataExternal, fetchEmployeeDetailsExternal } from '../../api';
+import { fetchEmployeePunchDataExternal } from '../../api';
 import { AttendanceTable } from '../../components/AttendanceTable';
-import { calculateTime, calculateTimeNum, formatDur, getFullStatus, getStatusColor, normalizeAttendanceStatus } from '../../utils/attendanceUtils';
+import { calculateTime, calculateTimeNum, formatDur, getFullStatus, getStatusColor, normalizeAttendanceStatus, generateShortName } from '../../utils/attendanceUtils';
 
 const AttendanceDetails: React.FC = () => {
   const { customColors } = useAppData();
@@ -19,6 +21,7 @@ const AttendanceDetails: React.FC = () => {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedEmployee, setSelectedEmployee] = useState<any>(null);
   const [employeesList, setEmployeesList] = useState<any[]>([]);
+  const [exportingFormat, setExportingFormat] = useState<null | 'excel' | 'csv' | 'pdf'>(null);
 
   const fetchDetailsData = async () => {
     if (!user) return;
@@ -32,8 +35,7 @@ const AttendanceDetails: React.FC = () => {
       let allEmployees = employeesList;
 
       if (allEmployees.length === 0) {
-        const empDetRes = await fetchEmployeeDetailsExternal(user.id);
-        const empList = empDetRes?.EMP_DATA || [];
+        const empList = user.employee_list || [];
 
         allEmployees = empList.map((e: any) => ({
           id: e.e_code,
@@ -113,8 +115,35 @@ const AttendanceDetails: React.FC = () => {
   const today = startOfDay(new Date());
   const isCurrentMonth = currentDate.getMonth() === today.getMonth() && currentDate.getFullYear() === today.getFullYear();
 
+  const handleExport = async (formatType: 'excel' | 'csv' | 'pdf') => {
+    if (filteredEmployees.length === 0) {
+      toast.error('No attendance data available to export.');
+      return;
+    }
+
+    setExportingFormat(formatType);
+    try {
+      const exportData = transformAttendanceRowsForExport(filteredEmployees, attendance, currentDate);
+
+      if (formatType === 'excel') {
+        await exportAttendanceToExcel(exportData, currentDate, customColors);
+        toast.success('Excel file downloaded successfully.');
+      } else if (formatType === 'csv') {
+        exportAttendanceToCsv(exportData, currentDate);
+        toast.success('CSV file downloaded successfully.');
+      } else if (formatType === 'pdf') {
+        await exportAttendanceToPdf(exportData, currentDate, customColors);
+        toast.success('PDF file downloaded successfully.');
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error('Unable to export attendance data.');
+    } finally {
+      setExportingFormat(null);
+    }
+  };
+
   if (selectedEmployee) {
-    let totalWorkingDays = 0;
     let totalPresent = 0;
     let totalWorkingMins = 0;
     let totalOtMins = 0;
@@ -129,13 +158,9 @@ const AttendanceDetails: React.FC = () => {
       const record = empAttendance.find((r: any) => r.date === dateStr);
       let status = record?.status || '-';
 
-      // console.log(`Date: ${dateStr} | Status: ${status}`);
-
-      if (status !== 'WO' && status !== '-') totalWorkingDays++;
       if (['P', 'L', 'EO', 'HD', 'P/MP', 'PH', 'In'].includes(status)) totalPresent++;
       if (status === 'A') totalAbsent++;
       if (status === 'WO') totalWeekOff++;
-      // console.log(`Date: ${dateStr} | Status: ${status}`);
       const { totalMins, otMins } = calculateTimeNum(record?.checkIn, record?.checkOut);
       totalWorkingMins += totalMins;
       totalOtMins += otMins;
@@ -149,8 +174,6 @@ const AttendanceDetails: React.FC = () => {
           </div>
         )}
         <div className="bg-white dark:bg-[#1e293b] rounded-2xl shadow-sm border border-slate-200 dark:border-slate-800 flex flex-col h-full overflow-hidden">
-
-          {/* Fixed Header Section */}
           <div className="bg-white dark:bg-[#1e293b] p-6 border-b border-slate-200 dark:border-slate-800 flex flex-col md:flex-row md:items-center justify-between gap-4 flex-shrink-0">
             <div className="flex flex-col gap-3">
               <div className="flex items-center gap-3">
@@ -197,7 +220,6 @@ const AttendanceDetails: React.FC = () => {
             </div>
           </div>
 
-          {/* Content Section with Internal Scrollbar */}
           <div className="flex-1 min-h-0 overflow-hidden p-6 pt-0 flex flex-col">
             <div className="w-full flex-1 min-h-0 flex flex-col h-full mt-4">
               <AttendanceTable
@@ -220,7 +242,7 @@ const AttendanceDetails: React.FC = () => {
                     }
                   },
                   {
-                    key: 'overtime', label: 'Over Time', render: (item) => {
+                    key: 'overtime', label: ' Over Time', render: (item) => {
                       const { overtime } = calculateTime(item.record?.checkIn, item.record?.checkOut);
                       return <span className="font-medium text-emerald-600 dark:text-emerald-400 text-[13px]">
                         {overtime !== '-' ? overtime.replace('h', 'h ').replace('m', 'm') : '-'}
@@ -256,7 +278,6 @@ const AttendanceDetails: React.FC = () => {
         </div>
       )}
       <div className="bg-white dark:bg-slate-800 shadow-sm rounded-xl border border-slate-200 dark:border-slate-700/60 flex flex-col h-[calc(100vh-112px)] overflow-hidden transition-colors duration-200">
-        {/* Month Navigation & Legend */}
         <div className="p-4 bg-white dark:bg-slate-800 border-b border-slate-100 dark:border-slate-700 flex flex-col xl:flex-row xl:items-center justify-between gap-4 shrink-0 transition-colors">
           <div className="flex items-center gap-4">
             <h3 className="font-bold text-slate-800 dark:text-white text-sm">
@@ -267,33 +288,57 @@ const AttendanceDetails: React.FC = () => {
               <button disabled={isCurrentMonth} onClick={handleNextMonth} className="p-1 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-500 dark:text-slate-400 border-l border-slate-200 dark:border-slate-700 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"><ChevronRight className="w-4 h-4" /></button>
             </div>
           </div>
-          <div className="relative">
-            <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-            <input
-              type="text"
-              placeholder="Search Employee..."
-              value={detailsSearch}
-              onChange={(e) => {
-                setDetailsSearch(e.target.value);
-                setCurrentPage(1);
-              }}
-              className="pl-9 pr-4 py-1.5 bg-slate-50 dark:bg-[#0b1120] border border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none dark:text-white transition-all placeholder:text-slate-400"
-            />
+          <div className="flex flex-wrap items-center gap-3">
+            <div className="flex items-center gap-2 mr-2">
+              <button
+                onClick={() => handleExport('excel')}
+                disabled={exportingFormat !== null}
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-green-50 hover:bg-green-100 text-green-700 dark:bg-green-500/10 dark:hover:bg-green-500/20 dark:text-green-400 border border-green-200 dark:border-green-800/50 rounded-lg text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                title="Export to Excel"
+              >
+                {exportingFormat === 'excel' ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileSpreadsheet className="w-4 h-4" />}
+                <span className="hidden sm:inline">{exportingFormat === 'excel' ? 'Exporting...' : 'Excel'}</span>
+              </button>
+              <button
+                onClick={() => handleExport('csv')}
+                disabled={exportingFormat !== null}
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 dark:bg-blue-500/10 dark:hover:bg-blue-500/20 dark:text-blue-400 border border-blue-200 dark:border-blue-800/50 rounded-lg text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                title="Export to CSV"
+              >
+                {exportingFormat === 'csv' ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileText className="w-4 h-4" />}
+                <span className="hidden sm:inline">{exportingFormat === 'csv' ? 'Exporting...' : 'CSV'}</span>
+              </button>
+              <button
+                onClick={() => handleExport('pdf')}
+                disabled={exportingFormat !== null}
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-red-50 hover:bg-red-100 text-red-700 dark:bg-red-500/10 dark:hover:bg-red-500/20 dark:text-red-400 border border-red-200 dark:border-red-800/50 rounded-lg text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                title="Export to PDF"
+              >
+                {exportingFormat === 'pdf' ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileText className="w-4 h-4" />}
+                <span className="hidden sm:inline">{exportingFormat === 'pdf' ? 'Exporting...' : 'PDF'}</span>
+              </button>
+            </div>
+            <div className="relative">
+              <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+              <input
+                type="text"
+                placeholder="Search Employee..."
+                value={detailsSearch}
+                onChange={(e) => {
+                  setDetailsSearch(e.target.value);
+                  setCurrentPage(1);
+                }}
+                className="pl-9 pr-4 py-1.5 bg-slate-50 dark:bg-[#0b1120] border border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none dark:text-white transition-all placeholder:text-slate-400"
+              />
+            </div>
           </div>
         </div>
-
-        {/* Scrollable Table Area */}
         <div className="overflow-auto flex-1 w-full custom-scrollbar">
           <table className="w-full text-left border-collapse min-w-max">
             <thead>
               <tr className="bg-[#f9fbfc] dark:bg-slate-900/80 text-slate-500 dark:text-slate-400 text-[10px] font-bold uppercase tracking-widest transition-colors">
                 <th className="py-3 px-4 border-b border-slate-200 dark:border-slate-700 whitespace-nowrap sticky top-0 left-0 bg-[#f9fbfc] dark:bg-slate-900 z-30 shadow-[1px_1px_0_#e2e8f0] dark:shadow-[1px_1px_0_#334155]">Code</th>
-                <th className="py-3 px-4 border-b border-slate-200 dark:border-slate-700 whitespace-nowrap sticky top-0 left-[80px] bg-[#f9fbfc] dark:bg-slate-900 z-30 shadow-[1px_1px_0_#e2e8f0] dark:shadow-[1px_1px_0_#334155]">
-                  <div className="flex items-center justify-between gap-2">
-                    <span>Name</span>
-                    <span>Report</span>
-                  </div>
-                </th>
+                <th className="py-3 px-4 border-b border-slate-200 dark:border-slate-700 whitespace-nowrap sticky top-0 left-[80px] bg-[#f9fbfc] dark:bg-slate-900 z-30 shadow-[1px_1px_0_#e2e8f0] dark:shadow-[1px_1px_0_#334155]">Name</th>
                 {days.map(day => (
                   <th key={day} className="py-3 px-2 border-b border-slate-200 dark:border-slate-700 text-center min-w-[32px] sticky top-0 bg-[#f9fbfc] dark:bg-slate-900 z-20 shadow-[0_1px_0_#e2e8f0] dark:shadow-[0_1px_0_#334155]">{day}</th>
                 ))}
@@ -302,46 +347,28 @@ const AttendanceDetails: React.FC = () => {
             <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
               {paginatedEmployees.map((emp: any) => {
                 const empAttendance = attendance.find((a: any) => a.userId === emp.id)?.records || [];
+
                 return (
-                  <tr
-                    key={emp.id}
-                    onDoubleClick={() => setSelectedEmployee(emp)}
-                    className="hover:bg-slate-50/50 dark:hover:bg-slate-700/50 transition-colors text-[11px] cursor-pointer"
-                  >
-                    <td className="py-3 px-4 font-bold text-slate-800 dark:text-slate-200 sticky left-0 bg-white dark:bg-slate-800 shadow-[1px_0_0_#f1f5f9] dark:shadow-[1px_0_0_#334155] group-hover:bg-slate-50/50 dark:group-hover:bg-slate-700/50 z-10 transition-colors">{emp.code}</td>
-                    <td className="py-2 px-4 font-medium text-slate-500 dark:text-slate-400 sticky left-[80px] bg-white dark:bg-slate-800 shadow-[1px_0_0_#f1f5f9] dark:shadow-[1px_0_0_#334155] whitespace-nowrap group-hover:bg-slate-50/50 dark:group-hover:bg-slate-700/50 z-10 transition-colors">
+                  <tr key={emp.id} onDoubleClick={() => setSelectedEmployee(emp)} className="hover:bg-slate-50/50 dark:hover:bg-slate-700/50 transition-colors text-[11px] cursor-pointer">
+                    <td className="py-3 px-4 font-bold text-slate-800 dark:text-slate-200 sticky left-0 bg-white dark:bg-slate-800 shadow-[1px_0_0_#f1f5f9] dark:shadow-[1px_0_0_#334155] z-10">{emp.code}</td>
+                    <td className="py-2 px-4 font-medium text-slate-500 dark:text-slate-400 sticky left-[80px] bg-white dark:bg-slate-800 shadow-[1px_0_0_#f1f5f9] dark:shadow-[1px_0_0_#334155] z-10">
                       <div className="flex items-center justify-between gap-2">
-                        <span>{emp.name}</span>
-                        <button
-                          onClick={(e) => { e.stopPropagation(); setSelectedEmployee(emp); }}
-                          className="p-1 hover:bg-slate-200 dark:hover:bg-slate-600 rounded text-slate-400 hover:text-blue-500 transition-colors"
-                          title="View Details"
-                        >
-                          <ExternalLink className="w-3.5 h-3.5" />
-                        </button>
+                        <span>{generateShortName(emp.name)}</span>
+                        <button onClick={(e) => { e.stopPropagation(); setSelectedEmployee(emp); }} className="p-1 hover:bg-slate-200 dark:hover:bg-slate-600 rounded text-slate-400 hover:text-blue-500 transition-colors" title="View Details"><ExternalLink className="w-3.5 h-3.5" /></button>
                       </div>
                     </td>
                     {days.map(day => {
                       const dateStr = format(new Date(currentDate.getFullYear(), currentDate.getMonth(), day), 'yyyy-MM-dd');
                       const currentIterDate = new Date(currentDate.getFullYear(), currentDate.getMonth(), day);
                       const isFuture = isAfter(currentIterDate, today);
-
                       let status = '-';
                       if (!isFuture) {
                         const record = empAttendance.find((r: any) => r.date === dateStr);
                         status = record?.status || '-';
                       }
-
                       const customColor = customColors[status];
-
                       return (
-                        <td
-                          key={day}
-                          className={`py-3 px-1 text-center ${isFuture ? 'text-slate-300' : (customColor ? 'font-bold' : getStatusColor(status))}`}
-                          style={(!isFuture && customColor) ? { color: customColor } : {}}
-                        >
-                          {isFuture ? '' : status}
-                        </td>
+                        <td key={day} className={`py-3 px-1 text-center ${isFuture ? 'text-slate-300' : (customColor ? 'font-bold' : getStatusColor(status))}`} style={(!isFuture && customColor) ? { color: customColor } : {}}>{isFuture ? '' : status}</td>
                       );
                     })}
                   </tr>

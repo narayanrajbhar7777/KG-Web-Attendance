@@ -4,7 +4,7 @@ import { useAppData } from '../../context/AppContext';
 import { Users, UserX, CalendarOff, ChevronLeft, ChevronRight, Clock } from 'lucide-react';
 import { addDays, format, subDays } from 'date-fns';
 import Loader from '../../components/Loader';
-import { fetchEmployeePunchDataExternal, fetchEmployeeDetailsExternal } from '../../api';
+import { fetchEmployeePunchDataExternal } from '../../api';
 import { AttendanceTable, type ColumnDef } from '../../components/AttendanceTable';
 import { calculateTime, getFullStatus, getStatusColor, normalizeAttendanceStatus } from '../../utils/attendanceUtils';
 
@@ -28,8 +28,7 @@ const AttendanceSummary: React.FC = () => {
       let allEmployees = employeesList;
 
       if (allEmployees.length === 0) {
-        const empDetRes = await fetchEmployeeDetailsExternal(user.id);
-        const empList = empDetRes?.EMP_DATA || [];
+        const empList = user.employee_list || [];
         allEmployees = empList.map((e: any) => ({
           id: e.e_code,
           name: e.e_name,
@@ -235,26 +234,26 @@ const AttendanceSummary: React.FC = () => {
                   </div>
                 </div>
                 <div className="hidden sm:flex items-center gap-2 text-[11px] font-bold">
-                  <button 
-                    onClick={() => setAttendanceFilter('All')} 
+                  <button
+                    onClick={() => setAttendanceFilter('All')}
                     className={`px-3 py-1.5 rounded-lg border transition-colors ${attendanceFilter === 'All' ? 'bg-slate-200 dark:bg-slate-700 border-slate-300 dark:border-slate-600 text-slate-800 dark:text-white' : 'bg-slate-50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700/50'}`}
                   >
                     All: {todayRecords.length}
                   </button>
-                  <button 
-                    onClick={() => setAttendanceFilter('Present')} 
+                  <button
+                    onClick={() => setAttendanceFilter('Present')}
                     className={`px-3 py-1.5 rounded-lg border transition-colors ${attendanceFilter === 'Present' ? 'bg-emerald-100 dark:bg-emerald-900/40 border-emerald-300 dark:border-emerald-700 text-emerald-700 dark:text-emerald-300' : 'bg-slate-50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/20'}`}
                   >
                     Present: {present}
                   </button>
-                  <button 
-                    onClick={() => setAttendanceFilter('Absent')} 
+                  <button
+                    onClick={() => setAttendanceFilter('Absent')}
                     className={`px-3 py-1.5 rounded-lg border transition-colors ${attendanceFilter === 'Absent' ? 'bg-red-100 dark:bg-red-900/40 border-red-300 dark:border-red-700 text-red-700 dark:text-red-300' : 'bg-slate-50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20'}`}
                   >
                     Absent: {absent}
                   </button>
-                  <button 
-                    onClick={() => setAttendanceFilter('Leave')} 
+                  <button
+                    onClick={() => setAttendanceFilter('Leave')}
                     className={`px-3 py-1.5 rounded-lg border transition-colors ${attendanceFilter === 'Leave' ? 'bg-amber-100 dark:bg-amber-900/40 border-amber-300 dark:border-amber-700 text-amber-700 dark:text-amber-300' : 'bg-slate-50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700 text-amber-600 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-900/20'}`}
                   >
                     Leave: {onLeave}

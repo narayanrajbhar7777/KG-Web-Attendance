@@ -7,7 +7,7 @@ import Loader from '../../components/Loader';
 import { format, startOfMonth, getDay, getDaysInMonth, addMonths, subMonths, isAfter, startOfDay, isSameMonth } from 'date-fns';
 import { Calendar as CalendarIcon, Send, ChevronLeft, ChevronRight, ExternalLink } from 'lucide-react';
 import { ATTENDANCE_STATUS_MAP, DEFAULT_ATTENDANCE_COLORS } from '../../constants';
-import { fetchEmployeePunchDataExternal, fetchEmployeeDetailsExternal } from '../../api';
+import { fetchEmployeePunchDataExternal } from '../../api';
 import { normalizeAttendanceStatus, calculateTimeNum } from '../../utils/attendanceUtils';
 
 const EmployeeDashboard: React.FC = () => {
@@ -39,8 +39,7 @@ const EmployeeDashboard: React.FC = () => {
 
       let currentEmpDet = empDetState;
       if (!currentEmpDet) {
-        const empDetRes = await fetchEmployeeDetailsExternal(user.id);
-        currentEmpDet = empDetRes?.EMP_DATA?.[0];
+        currentEmpDet = user.employee_list;
         if (currentEmpDet) setEmpDetState(currentEmpDet);
       }
 
@@ -52,7 +51,7 @@ const EmployeeDashboard: React.FC = () => {
       const punchData = punchRes?.EMP_PUNCH_DATA || [];
 
       if (empDet && empDet.e_desg && user.designation !== empDet.e_desg) {
-        login({ ...user, designation: empDet.e_desg });
+        login({ ...user, designation: user?.designation });
       }
 
       const records = punchData
@@ -67,7 +66,7 @@ const EmployeeDashboard: React.FC = () => {
           return { date, status, checkIn, checkOut };
         });
 
-      const managers = empDet?.s_mgrcd ? [{ id: empDet.s_mgrcd.toString(), name: empDet.mgrname }] : [];
+      const managers = user.manager_code ? [{ id: user.manager_code.toString(), name: user.manager_name }] : [];
 
       if (managers.length > 0) {
         setManagerId(prev => prev || managers[0].id);

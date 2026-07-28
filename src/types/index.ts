@@ -7,6 +7,9 @@ export interface User {
   role: Role;
   image?: string;
   designation?: string;
+  employee_list?: any[];
+  manager_code?: string | null;
+  manager_name?: string | null;
 }
 
 export type AttendanceStatus = 'P' | 'A' | 'WO' | 'H' | 'HD' | 'PH' | 'EL' | 'HDEL' | 'L' | 'EO' | 'NJ' | 'LWP';

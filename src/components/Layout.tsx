@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useAppData } from '../context/AppContext';
@@ -27,6 +27,29 @@ const Layout: React.FC = () => {
   const [isNotifOpen, setIsNotifOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isAdminMenuOpen, setIsAdminMenuOpen] = useState(false);
+
+  const notifRef = useRef<HTMLDivElement>(null);
+  const settingsRef = useRef<HTMLDivElement>(null);
+  const adminMenuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (notifRef.current && !notifRef.current.contains(event.target as Node)) {
+        setIsNotifOpen(false);
+      }
+      if (settingsRef.current && !settingsRef.current.contains(event.target as Node)) {
+        setIsSettingsOpen(false);
+      }
+      if (adminMenuRef.current && !adminMenuRef.current.contains(event.target as Node)) {
+        setIsAdminMenuOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
 
   const [currentTime, setCurrentTime] = useState(new Date());
   const [is24Hour, setIs24Hour] = useState(() => {
@@ -217,7 +240,7 @@ const Layout: React.FC = () => {
               {theme === 'dark' ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
             </button>
 
-            <div className="relative">
+            <div className="relative" ref={notifRef}>
               <button
                 title="Notifications"
                 onClick={handleNotifClick}
@@ -298,7 +321,7 @@ const Layout: React.FC = () => {
               )}
             </div>
             {user.role === 'Admin' && (
-              <div className="relative">
+              <div className="relative" ref={adminMenuRef}>
                 <button
                   title="Admin Settings"
                   onClick={handleAdminMenuClick}
@@ -360,7 +383,7 @@ const Layout: React.FC = () => {
               </div>
             )}
 
-            <div className="relative">
+            <div className="relative" ref={settingsRef}>
               <button
                 title="Attendance Colors"
                 onClick={handleSettingsClick}
@@ -407,7 +430,7 @@ const Layout: React.FC = () => {
             <div className="flex items-center gap-3 ml-2 pl-4 border-l border-slate-200 dark:border-slate-700 h-8">
               <div className="text-right hidden md:block">
                 <p className="text-sm font-bold text-slate-800 dark:text-white leading-tight">{user.name}</p>
-                <p className="text-[10px] uppercase font-bold text-slate-500 dark:text-slate-400 leading-tight tracking-wider">{user.designation || user.role}</p>
+                <p className="text-[10px] uppercase font-bold text-slate-500 dark:text-slate-400 leading-tight tracking-wider">{user.code} {user.designation || user.role}</p>
               </div>
               <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-blue-600 to-blue-400 flex items-center justify-center text-white font-bold overflow-hidden shadow-sm shadow-blue-500/30 ring-2 ring-white dark:ring-[#111827]">
                 {user.image ? (

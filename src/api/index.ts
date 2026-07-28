@@ -1,4 +1,4 @@
-import { KG_WEB_APP0_API_URL, KG_WEB_APP_API_URL } from '../constants';
+import { KG_WEB_APP0_API_URL, KG_WEB_APP_API_URL, KG_WEB_MAIL_API_URL } from '../constants';
 import type { AppRequest } from '../types';
 import { format } from 'date-fns';
 
@@ -239,7 +239,7 @@ export const deleteNotificationAPI = async (id: number | string) => {
 
 export const sendEmailNotification = async (email: string, subject: string, message: string) => {
   try {
-    const res = await fetch(`http://172.16.37.219:5000/api/scheduler`, {
+    const res = await fetch(`${KG_WEB_MAIL_API_URL}/scheduler`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

@@ -46,7 +46,6 @@ export const normalizeAttendanceStatus = (rawStatus: string, checkIn: string, ch
 
   const cIn = !checkIn || checkIn === '-' ? '' : checkIn;
   const cOut = !checkOut || checkOut === '-' ? '' : checkOut;
-  // console.log(`dayOfWeek: ${dayOfWeek} Status: ${status} RecDate: ${recordDate} cIn: ${cIn} cOut: ${cOut}`)
   if (!cIn && !cOut && status !== 'WO') {
     if (dayOfWeek === 'Sun') {
       status = 'WO';
@@ -110,4 +109,25 @@ export const getFullStatus = (status: string) => {
     case 'LWP': return 'Leave without Pay';
     default: return status;
   }
+};
+
+export const generateShortName = (fullName: string): string => {
+  if (!fullName) return "";
+  return fullName.trim().replace(/^(\S+)\s+.*\s+(\S+)$/, "$1 $2");
+};
+
+export const getAttendanceHeaders = (daysArray: string[] = []) => {
+  return [
+    "Code",
+    "Name",
+    ...(Array.isArray(daysArray) ? daysArray : []),
+    "Working Days",
+    "Present Days",
+    "Absent Days",
+    "Missed Punch",
+    "Present on Holiday",
+    "Actual Hrs.",
+    "Overtime Hrs.",
+    "Total Hrs."
+  ];
 };

@@ -3,6 +3,7 @@ import { useAuth } from '../../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { LogIn, Eye, EyeOff } from 'lucide-react';
 import { loginEmployeeExternal, fetchEmployeeDetails } from '../../api';
+import type { Role } from '../../types';
 
 const LoginPage: React.FC = () => {
   const { login } = useAuth();
@@ -17,6 +18,7 @@ const LoginPage: React.FC = () => {
     e.preventDefault();
     setError('');
     setIsSubmitting(true);
+
     try {
       const payload = {
         username: email,
@@ -25,42 +27,37 @@ const LoginPage: React.FC = () => {
         UserName: email,
         Password: password
       };
-      const extData = await loginEmployeeExternal(payload);
-      if (extData && extData.p_emp_id) {
-        const empDetails = await fetchEmployeeDetails(extData.p_emp_id);
+
+      const userLoginData = await loginEmployeeExternal(payload);
+
+      if (userLoginData && userLoginData.p_emp_id) {
+
+        const empDetails = await fetchEmployeeDetails(userLoginData.p_emp_id);
         const empDataArr = empDetails?.EMP_DATA || [];
+        const loginUser = empDataArr.find((emp: any) => emp.e_code === userLoginData.p_emp_id);
+        const isManager = empDataArr.some((emp: any) => emp.manager_code === userLoginData.p_emp_id);
 
-        let role: 'Employee' | 'Admin' = 'Employee';
-        const isManager = empDataArr.some((emp: any) =>
-          emp.manager_code === extData.p_emp_id ||
-          String(emp.s_mgrcd) === String(extData.p_emp_id).substring(2)
-        );
-
-        if (empDataArr.length > 1 || isManager) {
-          role = 'Admin';
-        }
-
-        let e_desg = '';
-        const myData = empDataArr.find((emp: any) => emp.e_empcd === extData.p_emp_id || String(emp.e_empcd) === String(extData.p_emp_id).substring(2)) || empDataArr[0];
-        if (myData && myData.e_desg) {
-          e_desg = myData.e_desg;
-        }
-
+        const loginUserRole: Role = isManager ? 'Admin' : 'Employee';
         const userObj = {
-          id: extData.p_emp_id,
-          name: extData.p_emp_name,
-          role: role,
-          code: extData.p_emp_id,
-          image: extData.p_img,
-          designation: e_desg
+          id: userLoginData.p_emp_id,
+          code: userLoginData.p_emp_id,
+          name: userLoginData.p_emp_name,
+          role: loginUserRole,
+
+          image: userLoginData.p_img || '',
+          designation: loginUser?.e_desg || 'NA',
+          employee_list: empDataArr,
+          manager_code: loginUser?.s_mgrcd || null,
+          manager_name: loginUser?.mgrname || null
         };
+
         login(userObj);
-        if (role === 'Admin') navigate('/admin');
-        else navigate('/employee');
+        navigate(loginUserRole === 'Admin' ? '/admin' : '/employee');
       } else {
-        setError(extData.message || 'Invalid credentials from external API');
+        setError(userLoginData?.message || 'Invalid credentials from external API');
       }
     } catch (err) {
+      console.error('Login error:', err);
       setError('Failed to connect to the server');
     } finally {
       setIsSubmitting(false);
