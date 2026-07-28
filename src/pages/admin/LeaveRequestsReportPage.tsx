@@ -3,11 +3,12 @@ import { useAppData } from '../../context/AppContext';
 import { format } from 'date-fns';
 import { Filter, Calendar, Grid, ArrowUpDown, ChevronUp, ChevronDown, ChevronLeft, ChevronRight, X } from 'lucide-react';
 import Loader from '../../components/Loader';
-import { fetchEmployeeRequests, fetchEmployeeDataExternal } from '../../api';
+import { fetchEmployeeRequests } from '../../api';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import DatePicker from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
+import { FETCH_API_INTERVAL } from '../../constants';
 
 export default function LeaveRequestsReportPage() {
   const { masterConfig: appMasterConfig } = useAppData();
@@ -29,14 +30,9 @@ export default function LeaveRequestsReportPage() {
     const loadData = async () => {
       if (!user) return;
       const managerId = user.code ? user.code.replace('FP', '') : user.id;
-      const todayStr = format(new Date(), 'dd-MMM-yyyy');
       try {
-        const [reqData, extData] = await Promise.all([
-          fetchEmployeeRequests(managerId),
-          fetchEmployeeDataExternal(user.id, todayStr, todayStr)
-        ]);
-
-        const empList = extData?.empDet?.EMP_DATA || [];
+        const reqData = await fetchEmployeeRequests(managerId);
+        const empList = user.employee_list || [];
         let usersData = empList.map((e: any) => ({
           id: e.e_code,
           name: e.e_name,
@@ -67,9 +63,8 @@ export default function LeaveRequestsReportPage() {
     const intervalId = setInterval(() => {
       if (user) {
         const managerId = user.code ? user.code.replace('FP', '') : user.id;
-        const todayStr = format(new Date(), 'dd-MMM-yyyy');
-        Promise.all([fetchEmployeeRequests(managerId, true), fetchEmployeeDataExternal(user.id, todayStr, todayStr, true)]).then(([reqData, extData]) => {
-          const empList = extData?.empDet?.EMP_DATA || [];
+        fetchEmployeeRequests(managerId, true).then((reqData) => {
+          const empList = user.employee_list || [];
           let usersData = empList.map((e: any) => ({
             id: e.e_code,
             name: e.e_name,
@@ -92,7 +87,7 @@ export default function LeaveRequestsReportPage() {
           });
         }).catch(console.error);
       }
-    }, 5000);
+    }, FETCH_API_INTERVAL);
     return () => clearInterval(intervalId);
   }, []);
 
@@ -119,12 +114,12 @@ export default function LeaveRequestsReportPage() {
     if (endDate) {
       matchDate = matchDate && new Date(r.date) <= endDate;
     }
-    
+
     let matchStatus = true;
     if (filterStatus !== 'All') {
       matchStatus = r.status === filterStatus;
     }
-    
+
     return matchSearch && matchDate && matchStatus;
   });
 

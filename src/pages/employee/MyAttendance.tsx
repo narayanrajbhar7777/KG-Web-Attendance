@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { format, startOfMonth, getDaysInMonth, addMonths, subMonths, isSameMonth } from 'date-fns';
 import { useNavigate } from 'react-router-dom';
-import { fetchEmployeePunchDataExternal, fetchEmployeeRequests, fetchEmployeePolicies } from '../../api';
+import { fetchEmployeeDataExternal, fetchEmployeePolicies } from '../../api';
 import { ATTENDANCE_STATUS_MAP, DEFAULT_ATTENDANCE_COLORS } from '../../constants';
 import { useAppData } from '../../context/AppContext';
 import { ChevronLeft, ChevronRight, X } from 'lucide-react';
@@ -25,7 +25,6 @@ const MyAttendance: React.FC = () => {
     weekOffs: 0
   });
 
-  const [cachedRequests, setCachedRequests] = useState<any[] | null>(null);
   const [cachedPolicy, setCachedPolicy] = useState<any>(null);
 
   const fetchData = async () => {
@@ -33,17 +32,12 @@ const MyAttendance: React.FC = () => {
     try {
       setLoading(true);
 
-      let empRequests = cachedRequests;
-      if (!empRequests) {
-        const requestsData = await fetchEmployeeRequests(user.id);
-        empRequests = requestsData?.requests || [];
-        setCachedRequests(empRequests);
-      }
+
 
       const frDate = format(startOfMonth(currentDate), 'dd-MMM-yyyy');
       const toDate = format(new Date(currentDate.getFullYear(), currentDate.getMonth(), getDaysInMonth(currentDate)), 'dd-MMM-yyyy');
 
-      const extData = await fetchEmployeePunchDataExternal(user.id, frDate, toDate);
+      const extData = await fetchEmployeeDataExternal(user.id, frDate, toDate);
       const punchData = extData?.EMP_PUNCH_DATA || [];
 
       let myPolicy = cachedPolicy;
@@ -94,12 +88,7 @@ const MyAttendance: React.FC = () => {
 
           return { date, dayOfWeek, status, checkIn, checkOut, totalHours, overTime, diffMs };
         }).map((r: any) => {
-          const approvedMispunch = (empRequests || []).find((req: any) => req.type === 'Misspunch' && req.date === r.date && req.status === 'Approved');
-          const approvedLeave = (empRequests || []).find((req: any) => req.type === 'Leave' && req.date === r.date && req.status === 'Approved');
-
           let finalStatus = r.status;
-          if (approvedMispunch) finalStatus = 'P/MP';
-          else if (approvedLeave) finalStatus = 'L';
 
           if (['P', 'P/MP', 'HD', 'M', 'In'].includes(finalStatus)) {
             totalWorkingDays += 1;

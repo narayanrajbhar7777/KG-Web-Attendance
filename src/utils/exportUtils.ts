@@ -57,7 +57,7 @@ export const transformAttendanceRowsForExport = (employees: any[], attendance: a
       displayedActualMins = expectedMonthlyMins;
       displayedOtMins = totalActualMins - expectedMonthlyMins;
     }
-    console.log(`${emp.name} | P: ${totalPresent}, A: ${totalAbsent}, MP: ${totalMissedPunches}, PH: ${totalPresentOnHoliday}, AHrs: ${formatDur(totalActualMins)}, OTHrs: ${formatDur(displayedOtMins)}, THrs: ${formatDur(expectedMonthlyMins)}`)
+    // console.log(`${emp.name} | P: ${totalPresent}, A: ${totalAbsent}, MP: ${totalMissedPunches}, PH: ${totalPresentOnHoliday}, AHrs: ${formatDur(totalActualMins)}, OTHrs: ${formatDur(displayedOtMins)}, THrs: ${formatDur(expectedMonthlyMins)}`)
     row['Working Days'] = fixedWorkingDays;
     row['Present Days'] = totalPresent;
     row['Absent Days'] = totalAbsent;
@@ -96,10 +96,10 @@ export const exportAttendanceToExcel = async (exportObj: { data: any[], headers:
   exportObj.data.forEach(rowData => {
     const row = exportObj.headers.map(h => rowData[h]);
     const excelRow = worksheet.addRow(row);
-    
+
     excelRow.eachCell((cell, colNumber) => {
       const val = cell.value as string;
-      
+
       cell.alignment = { horizontal: 'center', vertical: 'middle' };
       cell.border = {
         top: { style: 'thin', color: { argb: 'FFE2E8F0' } },
@@ -111,7 +111,7 @@ export const exportAttendanceToExcel = async (exportObj: { data: any[], headers:
       if (colNumber > 2) {
         let bgColor = 'FFFFFFFF';
         let textColor = 'FF334155';
-        
+
         if (customColors[val]) {
           const hex = customColors[val].replace('#', '');
           if (hex.length === 6) {
@@ -130,7 +130,7 @@ export const exportAttendanceToExcel = async (exportObj: { data: any[], headers:
             case 'L': bgColor = 'FFF59E0B'; textColor = 'FFFFFFFF'; break;
           }
         }
-        
+
         if (bgColor !== 'FFFFFFFF') {
           cell.fill = {
             type: 'pattern',

@@ -472,28 +472,17 @@ export const loginEmployeeExternal = async (credentials: any) => {
   return res.json();
 };
 
-export const fetchEmployeeDetails = async (empId: string) => {
+export const fetchEmployeeDetails = async (empId: string, silent = false) => {
   const comp = empId.substring(0, 2);
   const code = empId.substring(2);
-  const res = await fetch(`${KG_WEB_APP0_API_URL}/powerbi/GetEmpDet?p_E_COMP=${comp}&p_E_CODE=${code}`);
+
+  const res = await fetch(`${KG_WEB_APP0_API_URL}/powerbi/GetEmpDet?p_E_COMP=${comp}&p_E_CODE=${code}`, {
+    headers: silent ? { 'X-Silent-Fetch': 'true' } : {}
+  });
   return res.json();
 };
 
 export const fetchEmployeeDataExternal = async (empId: string, frDate: string, toDate: string, silent = false) => {
-  // Extract comp and code assuming format like FP13309
-  const comp = empId.substring(0, 2);
-  const code = empId.substring(2);
-
-  let empDet = null;
-  try {
-    const empDetRes = await fetch(`${KG_WEB_APP0_API_URL}/powerbi/GetEmpDet?p_E_COMP=${comp}&p_E_CODE=${code}`, {
-      headers: silent ? { 'X-Silent-Fetch': 'true' } : {}
-    });
-    empDet = await empDetRes.json();
-  } catch (e) {
-    console.error('Failed to fetch empDet:', e);
-  }
-
   let punchDet = null;
   try {
     const punchDetRes = await fetch(`${KG_WEB_APP0_API_URL}/powerbi/GetEmpPunchDet?p_Frdate=${frDate}&p_Todate=${toDate}&P_EMP_ID=${empId}`, {
@@ -504,18 +493,13 @@ export const fetchEmployeeDataExternal = async (empId: string, frDate: string, t
     console.error('Failed to fetch punchDet:', e);
   }
 
-  return { empDet, punchDet };
+  return punchDet;
 };
 
 export const fetchEmployeeDetailsExternal = async (empId: string) => {
   const comp = empId.substring(0, 2);
   const code = empId.substring(2);
   const res = await fetch(`${KG_WEB_APP0_API_URL}/powerbi/GetEmpDet?p_E_COMP=${comp}&p_E_CODE=${code}`);
-  return res.json();
-};
-
-export const fetchEmployeePunchDataExternal = async (empId: string, frDate: string, toDate: string) => {
-  const res = await fetch(`${KG_WEB_APP0_API_URL}/powerbi/GetEmpPunchDet?p_Frdate=${frDate}&p_Todate=${toDate}&P_EMP_ID=${empId}`);
   return res.json();
 };
 

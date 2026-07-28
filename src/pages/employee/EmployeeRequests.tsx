@@ -186,7 +186,7 @@ const EmployeeRequests: React.FC = () => {
   const saveEdit = async (req: AppRequest) => {
     const currentRequestData = myRequests.find((item) => item.id === req.id);
     if (!currentRequestData) return;
-    console.log(`${req.id} | MYREQUEST: ===============>${JSON.stringify(currentRequestData)}`)
+    // console.log(`${req.id} | MYREQUEST: ===============>${JSON.stringify(currentRequestData)}`)
     const payload = {
       status: currentRequestData.status,
       reason: editReason,
@@ -197,7 +197,7 @@ const EmployeeRequests: React.FC = () => {
       inTime: currentRequestData?.inTime,
       outTime: currentRequestData?.outTime
     }
-    console.log(`payload: ${JSON.stringify(payload)}`)
+    // console.log(`payload: ${JSON.stringify(payload)}`)
     await updateRequestAPI(req.id, payload);
 
     if (user) {

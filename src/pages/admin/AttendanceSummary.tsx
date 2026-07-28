@@ -4,7 +4,7 @@ import { useAppData } from '../../context/AppContext';
 import { Users, UserX, CalendarOff, ChevronLeft, ChevronRight, Clock } from 'lucide-react';
 import { addDays, format, subDays } from 'date-fns';
 import Loader from '../../components/Loader';
-import { fetchEmployeePunchDataExternal } from '../../api';
+import { fetchEmployeeDataExternal } from '../../api';
 import { AttendanceTable, type ColumnDef } from '../../components/AttendanceTable';
 import { calculateTime, getFullStatus, getStatusColor, normalizeAttendanceStatus } from '../../utils/attendanceUtils';
 
@@ -47,7 +47,7 @@ const AttendanceSummary: React.FC = () => {
         setEmployeesList(allEmployees);
       }
 
-      const punchRes = await fetchEmployeePunchDataExternal(user.id, todayStr, todayStr);
+      const punchRes = await fetchEmployeeDataExternal(user.id, todayStr, todayStr);
       const punchData = punchRes?.EMP_PUNCH_DATA || [];
 
       const attendance = allEmployees.map((emp: any) => {

@@ -4,6 +4,7 @@ import type { AppRequest, AppNotification } from '../types';
 import { fetchNotifications, fetchSettings, updateSettings, createNotification, markNotificationsAsReadAPI, createRequest, updateRequestStatusAPI, fetchMasterConfig, updateMasterConfig as updateMasterConfigAPI, sendEmailNotification, fetchEmployeeDetailsExternal } from '../api';
 import { useAuth } from './AuthContext';
 import { toast } from 'react-hot-toast';
+import { FETCH_API_INTERVAL } from '../constants';
 
 type Theme = 'light' | 'dark';
 
@@ -117,7 +118,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       } catch (err) {
         console.error("Failed to poll notifications", err);
       }
-    }, 5000);
+    }, FETCH_API_INTERVAL);
 
     return () => clearInterval(intervalId);
   }, [user, isNotificationsEnabled]);

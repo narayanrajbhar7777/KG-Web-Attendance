@@ -6,7 +6,7 @@ import { ChevronLeft, ChevronRight, Search, X, ExternalLink, Loader2, FileSpread
 import toast from 'react-hot-toast';
 import { transformAttendanceRowsForExport, exportAttendanceToExcel, exportAttendanceToCsv, exportAttendanceToPdf } from '../../utils/exportUtils';
 import Loader from '../../components/Loader';
-import { fetchEmployeePunchDataExternal } from '../../api';
+import { fetchEmployeeDataExternal } from '../../api';
 import { AttendanceTable } from '../../components/AttendanceTable';
 import { calculateTime, calculateTimeNum, formatDur, getFullStatus, getStatusColor, normalizeAttendanceStatus, generateShortName } from '../../utils/attendanceUtils';
 
@@ -55,7 +55,7 @@ const AttendanceDetails: React.FC = () => {
         setEmployeesList(allEmployees);
       }
 
-      const punchRes = await fetchEmployeePunchDataExternal(user.id, frDate, toDate);
+      const punchRes = await fetchEmployeeDataExternal(user.id, frDate, toDate);
       const punchData = punchRes?.EMP_PUNCH_DATA || [];
 
       const attendance = allEmployees.map((emp: any) => {

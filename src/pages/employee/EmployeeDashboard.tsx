@@ -7,7 +7,7 @@ import Loader from '../../components/Loader';
 import { format, startOfMonth, getDay, getDaysInMonth, addMonths, subMonths, isAfter, startOfDay, isSameMonth } from 'date-fns';
 import { Calendar as CalendarIcon, Send, ChevronLeft, ChevronRight, ExternalLink } from 'lucide-react';
 import { ATTENDANCE_STATUS_MAP, DEFAULT_ATTENDANCE_COLORS } from '../../constants';
-import { fetchEmployeePunchDataExternal } from '../../api';
+import { fetchEmployeeDataExternal } from '../../api';
 import { normalizeAttendanceStatus, calculateTimeNum } from '../../utils/attendanceUtils';
 
 const EmployeeDashboard: React.FC = () => {
@@ -45,7 +45,7 @@ const EmployeeDashboard: React.FC = () => {
 
 
 
-      const punchRes = await fetchEmployeePunchDataExternal(user.id, frDate, toDate);
+      const punchRes = await fetchEmployeeDataExternal(user.id, frDate, toDate);
 
       const empDet = currentEmpDet;
       const punchData = punchRes?.EMP_PUNCH_DATA || [];

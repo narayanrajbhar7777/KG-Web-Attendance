@@ -38,11 +38,10 @@ const AdminDashboard: React.FC = () => {
         let usersData: any[] = [];
         try { usersData = await fetchUsers(); } catch (e) { console.error("Failed fetchUsers:", e); }
 
-        let extData = null;
+        let extData;
         if (user) {
-          try { extData = await fetchEmployeeDataExternal(user.id, todayStr, todayStr); } catch (e) { console.error("Failed fetchEmployeeDataExternal:", e); }
+          try { extData = await fetchEmployeeDataExternal(user.id, todayStr, todayStr, true); } catch (e) { console.error("Failed fetchEmployeeDataExternal:", e); }
         }
-
         const sortedReqs = (reqsData || []).sort((a: any, b: any) => {
           const idA = typeof a.id === 'string' ? parseInt(a.id, 10) : (a.id || 0);
           const idB = typeof b.id === 'string' ? parseInt(b.id, 10) : (b.id || 0);
@@ -50,16 +49,14 @@ const AdminDashboard: React.FC = () => {
         });
         setRequests(sortedReqs);
         setUsers(usersData || []);
-
         if (extData) {
-          const empList = extData.empDet?.EMP_DATA || [];
-          const punchData = extData.punchDet?.EMP_PUNCH_DATA || [];
-
-          let allEmployees = empList.map((e: any) => ({
+          const punchData = extData?.EMP_PUNCH_DATA || [];
+          let allEmployees: User[] = (user?.employee_list || []).map((e: any) => ({
             id: e.e_code,
             name: e.e_name,
             code: e.e_code,
-            designation: e.e_desg
+            designation: e.e_desg,
+            role: 'Employee'
           }));
 
           if (user && !allEmployees.some((e: any) => e.code === user.code)) {
@@ -67,11 +64,12 @@ const AdminDashboard: React.FC = () => {
               id: user.code,
               name: user.name,
               code: user.code,
-              designation: user.designation
+              designation: user.designation,
+              role: user.role || 'Employee'
             });
           }
 
-          setUsers(allEmployees);
+          setUsers(allEmployees as User[]);
 
           const processed = allEmployees.map((emp: any) => {
             const p = punchData.find((p: any) => String(p.emp_id) === String(emp.code));
@@ -86,7 +84,6 @@ const AdminDashboard: React.FC = () => {
             const pDate = p?.logindate ? p.logindate.split(' ')[0] : currDate;
 
             const status = normalizeAttendanceStatus(p?.status, checkIn, checkOut, pDate);
-
             return {
               id: emp.code + '-' + Math.random(),
               code: emp.code,
@@ -232,20 +229,20 @@ const AdminDashboard: React.FC = () => {
                 </div>
               </div>
 
-                <div className="grid grid-cols-3 gap-4">
-                  <div className="bg-slate-50 dark:bg-[#2a374a]/50 p-4 rounded-xl border border-slate-100 dark:border-slate-700/50 text-center transition-colors">
-                    <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-1">Pending</p>
-                    <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">{pendingLeaves}</p>
-                  </div>
-                  <div className="bg-slate-50 dark:bg-[#2a374a]/50 p-4 rounded-xl border border-slate-100 dark:border-slate-700/50 text-center transition-colors">
-                    <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-1">Approved</p>
-                    <p className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">{approvedLeaves}</p>
-                  </div>
-                  <div className="bg-slate-50 dark:bg-[#2a374a]/50 p-4 rounded-xl border border-slate-100 dark:border-slate-700/50 text-center transition-colors">
-                    <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-1">Rejected</p>
-                    <p className="text-2xl font-bold text-red-500 dark:text-red-400">{rejectedLeaves}</p>
-                  </div>
+              <div className="grid grid-cols-3 gap-4">
+                <div className="bg-slate-50 dark:bg-[#2a374a]/50 p-4 rounded-xl border border-slate-100 dark:border-slate-700/50 text-center transition-colors">
+                  <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-1">Pending</p>
+                  <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">{pendingLeaves}</p>
                 </div>
+                <div className="bg-slate-50 dark:bg-[#2a374a]/50 p-4 rounded-xl border border-slate-100 dark:border-slate-700/50 text-center transition-colors">
+                  <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-1">Approved</p>
+                  <p className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">{approvedLeaves}</p>
+                </div>
+                <div className="bg-slate-50 dark:bg-[#2a374a]/50 p-4 rounded-xl border border-slate-100 dark:border-slate-700/50 text-center transition-colors">
+                  <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-1">Rejected</p>
+                  <p className="text-2xl font-bold text-red-500 dark:text-red-400">{rejectedLeaves}</p>
+                </div>
+              </div>
             </div>
           </div>
 
@@ -262,20 +259,20 @@ const AdminDashboard: React.FC = () => {
                 </div>
               </div>
 
-                <div className="grid grid-cols-3 gap-4">
-                  <div className="bg-slate-50 dark:bg-[#2a374a]/50 p-4 rounded-xl border border-slate-100 dark:border-slate-700/50 text-center transition-colors">
-                    <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-1">Pending</p>
-                    <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">{pendingPunches}</p>
-                  </div>
-                  <div className="bg-slate-50 dark:bg-[#2a374a]/50 p-4 rounded-xl border border-slate-100 dark:border-slate-700/50 text-center transition-colors">
-                    <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-1">Approved</p>
-                    <p className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">{approvedPunches}</p>
-                  </div>
-                  <div className="bg-slate-50 dark:bg-[#2a374a]/50 p-4 rounded-xl border border-slate-100 dark:border-slate-700/50 text-center transition-colors">
-                    <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-1">Rejected</p>
-                    <p className="text-2xl font-bold text-red-500 dark:text-red-400">{rejectedPunches}</p>
-                  </div>
+              <div className="grid grid-cols-3 gap-4">
+                <div className="bg-slate-50 dark:bg-[#2a374a]/50 p-4 rounded-xl border border-slate-100 dark:border-slate-700/50 text-center transition-colors">
+                  <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-1">Pending</p>
+                  <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">{pendingPunches}</p>
                 </div>
+                <div className="bg-slate-50 dark:bg-[#2a374a]/50 p-4 rounded-xl border border-slate-100 dark:border-slate-700/50 text-center transition-colors">
+                  <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-1">Approved</p>
+                  <p className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">{approvedPunches}</p>
+                </div>
+                <div className="bg-slate-50 dark:bg-[#2a374a]/50 p-4 rounded-xl border border-slate-100 dark:border-slate-700/50 text-center transition-colors">
+                  <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-1">Rejected</p>
+                  <p className="text-2xl font-bold text-red-500 dark:text-red-400">{rejectedPunches}</p>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -731,26 +728,26 @@ const AdminDashboard: React.FC = () => {
                   <h2 className="text-[17px] font-bold text-slate-800 dark:text-white">Recent Punching</h2>
                 </div>
                 <div className="hidden sm:flex items-center gap-2 text-[11px] font-bold">
-                  <button 
-                    onClick={() => setRecentPunchingFilter('All')} 
+                  <button
+                    onClick={() => setRecentPunchingFilter('All')}
                     className={`px-3 py-1.5 rounded-lg border transition-colors ${recentPunchingFilter === 'All' ? 'bg-slate-200 dark:bg-slate-700 border-slate-300 dark:border-slate-600 text-slate-800 dark:text-white' : 'bg-slate-50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700/50'}`}
                   >
                     All: {recentPunchesData.length}
                   </button>
-                  <button 
-                    onClick={() => setRecentPunchingFilter('Present')} 
+                  <button
+                    onClick={() => setRecentPunchingFilter('Present')}
                     className={`px-3 py-1.5 rounded-lg border transition-colors ${recentPunchingFilter === 'Present' ? 'bg-emerald-100 dark:bg-emerald-900/40 border-emerald-300 dark:border-emerald-700 text-emerald-700 dark:text-emerald-300' : 'bg-slate-50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/20'}`}
                   >
                     Present: {recentPresentCount}
                   </button>
-                  <button 
-                    onClick={() => setRecentPunchingFilter('Absent')} 
+                  <button
+                    onClick={() => setRecentPunchingFilter('Absent')}
                     className={`px-3 py-1.5 rounded-lg border transition-colors ${recentPunchingFilter === 'Absent' ? 'bg-red-100 dark:bg-red-900/40 border-red-300 dark:border-red-700 text-red-700 dark:text-red-300' : 'bg-slate-50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20'}`}
                   >
                     Absent: {recentAbsentCount}
                   </button>
-                  <button 
-                    onClick={() => setRecentPunchingFilter('Leave')} 
+                  <button
+                    onClick={() => setRecentPunchingFilter('Leave')}
                     className={`px-3 py-1.5 rounded-lg border transition-colors ${recentPunchingFilter === 'Leave' ? 'bg-amber-100 dark:bg-amber-900/40 border-amber-300 dark:border-amber-700 text-amber-700 dark:text-amber-300' : 'bg-slate-50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700 text-amber-600 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-900/20'}`}
                   >
                     Leave: {recentLeaveCount}
