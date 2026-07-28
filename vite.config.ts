@@ -5,6 +5,7 @@ import { VitePWA } from 'vite-plugin-pwa';
 // https://vite.dev/config/
 export default defineConfig({
   server: {
+    allowedHosts: ['kg-web-attendance.onrender.com'],
     proxy: {
       '/kgapi-login': {
         target: 'http://192.168.100.22:8080',
