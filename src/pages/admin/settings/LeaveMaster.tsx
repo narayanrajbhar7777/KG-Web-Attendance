@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Search, Save, Check } from 'lucide-react';
 import Loader from '../../../components/Loader';
-import { fetchLeaveTypes, fetchEmployeeLeaves, addEmployeeLeave, updateEmployeeLeave, deleteEmployeeLeave, fetchEmployeeDetails } from '../../../api';
+import { fetchLeaveTypes, fetchEmployeeLeaves, addEmployeeLeave, updateEmployeeLeave, deleteEmployeeLeave } from '../../../api';
 import type { User, LeaveType, EmployeeLeave } from '../../../types';
 import { useAuth } from '../../../context/AuthContext';
 

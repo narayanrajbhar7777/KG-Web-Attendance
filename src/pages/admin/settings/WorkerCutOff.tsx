@@ -319,7 +319,6 @@ const WorkerCutOff: React.FC = () => {
   const companies = useMemo(() => Array.from(new Set(cutoffList.map(c => c.e_comp).filter(Boolean))), [cutoffList]);
   const branches = useMemo(() => Array.from(new Set(cutoffList.map(c => c.brname).filter(Boolean))), [cutoffList]);
   const managers = useMemo(() => Array.from(new Set(cutoffList.map(c => c.mgrname).filter(Boolean))), [cutoffList]);
-  const workers = useMemo(() => Array.from(new Set(cutoffList.map(c => c.worker_code).filter(Boolean))), [cutoffList]);
 
   const filteredData = useMemo(() => {
     return cutoffList.filter(item => {
