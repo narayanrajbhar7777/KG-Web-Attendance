@@ -245,7 +245,7 @@ const AttendanceDetails: React.FC = () => {
                     key: 'overtime', label: ' Over Time', render: (item) => {
                       const { overtime } = calculateTime(item.record?.checkIn, item.record?.checkOut);
                       return <span className="font-medium text-emerald-600 dark:text-emerald-400 text-[13px]">
-                        {overtime !== '-' ? overtime.replace('h', 'h ').replace('m', 'm') : '-'}
+                        {overtime !== '-' ? overtime.replace('h', 'h ').replace('MP', 'MP') : '-'}
                       </span>
                     }
                   },

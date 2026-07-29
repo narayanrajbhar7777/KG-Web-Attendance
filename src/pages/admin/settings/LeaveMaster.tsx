@@ -1,16 +1,19 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Search, Save, Check } from 'lucide-react';
 import Loader from '../../../components/Loader';
-import { fetchUsers, fetchLeaveTypes, fetchEmployeeLeaves, addEmployeeLeave, updateEmployeeLeave, deleteEmployeeLeave } from '../../../api';
+import { fetchLeaveTypes, fetchEmployeeLeaves, addEmployeeLeave, updateEmployeeLeave, deleteEmployeeLeave, fetchEmployeeDetails } from '../../../api';
 import type { User, LeaveType, EmployeeLeave } from '../../../types';
+import { useAuth } from '../../../context/AuthContext';
 
 const LeaveMaster: React.FC = () => {
-  const [users, setUsers] = useState<User[]>([]);
+  const { user } = useAuth();
+
   const [leaveTypes, setLeaveTypes] = useState<LeaveType[]>([]);
   const [employeeLeaves, setEmployeeLeaves] = useState<EmployeeLeave[]>([]);
   const [loading, setLoading] = useState(true);
 
   const [searchTerm, setSearchTerm] = useState('');
+  const [users, setUsers] = useState<User[]>([]);
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
 
   // Map of leaveTypeId -> { enabled, days }
@@ -19,14 +22,27 @@ const LeaveMaster: React.FC = () => {
   const loadData = async () => {
     try {
       setLoading(true);
-      const [usersData, typesData, leavesData] = await Promise.all([
-        fetchUsers(),
+      const [typesData, leavesData] = await Promise.all([
         fetchLeaveTypes(),
         fetchEmployeeLeaves()
       ]);
-      setUsers((usersData || []).filter((u: User) => u.role === 'Employee'));
       setLeaveTypes((typesData || []).filter((lt: LeaveType) => lt.isActive));
       setEmployeeLeaves(leavesData || []);
+
+      if (user && user.employee_list) {
+        const mappedUsers: User[] = user.employee_list.map((emp: any) => ({
+          id: emp.e_code || '',
+          code: emp.e_code || '',
+          name: emp.e_name || '',
+          role: 'Employee',
+          designation: emp.e_desg || 'NA',
+          manager_code: emp.s_mgrcd || null,
+          manager_name: emp.mgrname || null
+        }));
+        setUsers(mappedUsers);
+      } else {
+        setUsers([]);
+      }
     } catch (err) {
       console.error(err);
     } finally {
@@ -38,12 +54,16 @@ const LeaveMaster: React.FC = () => {
     loadData();
   }, []);
 
-  const filteredUsers = useMemo(() => {
-    return users.filter(u =>
-      u.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      u.code.toLowerCase().includes(searchTerm.toLowerCase())
-    );
-  }, [users, searchTerm]);
+  const handleSearch = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    // Local filtering is handled dynamically by filteredUsers below.
+  };
+
+  const filteredUsers = users.filter(u =>
+    !searchTerm ||
+    u.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    u.code.toLowerCase().includes(searchTerm.toLowerCase())
+  );
 
   // When a user is selected, populate the form
   useEffect(() => {
@@ -108,7 +128,6 @@ const LeaveMaster: React.FC = () => {
   }
 
   const selectedUser = users.find(u => u.id === selectedUserId);
-
   return (
     <div className="space-y-6 animate-fade-in-up">
       <div>
@@ -120,16 +139,24 @@ const LeaveMaster: React.FC = () => {
         {/* Left Column: User List */}
         <div className="lg:col-span-1 bg-white dark:bg-[#1e293b] rounded-xl shadow-sm border border-slate-200 dark:border-slate-700/60 overflow-hidden flex flex-col h-[calc(100vh-12rem)]">
           <div className="p-4 border-b border-slate-200 dark:border-slate-700/60 bg-slate-50 dark:bg-[#182333]/50">
-            <div className="relative">
-              <Search className="w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-              <input
-                type="text"
-                placeholder="Search employees..."
-                value={searchTerm}
-                onChange={e => setSearchTerm(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 bg-white dark:bg-[#0b1120] border border-slate-300 dark:border-slate-600 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:text-white transition-colors"
-              />
-            </div>
+            <form onSubmit={handleSearch} className="relative flex gap-2">
+              <div className="relative flex-1">
+                <Search className="w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                <input
+                  type="text"
+                  placeholder="Enter Emp ID (e.g., FP16867)"
+                  value={searchTerm}
+                  onChange={e => setSearchTerm(e.target.value)}
+                  className="w-full pl-10 pr-4 py-2 bg-white dark:bg-[#0b1120] border border-slate-300 dark:border-slate-600 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:text-white transition-colors"
+                />
+              </div>
+              {/* <button
+                type="submit"
+                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition-colors whitespace-nowrap shadow-sm"
+              >
+                Search
+              </button> */}
+            </form>
           </div>
 
           <div className="flex-1 overflow-y-auto custom-scrollbar p-2 space-y-1">
@@ -138,8 +165,8 @@ const LeaveMaster: React.FC = () => {
                 key={user.id}
                 onClick={() => setSelectedUserId(user.id)}
                 className={`w-full text-left p-3 rounded-lg flex items-center gap-3 transition-colors ${selectedUserId === user.id
-                    ? 'bg-blue-50 dark:bg-blue-500/10 border border-blue-200 dark:border-blue-500/30'
-                    : 'hover:bg-slate-50 dark:hover:bg-slate-800 border border-transparent'
+                  ? 'bg-blue-50 dark:bg-blue-500/10 border border-blue-200 dark:border-blue-500/30'
+                  : 'hover:bg-slate-50 dark:hover:bg-slate-800 border border-transparent'
                   }`}
               >
                 <div className="w-10 h-10 rounded-full bg-slate-200 dark:bg-slate-700 flex items-center justify-center font-bold text-slate-600 dark:text-slate-300 shrink-0">
@@ -164,7 +191,7 @@ const LeaveMaster: React.FC = () => {
               <div className="p-6 border-b border-slate-200 dark:border-slate-700/60 flex items-center justify-between bg-slate-50 dark:bg-[#182333]/50">
                 <div className="flex items-center gap-4">
                   <div className="w-12 h-12 rounded-full bg-blue-100 dark:bg-blue-900/40 flex items-center justify-center font-bold text-xl text-blue-600 dark:text-blue-400">
-                    {selectedUser.name.charAt(0)}
+                    {selectedUser?.name.charAt(0)}
                   </div>
                   <div>
                     <h3 className="text-xl font-bold text-slate-800 dark:text-white">{selectedUser.name}</h3>
@@ -189,35 +216,49 @@ const LeaveMaster: React.FC = () => {
                     No active leave types found. Please add them in the Leave Policy section.
                   </div>
                 ) : (
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    {leaveTypes.map(lt => {
-                      const alloc = allocationForm[lt.id] || { enabled: false, days: 0 };
-                      return (
-                        <div key={lt.id} className="p-4 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-[#182333]/30">
-                          <div className="flex items-center gap-3 mb-3">
-                            <label className="relative inline-flex items-center cursor-pointer">
-                              <input
-                                type="checkbox"
-                                className="sr-only peer"
-                                checked={alloc.enabled}
-                                onChange={e => setAllocationForm({ ...allocationForm, [lt.id]: { ...alloc, enabled: e.target.checked } })}
-                              />
-                              <div className="w-9 h-5 bg-slate-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all dark:border-gray-600 peer-checked:bg-blue-600"></div>
-                              <span className="ml-3 text-sm font-semibold text-slate-700 dark:text-slate-300">{lt.name} ({lt.code})</span>
-                            </label>
-                          </div>
-                          <p className="text-xs text-slate-500 dark:text-slate-400 mb-2">Total days allocated per year</p>
-                          <input
-                            type="number"
-                            min="0"
-                            disabled={!alloc.enabled}
-                            value={alloc.days}
-                            onChange={e => setAllocationForm({ ...allocationForm, [lt.id]: { ...alloc, days: parseInt(e.target.value) || 0 } })}
-                            className={`w-full px-4 py-2 bg-white dark:bg-[#0b1120] border border-slate-300 dark:border-slate-600 rounded-lg text-slate-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 transition-colors ${!alloc.enabled ? 'opacity-50 cursor-not-allowed bg-slate-100 dark:bg-slate-800' : ''}`}
-                          />
-                        </div>
-                      )
-                    })}
+                  <div className="overflow-x-auto rounded-lg border border-slate-200 dark:border-slate-700">
+                    <table className="w-full text-left text-sm text-slate-600 dark:text-slate-400">
+                      <thead className="bg-slate-50 dark:bg-slate-800/80 text-xs uppercase text-slate-500 dark:text-slate-400">
+                        <tr>
+                          <th className="px-4 py-3 font-medium">Leave Type</th>
+                          <th className="px-4 py-3 font-medium w-32">Days</th>
+                          <th className="px-4 py-3 font-medium w-24">Access</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-200 dark:divide-slate-700">
+                        {leaveTypes.map(lt => {
+                          const alloc = allocationForm[lt.id] || { enabled: false, days: 0 };
+                          return (
+                            <tr key={lt.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors bg-white dark:bg-[#1e293b]">
+                              <td className="px-4 py-3 font-medium text-slate-800 dark:text-slate-200">
+                                {lt.name} ({lt.code})
+                              </td>
+                              <td className="px-4 py-3">
+                                <input
+                                  type="number"
+                                  min="0"
+                                  disabled={!alloc.enabled}
+                                  value={alloc.days}
+                                  onChange={e => setAllocationForm({ ...allocationForm, [lt.id]: { ...alloc, days: parseInt(e.target.value) || 0 } })}
+                                  className={`w-full px-3 py-1.5 bg-white dark:bg-[#0b1120] border border-slate-300 dark:border-slate-600 rounded-md text-slate-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 transition-colors ${!alloc.enabled ? 'opacity-50 cursor-not-allowed bg-slate-100 dark:bg-slate-800' : ''}`}
+                                />
+                              </td>
+                              <td className="px-4 py-3">
+                                <label className="relative inline-flex items-center cursor-pointer">
+                                  <input
+                                    type="checkbox"
+                                    className="sr-only peer"
+                                    checked={alloc.enabled}
+                                    onChange={e => setAllocationForm({ ...allocationForm, [lt.id]: { ...alloc, enabled: e.target.checked } })}
+                                  />
+                                  <div className="w-9 h-5 bg-slate-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all dark:border-gray-600 peer-checked:bg-blue-600"></div>
+                                </label>
+                              </td>
+                            </tr>
+                          )
+                        })}
+                      </tbody>
+                    </table>
                   </div>
                 )}
               </div>

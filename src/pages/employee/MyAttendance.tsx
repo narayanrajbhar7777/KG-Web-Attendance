@@ -90,7 +90,7 @@ const MyAttendance: React.FC = () => {
         }).map((r: any) => {
           let finalStatus = r.status;
 
-          if (['P', 'P/MP', 'HD', 'M', 'In'].includes(finalStatus)) {
+          if (['P', 'P/MP', 'HD', 'MP', 'In'].includes(finalStatus)) {
             totalWorkingDays += 1;
             totalWorkingMs += r.diffMs;
           } else if (finalStatus === 'A') {

@@ -633,3 +633,152 @@ export const deleteEmployeeLeave = async (id: string) => {
     throw err;
   }
 };
+
+// Cut Off Master APIs
+export const fetchDeptMgrCutoff = async () => {
+  try {
+    const res = await fetch(`http://172.16.34.22:8080/kg_web_app/KGAPI/RptComProd/FetchEmpDeptMgrCutoffAuto`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({})
+    });
+    const data = await res.json();
+    return data.DeptMgrCutoffList || [];
+  } catch (err) {
+    console.error('Error fetching Cut Off Master data:', err);
+    throw err;
+  }
+};
+
+export const updateDeptMgrCutoff = async (cutoffData: any) => {
+  try {
+    const res = await fetch(`http://172.16.34.22:8080/kg_web_app/KGAPI/RptComProd/EMPUpdateDeptMgrCutoff`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ DeptMgrCutoffList: [cutoffData] })
+    });
+    return await res.json();
+  } catch (err) {
+    console.error('Error updating Cut Off Master data:', err);
+    throw err;
+  }
+};
+
+// Manager Cut Off APIs
+export const fetchManagerCutoff = async (payload = {}) => {
+  try {
+    const res = await fetch(`http://172.16.34.22:8080/kg_web_app/KGAPI/RptComProd/FetchEmpDeptMgrCutoff`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    const data = await res.json();
+    return data.DeptMgrCutoffList || [];
+  } catch (err) {
+    console.error('Error fetching Manager Cut Off data:', err);
+    throw err;
+  }
+};
+
+export const insertManagerCutoff = async (cutoffData: any) => {
+  try {
+    const res = await fetch(`http://172.16.34.22:8080/kg_web_app/KGAPI/RptComProd/EMPInsertDeptMgrCutoff`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ DeptMgrCutoffList: [cutoffData] })
+    });
+    return await res.json();
+  } catch (err) {
+    console.error('Error inserting Manager Cut Off data:', err);
+    throw err;
+  }
+};
+
+export const updateManagerCutoff = async (cutoffData: any) => {
+  try {
+    const res = await fetch(`http://172.16.34.22:8080/kg_web_app/KGAPI/RptComProd/EMPUpdateDeptMgrCutoff`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ DeptMgrCutoffList: [cutoffData] })
+    });
+    return await res.json();
+  } catch (err) {
+    console.error('Error updating Manager Cut Off data:', err);
+    throw err;
+  }
+};
+
+export const deleteManagerCutoff = async (cutoffData: any) => {
+  try {
+    const res = await fetch(`http://172.16.34.22:8080/kg_web_app/KGAPI/RptComProd/EMPDeleteDeptMgrCutoff`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ DeptMgrCutoffList: [cutoffData] })
+    });
+    return await res.json();
+  } catch (err) {
+    console.error('Error deleting Manager Cut Off data:', err);
+    throw err;
+  }
+};
+
+// Worker Cut Off APIs
+export const fetchWorkerCutoff = async (payload = {}) => {
+  try {
+    const res = await fetch(`http://172.16.34.22:8080/kg_web_app/KGAPI/RptComProd/FetchEmpMgrWkrExtend`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    const data = await res.json();
+    return data.MgrWkrExtendList || [];
+  } catch (err) {
+    console.error('Error fetching Worker Cut Off data:', err);
+    throw err;
+  }
+};
+
+export const insertWorkerCutoff = async (cutoffData: any) => {
+  try {
+    const res = await fetch(`http://172.16.34.22:8080/kg_web_app/KGAPI/RptComProd/EMPInsertMgrWkrExtend`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ MgrWkrExtendList: [cutoffData] })
+    });
+    return await res.json();
+  } catch (err) {
+    console.error('Error inserting Worker Cut Off data:', err);
+    throw err;
+  }
+};
+
+export const updateWorkerCutoff = async (cutoffData: any) => {
+  try {
+    const res = await fetch(`http://172.16.34.22:8080/kg_web_app/KGAPI/RptComProd/EMPUpdateMgrWkrExtend`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ MgrWkrExtendList: [cutoffData] })
+    });
+    return await res.json();
+  } catch (err) {
+    console.error('Error updating Worker Cut Off data:', err);
+    throw err;
+  }
+};
+
+export const deleteWorkerCutoff = async (cutoffData: any) => {
+  try {
+    const res = await fetch(`http://172.16.34.22:8080/kg_web_app/KGAPI/RptComProd/EMPDeleteMgrWkrExtend`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ MgrWkrExtendList: [cutoffData] })
+    });
+    return await res.json();
+  } catch (err) {
+    console.error('Error deleting Worker Cut Off data:', err);
+    throw err;
+  }
+};
+
+
+

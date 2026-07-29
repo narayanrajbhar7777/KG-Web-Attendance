@@ -5,8 +5,11 @@ import { AuthProvider } from './context/AuthContext';
 import { AppProvider } from './context/AppContext';
 import Layout from './components/Layout';
 import Loader from './components/Loader';
+import CutOffAuto from './pages/admin/settings/CutOffAuto';
 const LoginPage = React.lazy(() => import('./pages/auth/LoginPage'));
 const AdminDashboard = React.lazy(() => import('./pages/admin/AdminDashboard'));
+const ManagerCutOff = React.lazy(() => import('./pages/admin/settings/ManagerCutOff'));
+const WorkerCutOff = React.lazy(() => import('./pages/admin/settings/WorkerCutOff'));
 const AdminMaster = React.lazy(() => import('./pages/admin/settings/AdminMaster'));
 const AttendancePolicy = React.lazy(() => import('./pages/admin/settings/AttendancePolicy'));
 const AttendanceSummary = React.lazy(() => import('./pages/admin/AttendanceSummary'));
@@ -32,35 +35,38 @@ function App() {
     <>
       <Toaster position="top-right" />
       <AuthProvider>
-      <AppProvider>
-        <BrowserRouter>
-          <React.Suspense fallback={<LoadingFallback />}>
-            <Routes>
-              <Route path="/" element={<LoginPage />} />
+        <AppProvider>
+          <BrowserRouter>
+            <React.Suspense fallback={<LoadingFallback />}>
+              <Routes>
+                <Route path="/" element={<LoginPage />} />
 
-              <Route element={<Layout />}>
-                <Route path="/admin" element={<AdminDashboard />} />
-                <Route path="/admin/master" element={<AdminMaster />} />
-                <Route path="/admin/policy" element={<AttendancePolicy />} />
-                <Route path="/admin/summary" element={<AttendanceSummary />} />
-                <Route path="/admin/details" element={<AttendanceDetails />} />
-                <Route path="/admin/leave-policy" element={<LeavePolicy />} />
-                <Route path="/admin/leave-master" element={<LeaveMaster />} />
-                <Route path="/admin/leave-requests-report" element={<LeaveRequestsReportPage />} />
-                <Route path="/admin/missing-punch-report" element={<MissingPunchReportPage />} />
-                <Route path="/settings/email-configuration" element={<EmailConfiguration />} />
+                <Route element={<Layout />}>
+                  <Route path="/admin" element={<AdminDashboard />} />
+                  <Route path="/admin/master" element={<AdminMaster />} />
+                  <Route path="/admin/policy" element={<AttendancePolicy />} />
+                  <Route path="/admin/summary" element={<AttendanceSummary />} />
+                  <Route path="/admin/details" element={<AttendanceDetails />} />
+                  <Route path="/admin/leave-policy" element={<LeavePolicy />} />
+                  <Route path="/admin/leave-master" element={<LeaveMaster />} />
+                  <Route path="/admin/leave-requests-report" element={<LeaveRequestsReportPage />} />
+                  <Route path="/admin/missing-punch-report" element={<MissingPunchReportPage />} />
+                  <Route path="/settings/email-configuration" element={<EmailConfiguration />} />
+                  <Route path="/admin/settings/cut-off-master" element={<CutOffAuto />} />
+                  <Route path="/admin/settings/manager-cut-off" element={<ManagerCutOff />} />
+                  <Route path="/admin/settings/worker-cut-off" element={<WorkerCutOff />} />
 
-                <Route path="/employee" element={<EmployeeDashboard />} />
-                <Route path="/employee/attendance" element={<MyAttendance />} />
-                <Route path="/employee/requests" element={<EmployeeRequests />} />
-              </Route>
+                  <Route path="/employee" element={<EmployeeDashboard />} />
+                  <Route path="/employee/attendance" element={<MyAttendance />} />
+                  <Route path="/employee/requests" element={<EmployeeRequests />} />
+                </Route>
 
-              <Route path="*" element={<Navigate to="/" replace />} />
-            </Routes>
-          </React.Suspense>
-        </BrowserRouter>
-      </AppProvider>
-    </AuthProvider>
+                <Route path="*" element={<Navigate to="/" replace />} />
+              </Routes>
+            </React.Suspense>
+          </BrowserRouter>
+        </AppProvider>
+      </AuthProvider>
     </>
   );
 }

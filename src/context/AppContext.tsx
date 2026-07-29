@@ -66,7 +66,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const loadData = async () => {
       try {
         const [s, mConfig] = await Promise.all([
-          user.role === 'Admin' ? fetchSettings(user.id) : Promise.resolve(null),
+          fetchSettings(user.id),
           fetchMasterConfig()
         ]);
         if (s && s.customColors) {

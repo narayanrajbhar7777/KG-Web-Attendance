@@ -42,7 +42,7 @@ export const transformAttendanceRowsForExport = (employees: any[], attendance: a
 
       if (['P', 'P/MP', 'PH'].includes(status)) totalPresent++;
       if (['A', 'L'].includes(status)) totalAbsent++;
-      if (status === 'M') totalMissedPunches++;
+      if (status === 'MP') totalMissedPunches++;
       if (status === 'PH') totalPresentOnHoliday++;
       const { totalMins } = calculateTimeNum(record?.checkIn, record?.checkOut);
       totalActualMins += totalMins;
@@ -123,7 +123,7 @@ export const exportAttendanceToExcel = async (exportObj: { data: any[], headers:
             case 'P': case 'In': bgColor = 'FF16A34A'; textColor = 'FFFFFFFF'; break;
             case 'A': bgColor = 'FFDC2626'; textColor = 'FFFFFFFF'; break;
             case 'WO': bgColor = 'FF3B82F6'; textColor = 'FFFFFFFF'; break;
-            case 'M': case 'P/MP': bgColor = 'FFCA8A04'; textColor = 'FFFFFFFF'; break;
+            case 'MP': case 'P/MP': bgColor = 'FFCA8A04'; textColor = 'FFFFFFFF'; break;
             case 'PH': bgColor = 'FF10B981'; textColor = 'FFFFFFFF'; break;
             case 'HD': bgColor = 'FF94A3B8'; textColor = 'FFFFFFFF'; break;
             case 'H': bgColor = 'FF9333EA'; textColor = 'FFFFFFFF'; break;
@@ -208,7 +208,7 @@ export const exportAttendanceToPdf = async (exportObj: { data: any[], headers: s
               case 'P': case 'In': color = [22, 163, 74]; break;
               case 'A': color = [220, 38, 38]; break;
               case 'WO': color = [59, 130, 246]; break;
-              case 'M': case 'P/MP': color = [202, 138, 4]; break;
+              case 'MP': case 'P/MP': color = [202, 138, 4]; break;
               case 'PH': color = [16, 185, 129]; break;
               case 'HD': color = [148, 163, 184]; break;
               case 'H': color = [147, 51, 234]; break;

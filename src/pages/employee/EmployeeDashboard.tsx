@@ -7,7 +7,7 @@ import Loader from '../../components/Loader';
 import { format, startOfMonth, getDay, getDaysInMonth, addMonths, subMonths, isAfter, startOfDay, isSameMonth } from 'date-fns';
 import { Calendar as CalendarIcon, Send, ChevronLeft, ChevronRight, ExternalLink } from 'lucide-react';
 import { ATTENDANCE_STATUS_MAP, DEFAULT_ATTENDANCE_COLORS } from '../../constants';
-import { fetchEmployeeDataExternal } from '../../api';
+import { fetchEmployeeDataExternal, fetchLeaveTypes } from '../../api';
 import { normalizeAttendanceStatus, calculateTimeNum } from '../../utils/attendanceUtils';
 
 const EmployeeDashboard: React.FC = () => {
@@ -27,8 +27,20 @@ const EmployeeDashboard: React.FC = () => {
   const [reason, setReason] = useState('');
   const [inTime, setInTime] = useState('');
   const [outTime, setOutTime] = useState('');
-  const [leaveType, setLeaveType] = useState<string>('PL');
+  const [leaveType, setLeaveType] = useState<string>('');
   const [managerId, setManagerId] = useState<string>('');
+  const [leaveTypes, setLeaveTypes] = useState<any[]>([]);
+
+  useEffect(() => {
+    const loadLeaveTypes = async () => {
+      const types = await fetchLeaveTypes();
+      setLeaveTypes(types);
+      if (types.length > 0) {
+        setLeaveType(types[0].code);
+      }
+    };
+    loadLeaveTypes();
+  }, []);
 
   const fetchDashboardData = async () => {
     if (!user) return;
@@ -183,7 +195,7 @@ const EmployeeDashboard: React.FC = () => {
   const weeklyOffs = pastAndPresentRecords.filter((r: any) => r.status === 'WO').length;
   const halfDays = pastAndPresentRecords.filter((r: any) => r.status === 'HD').length;
   const absents = pastAndPresentRecords.filter((r: any) => r.status === 'A').length;
-  const misspunchCount = pastAndPresentRecords.filter((r: any) => r.status === 'M' || r.status === 'P/MP').length;
+  const misspunchCount = pastAndPresentRecords.filter((r: any) => r.status === 'MP' || r.status === 'P/MP').length;
 
   let totalHours = 0;
   let presentDaysCount = 0;
@@ -307,7 +319,7 @@ const EmployeeDashboard: React.FC = () => {
                     else if (status === 'HD') bgColor = 'bg-blue-100 dark:bg-blue-500/20 text-blue-700 dark:text-blue-400 font-bold border border-blue-200 dark:border-blue-500/20';
                     else if (status === 'PH') bgColor = 'bg-emerald-600 dark:bg-emerald-700/60 text-white dark:text-emerald-100 font-bold border border-emerald-700 dark:border-emerald-600';
                     else if (status === 'H') bgColor = 'bg-fuchsia-100 dark:bg-fuchsia-500/20 text-fuchsia-700 dark:text-fuchsia-400 font-bold border border-fuchsia-200 dark:border-fuchsia-500/20';
-                    else if (status === 'M' || status === 'P/MP') bgColor = 'bg-gradient-to-br from-green-200 to-red-200 dark:from-green-900/60 dark:to-red-900/60 text-slate-800 dark:text-slate-100 font-bold border border-slate-300 dark:border-slate-600';
+                    else if (status === 'MP' || status === 'P/MP') bgColor = 'bg-gradient-to-br from-green-200 to-red-200 dark:from-green-900/60 dark:to-red-900/60 text-slate-800 dark:text-slate-100 font-bold border border-slate-300 dark:border-slate-600';
                     else if (status === 'In') bgColor = 'bg-cyan-100 dark:bg-cyan-500/20 text-cyan-700 dark:text-cyan-400 font-bold border border-cyan-200 dark:border-cyan-500/20';
                   }
 
@@ -417,12 +429,11 @@ const EmployeeDashboard: React.FC = () => {
                       onChange={e => setLeaveType(e.target.value)}
                       className="w-full px-3 py-2 bg-white dark:bg-[#0b1120] border border-slate-300 dark:border-slate-600 rounded-lg text-slate-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 transition-colors"
                     >
-                      <option value="PL">Privilege Leave (PL)</option>
-                      <option value="SL">Sick Leave (SL)</option>
-                      <option value="CL">Casual Leave (CL)</option>
-                      <option value="CS">Compensatory Off (CS)</option>
-                      <option value="Full">Full Day</option>
-                      <option value="Half">Half Day</option>
+                      {leaveTypes.map((type) => (
+                        <option key={type.id || type.code} value={type.code}>
+                          {type.name}
+                        </option>
+                      ))}
                     </select>
                   </div>
                 )}

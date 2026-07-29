@@ -176,7 +176,7 @@ const AdminDashboard: React.FC = () => {
   const pagedProcessedLeaveRequests = processedLeaveRequests.slice(leaveReportPage * itemsPerPage, (leaveReportPage + 1) * itemsPerPage);
   const pagedprocessedMissedPunchRequests = processedMissedPunchRequests.slice(punchReportPage * itemsPerPage, (punchReportPage + 1) * itemsPerPage);
 
-  const recentPresentCount = recentPunchesData.filter(r => ['P', 'P/MP', 'HD', 'M', 'In', 'PH'].includes(r.status)).length;
+  const recentPresentCount = recentPunchesData.filter(r => ['P', 'P/MP', 'HD', 'MP', 'In', 'PH'].includes(r.status)).length;
   const recentAbsentCount = recentPunchesData.filter(r => r.status === 'A').length;
   const recentLeaveCount = recentPunchesData.filter(r => r.status === 'L').length;
 
@@ -709,7 +709,7 @@ const AdminDashboard: React.FC = () => {
         <div className="h-[450px]">
           <AttendanceTable
             data={recentPunchesData.filter(r => {
-              if (recentPunchingFilter === 'Present') return ['P', 'P/MP', 'HD', 'M', 'In', 'PH'].includes(r.status);
+              if (recentPunchingFilter === 'Present') return ['P', 'P/MP', 'HD', 'MP', 'In', 'PH'].includes(r.status);
               if (recentPunchingFilter === 'Absent') return r.status === 'A';
               if (recentPunchingFilter === 'Leave') return r.status === 'L';
               return true; // 'All'
