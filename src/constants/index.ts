@@ -9,12 +9,15 @@ export const DEFAULT_OUT_TIME = '18:00';
 export const DEFAULT_BUFFER_TIME = '15';
 
 export const REQUEST_STATUS = {
+  ALL: { code: 'All', value: 'All' },
   PENDING: { code: 'Pending', value: 'Pending' },
   APPROVED: { code: 'Approved', value: 'Approved' },
   REJECTED: { code: 'Rejected', value: 'Rejected' },
 }
 
 export const REQUEST_STATUS_CODES = Object.values(REQUEST_STATUS);
+
+export const DATE_FORMAT = 'dd-MMM-yyyy';
 
 export const DAYS = {
   SD: { label: 'S', name: 'Sunday', value: 0 },
@@ -45,8 +48,8 @@ export const ATTENDANCE_BASE_MAP = {
   LEAVE: { code: 'L', label: 'Leave', color: '#6f42c1' },
   PRESENT_MISSPUNCH: { code: 'P/MP', label: 'Present/Missed Punch', color: '#217da1ff' },
   MISSPUNCH: { code: 'M', label: 'Missed Punch', value: 'Misspunch', color: '#f8065fff' },
-  IN: { code: 'In', label: 'In', color: '#00ff737c' },
-  ABSENT: { code: 'A', label: 'Absent', color: '#b36308ff' },
+  IN: { code: 'In', label: 'In', color: '#1aa559' },
+  ABSENT: { code: 'A', label: 'Absent', color: '#dc2626' },
   HALF_DAY: { code: 'HD', label: 'Half Day', color: '#3b82f6' },
   PRESENT_ON_HOLIDAY: { code: 'PH', label: 'Present on Holiday', color: '#059669' },
   EARNED_LEAVE: { code: 'EL', label: 'Earned Leave', color: '' },

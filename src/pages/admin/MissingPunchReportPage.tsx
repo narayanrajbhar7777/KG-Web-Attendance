@@ -171,6 +171,14 @@ export default function MissingPunchReportPage() {
   const currentItems = processedMissedPunchRequests.slice(indexOfFirstItem, indexOfLastItem);
   const totalPages = Math.ceil(processedMissedPunchRequests.length / itemsPerPage);
 
+  const baseMpRequests = processedRequestsList.filter((r: any) => r.type === ATTENDANCE_BASE_MAP.MISSPUNCH.label || r.type === ATTENDANCE_BASE_MAP.MISSPUNCH.value);
+  const counts: Record<string, number> = {
+    All: baseMpRequests.length,
+    [REQUEST_STATUS.PENDING.code]: baseMpRequests.filter((r: any) => r.status === REQUEST_STATUS.PENDING.code).length,
+    Approved: baseMpRequests.filter((r: any) => r.status === 'Approved').length,
+    Rejected: baseMpRequests.filter((r: any) => r.status === 'Rejected').length,
+  };
+
   return (
     <div className="flex flex-col h-[calc(100vh-100px)] animate-in fade-in slide-in-from-bottom-4 duration-500">
       <div className="flex flex-col flex-1 min-h-0 bg-white dark:bg-[#1e293b] rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700/60 overflow-hidden transition-colors duration-300">
@@ -184,15 +192,22 @@ export default function MissingPunchReportPage() {
 
           <div className="flex flex-wrap items-center gap-3">
             <div className="hidden md:flex bg-slate-100/50 dark:bg-[#0b1120] p-1 rounded-lg border border-slate-200/60 dark:border-slate-700/60 mr-2">
-              {(['All', REQUEST_STATUS.PENDING.code, 'Approved', 'Rejected'] as const).map(f => (
-                <button
-                  key={f}
-                  onClick={() => { setFilterStatus(f); setCurrentPage(0); }}
-                  className={`px-4 py-1.5 text-xs font-semibold rounded-md transition-all ${filterStatus === f ? 'bg-white dark:bg-[#1e293b] text-blue-600 dark:text-blue-400 shadow-sm ring-1 ring-slate-200 dark:ring-slate-700' : 'text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 hover:bg-slate-200/50 dark:hover:bg-slate-800/50'}`}
-                >
-                  {f}
-                </button>
-              ))}
+              {(['All', REQUEST_STATUS.PENDING.code, 'Approved', 'Rejected'] as const).map(f => {
+                let activeColor = 'bg-slate-200 text-slate-800 border-slate-300 dark:bg-slate-700 dark:text-white dark:border-slate-600';
+                if (f === 'Approved') activeColor = 'bg-emerald-100 text-emerald-700 border-emerald-300 dark:bg-emerald-900/40 dark:text-emerald-300 dark:border-emerald-700';
+                else if (f === 'Rejected') activeColor = 'bg-red-100 text-red-700 border-red-300 dark:bg-red-900/40 dark:text-red-300 dark:border-red-700';
+                else if (f === REQUEST_STATUS.PENDING.code) activeColor = 'bg-amber-100 text-amber-700 border-amber-300 dark:bg-amber-900/40 dark:text-amber-300 dark:border-amber-700';
+
+                return (
+                  <button
+                    key={f}
+                    onClick={() => { setFilterStatus(f); setCurrentPage(0); }}
+                    className={`min-w-[100px] h-[36px] flex items-center justify-center text-xs font-semibold rounded-md border transition-all outline-none ${filterStatus === f ? activeColor : 'bg-slate-50 text-slate-500 border-slate-200 hover:bg-slate-100 dark:bg-slate-800/50 dark:text-slate-400 dark:border-slate-700 dark:hover:bg-slate-700/50'}`}
+                  >
+                    {f}: {counts[f]}
+                  </button>
+                )
+              })}
             </div>
             {(!masterConfig?.missingPunchReport?.columns || Object.values(masterConfig.missingPunchReport.columns).some((c: any) => c.searchable !== false)) && (
               <div className="relative">
@@ -202,7 +217,7 @@ export default function MissingPunchReportPage() {
                   placeholder="Search Name or Code..."
                   value={punchReportSearch}
                   onChange={(e) => { setPunchReportSearch(e.target.value); setCurrentPage(0); }}
-                  className="pl-9 pr-4 py-1.5 bg-white dark:bg-[#0b1120] border border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none dark:text-white transition-all placeholder:text-slate-400"
+                  className="pl-9 pr-4 h-[36px] w-full bg-white dark:bg-[#0b1120] border border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none dark:text-white transition-all placeholder:text-slate-400"
                 />
               </div>
             )}
@@ -221,7 +236,7 @@ export default function MissingPunchReportPage() {
                     }}
                     isClearable={true}
                     placeholderText="Select Date Range"
-                    className="pl-9 pr-8 py-1.5 bg-white dark:bg-[#0b1120] border border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none dark:text-white dark:[color-scheme:dark] w-[240px]"
+                    className="pl-9 pr-8 h-[36px] bg-white dark:bg-[#0b1120] border border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none dark:text-white dark:[color-scheme:dark] w-[240px]"
                   />
                 </div>
               </div>

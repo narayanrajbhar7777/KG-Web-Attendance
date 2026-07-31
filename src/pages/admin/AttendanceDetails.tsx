@@ -2,7 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { useAppData } from '../../context/AppContext';
 import { format, getDaysInMonth, addMonths, subMonths, isAfter, startOfDay, startOfMonth } from 'date-fns';
-import { ChevronLeft, ChevronRight, Search, X, ExternalLink, Loader2, FileSpreadsheet, FileText } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Search, X, ExternalLink, Loader2, FileSpreadsheet, FileText, Calendar } from 'lucide-react';
+import DatePicker from 'react-datepicker';
+import 'react-datepicker/dist/react-datepicker.css';
 import toast from 'react-hot-toast';
 import { transformAttendanceRowsForExport, exportAttendanceToExcel, exportAttendanceToCsv, exportAttendanceToPdf } from '../../utils/exportUtils';
 import Loader from '../../components/Loader';
@@ -183,34 +185,33 @@ const AttendanceDetails: React.FC = () => {
                 </h3>
               </div>
               <div className="flex flex-wrap gap-4 text-xs font-medium text-slate-600 dark:text-slate-300">
-                <div className="bg-slate-100 dark:bg-slate-800/50 px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700">
+                <div className="min-w-[150px] text-center bg-slate-100 dark:bg-slate-800/50 px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700">
                   Present Day: <span className="font-bold text-blue-600 dark:text-blue-400">{totalPresent}</span>
                 </div>
-                <div className="bg-slate-100 dark:bg-slate-800/50 px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700">
+                <div className="min-w-[150px] text-center bg-slate-100 dark:bg-slate-800/50 px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700">
                   Absent Day: <span className="font-bold text-rose-600 dark:text-rose-400">{totalAbsent}</span>
                 </div>
-                <div className="bg-slate-100 dark:bg-slate-800/50 px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700">
+                <div className="min-w-[150px] text-center bg-slate-100 dark:bg-slate-800/50 px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700">
                   Working Hr: <span className="font-bold text-blue-600 dark:text-blue-400">{formatDur(totalWorkingMins)}</span>
                 </div>
-                <div className="bg-slate-100 dark:bg-slate-800/50 px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700">
+                <div className="min-w-[150px] text-center bg-slate-100 dark:bg-slate-800/50 px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700">
                   Over Time: <span className="font-bold text-emerald-600 dark:text-emerald-400">{formatDur(totalOtMins)}</span>
                 </div>
-                <div className="bg-slate-100 dark:bg-slate-800/50 px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700">
+                <div className="min-w-[150px] text-center bg-slate-100 dark:bg-slate-800/50 px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700">
                   Week Off: <span className="font-bold text-amber-600 dark:text-amber-400">{totalWeekOff}</span>
                 </div>
               </div>
             </div>
             <div className="flex items-center gap-4">
-              <div className="flex items-center gap-4 bg-[#f8fafb] dark:bg-[#111827] rounded-xl p-1 shadow-inner">
-                <button onClick={handlePrevMonth} className="p-2 text-slate-500 hover:text-blue-600 hover:bg-white dark:hover:bg-[#1e293b] rounded-lg transition-all"><ChevronLeft className="w-5 h-5" /></button>
-                <span className="font-bold text-slate-700 dark:text-slate-200 min-w-[120px] text-center">{format(currentDate, 'MMMM yyyy')}</span>
-                <button
-                  onClick={handleNextMonth}
-                  disabled={isCurrentMonth}
-                  className="p-2 text-slate-500 hover:text-blue-600 hover:bg-white dark:hover:bg-[#1e293b] rounded-lg transition-all disabled:opacity-30 disabled:cursor-not-allowed"
-                >
-                  <ChevronRight className="w-5 h-5" />
-                </button>
+              <div className="relative z-50">
+                <DatePicker
+                  selected={currentDate}
+                  onChange={(date) => { if (date) setCurrentDate(date); }}
+                  maxDate={new Date()}
+                  dateFormat="MMMM yyyy"
+                  showMonthYearPicker
+                  className="px-3 h-[36px] bg-slate-100 hover:bg-slate-200 dark:bg-[#0b1120] border border-slate-200 dark:border-slate-700 rounded-lg text-[13px] font-semibold focus:ring-2 focus:ring-blue-500 outline-none dark:text-white dark:[color-scheme:dark] w-[150px] text-slate-700 cursor-pointer text-center transition-colors"
+                />
               </div>
               <button
                 onClick={() => setSelectedEmployee(null)}
@@ -280,14 +281,15 @@ const AttendanceDetails: React.FC = () => {
       )}
       <div className="bg-white dark:bg-slate-800 shadow-sm rounded-xl border border-slate-200 dark:border-slate-700/60 flex flex-col h-[calc(100vh-112px)] overflow-hidden transition-colors duration-200">
         <div className="p-4 bg-white dark:bg-slate-800 border-b border-slate-100 dark:border-slate-700 flex flex-col xl:flex-row xl:items-center justify-between gap-4 shrink-0 transition-colors">
-          <div className="flex items-center gap-4">
-            <h3 className="font-bold text-slate-800 dark:text-white text-sm">
-              {format(currentDate, 'MMMM yyyy')}
-            </h3>
-            <div className="flex gap-0 border border-slate-200 dark:border-slate-700 rounded-lg overflow-hidden">
-              <button onClick={handlePrevMonth} className="p-1 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-500 dark:text-slate-400 transition-colors"><ChevronLeft className="w-4 h-4" /></button>
-              <button disabled={isCurrentMonth} onClick={handleNextMonth} className="p-1 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-500 dark:text-slate-400 border-l border-slate-200 dark:border-slate-700 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"><ChevronRight className="w-4 h-4" /></button>
-            </div>
+          <div className="relative z-50">
+            <DatePicker
+              selected={currentDate}
+              onChange={(date) => { if (date) setCurrentDate(date); }}
+              maxDate={new Date()}
+              dateFormat="MMMM yyyy"
+              showMonthYearPicker
+              className="px-3 h-[36px] bg-slate-100 hover:bg-slate-200 dark:bg-[#0b1120] border border-slate-200 dark:border-slate-700 rounded-lg text-[13px] font-semibold focus:ring-2 focus:ring-blue-500 outline-none dark:text-white dark:[color-scheme:dark] w-[150px] text-slate-700 cursor-pointer text-center transition-colors"
+            />
           </div>
           <div className="flex flex-wrap items-center gap-3">
             <div className="flex items-center gap-2 mr-2">

@@ -4,8 +4,10 @@ import { useAuth } from '../../context/AuthContext';
 import { useAppData } from '../../context/AppContext';
 import { fetchRequests, fetchEmployeePunchData } from '../../api';
 import type { AppRequest, User } from '../../types';
-import { Calendar, EyeOff, Table, Check, X, Clock, Search, ExternalLink } from 'lucide-react';
-import { format } from 'date-fns';
+import { Calendar, EyeOff, Table, Check, X, Clock, Search, ExternalLink, ChevronLeft, ChevronRight } from 'lucide-react';
+import { format, subDays, addDays } from 'date-fns';
+import DatePicker from 'react-datepicker';
+import 'react-datepicker/dist/react-datepicker.css';
 import { AttendanceTable, type ColumnDef } from '../../components/AttendanceTable';
 import { normalizeAttendanceStatus, calculateTime } from '../../utils/attendanceUtils';
 import { ATTENDANCE_STATUS, DEFAULT_ATTENDANCE_COLORS, REQUEST_STATUS, ATTENDANCE_BASE_MAP } from '../../constants';
@@ -21,12 +23,15 @@ const AdminDashboard: React.FC = () => {
   const [recentPunchesData, setRecentPunchesData] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [recentPunchingFilter, setRecentPunchingFilter] = useState<'All' | 'Present' | 'Absent' | 'Leave'>('All');
+  const [leaveReportFilter, setLeaveReportFilter] = useState<string>('All');
+  const [missedPunchFilter, setMissedPunchFilter] = useState<string>('All');
+  const [currentDate, setCurrentDate] = useState<Date>(new Date());
 
   useEffect(() => {
     const loadData = async () => {
       setLoading(true);
       try {
-        const todayStr = format(new Date(), 'dd-MMM-yyyy');
+        const todayStr = format(currentDate, 'dd-MMM-yyyy');
 
         let reqsData = [];
         try {
@@ -78,7 +83,7 @@ const AdminDashboard: React.FC = () => {
             const { total } = calculateTime(checkIn, checkOut);
             const duration = total;
 
-            const currDate = format(new Date(), 'yyyy-MM-dd');
+            const currDate = format(currentDate, 'yyyy-MM-dd');
             const pDate = p?.logindate ? p.logindate.split(' ')[0] : currDate;
 
             const status = normalizeAttendanceStatus(p?.status, checkIn, checkOut, pDate);
@@ -106,7 +111,7 @@ const AdminDashboard: React.FC = () => {
     if (user) {
       loadData();
     }
-  }, [user]);
+  }, [user, currentDate]);
 
   const updateRequestStatus = async (id: string, status: AppRequest['status'], reason: string, req?: AppRequest) => {
     await apiUpdateRequestStatus(id, status, reason, req, actionNotes[id]);
@@ -153,6 +158,7 @@ const AdminDashboard: React.FC = () => {
 
   const processedLeaveRequests = requests.filter(r => {
     if (r.status === REQUEST_STATUS.PENDING.code || r.type !== 'Leave') return false;
+    if (leaveReportFilter !== 'All' && r.status !== leaveReportFilter) return false;
     if (!leaveReportSearch) return true;
     const user = users.find(u => u.id === r.userId || u.code === r.userId);
     const searchTarget = user ? `${user.name} ${user.code}` : r.userId;
@@ -161,6 +167,7 @@ const AdminDashboard: React.FC = () => {
 
   const processedMissedPunchRequests = requests.filter(r => {
     if (r.status === REQUEST_STATUS.PENDING.code || (r.type !== ATTENDANCE_BASE_MAP.MISSPUNCH.label && r.type !== ATTENDANCE_BASE_MAP.MISSPUNCH.value)) return false;
+    if (missedPunchFilter !== 'All' && r.status !== missedPunchFilter) return false;
     if (!punchReportSearch) return true;
     const user = users.find(u => u.id === r.userId || u.code === r.userId);
     const searchTarget = user ? `${user.name} ${user.code}` : r.userId;
@@ -178,11 +185,15 @@ const AdminDashboard: React.FC = () => {
 
   const PaginationFooter = ({ page, setPage, total, label }: any) => {
     const totalPages = Math.ceil(total / itemsPerPage);
-    if (total === 0) return (
-      <div className="p-3 border-t border-slate-200 dark:border-slate-700/60 flex items-center justify-between text-[11px] font-medium text-slate-500 dark:text-slate-400 bg-slate-50/80 dark:bg-[#182333]/50 transition-colors">
-        <span>Showing 0 entries</span>
-      </div>
-    );
+
+    if (total === 0)
+
+      return (
+
+        <div className="p-3 border-t border-slate-200 dark:border-slate-700/60 flex items-center justify-between text-[11px] font-medium text-slate-500 dark:text-slate-400 bg-slate-50/80 dark:bg-[#182333]/50 transition-colors">
+          <span>Showing 0 entries</span>
+        </div>
+      );
     return (
       <div className="p-3 border-t border-slate-200 dark:border-slate-700/60 flex items-center justify-between text-[11px] font-medium text-slate-500 dark:text-slate-400 bg-slate-50/80 dark:bg-[#182333]/50 transition-colors">
         <span>Showing {Math.min(page * itemsPerPage + 1, total)} to {Math.min((page + 1) * itemsPerPage, total)} of {total} {label}</span>
@@ -500,14 +511,34 @@ const AdminDashboard: React.FC = () => {
         <div className="shrink-0 grid grid-cols-1 xl:grid-cols-2 gap-4">
           {/* Leave Requests Report Table */}
           <div className="flex flex-col bg-white dark:bg-[#1e293b] rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700/60 overflow-hidden transition-colors duration-300">
-            <div className="p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200 dark:border-slate-700/60">
-              <div className="flex items-center gap-3">
+            <div className="p-5 flex flex-row items-center justify-between gap-4 border-b border-slate-200 dark:border-slate-700/60 w-full overflow-x-auto custom-scrollbar">
+              <div className="flex items-center gap-3 shrink-0">
                 <div className="bg-purple-50 dark:bg-purple-500/10 p-1.5 rounded-lg text-purple-600 dark:text-purple-400">
                   <Table className="w-4 h-4" />
                 </div>
-                <h3 className="text-[17px] font-bold text-slate-800 dark:text-white">Leave Requests Report</h3>
+                <h3 className="text-[17px] font-bold text-slate-800 dark:text-white whitespace-nowrap">Leave Request Report</h3>
               </div>
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-3 shrink-0">
+                <div className="hidden sm:flex items-center gap-1 text-[11px] font-bold shrink-0">
+                  <button
+                    onClick={() => setLeaveReportFilter('All')}
+                    className={`min-w-[80px] h-[36px] flex items-center justify-center rounded-lg border transition-colors ${leaveReportFilter === 'All' ? 'bg-slate-200 dark:bg-slate-700 border-slate-300 dark:border-slate-600 text-slate-800 dark:text-white' : 'bg-slate-50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700/50'}`}
+                  >
+                    All: {approvedLeaves + rejectedLeaves}
+                  </button>
+                  <button
+                    onClick={() => setLeaveReportFilter(REQUEST_STATUS.APPROVED.code)}
+                    className={`min-w-[80px] h-[36px] flex items-center justify-center rounded-lg border transition-colors ${leaveReportFilter === REQUEST_STATUS.APPROVED.code ? 'bg-emerald-100 dark:bg-emerald-900/40 border-emerald-300 dark:border-emerald-700 text-emerald-700 dark:text-emerald-300' : 'bg-slate-50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/20'}`}
+                  >
+                    Approved: {approvedLeaves}
+                  </button>
+                  <button
+                    onClick={() => setLeaveReportFilter(REQUEST_STATUS.REJECTED.code)}
+                    className={`min-w-[80px] h-[36px] flex items-center justify-center rounded-lg border transition-colors ${leaveReportFilter === REQUEST_STATUS.REJECTED.code ? 'bg-red-100 dark:bg-red-900/40 border-red-300 dark:border-red-700 text-red-700 dark:text-red-300' : 'bg-slate-50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20'}`}
+                  >
+                    Rejected: {rejectedLeaves}
+                  </button>
+                </div>
                 <button onClick={() => navigate('/admin/leave-requests-report')} title="Show Report" className="p-1.5 hover:bg-purple-100 dark:hover:bg-purple-500/20 text-purple-600 dark:text-purple-400 rounded transition-colors flex items-center justify-center">
                   <ExternalLink className="w-5 h-5" />
                 </button>
@@ -602,14 +633,34 @@ const AdminDashboard: React.FC = () => {
 
           {/* Missed Punch Report Table */}
           <div className="flex flex-col bg-white dark:bg-[#1e293b] rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700/60 overflow-hidden transition-colors duration-300">
-            <div className="p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200 dark:border-slate-700/60">
-              <div className="flex items-center gap-3">
+            <div className="p-5 flex flex-row items-center justify-between gap-4 border-b border-slate-200 dark:border-slate-700/60 w-full overflow-x-auto custom-scrollbar">
+              <div className="flex items-center gap-3 shrink-0">
                 <div className="bg-indigo-50 dark:bg-indigo-500/10 p-1.5 rounded-lg text-indigo-600 dark:text-indigo-400">
                   <Table className="w-4 h-4" />
                 </div>
-                <h3 className="text-[17px] font-bold text-slate-800 dark:text-white">Missed Punch Report</h3>
+                <h3 className="text-[17px] font-bold text-slate-800 dark:text-white whitespace-nowrap">Missed Punch Report</h3>
               </div>
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-3 shrink-0">
+                <div className="hidden sm:flex items-center gap-1 text-[11px] font-bold shrink-0">
+                  <button
+                    onClick={() => setMissedPunchFilter('All')}
+                    className={`min-w-[80px] h-[36px] flex items-center justify-center rounded-lg border transition-colors ${missedPunchFilter === 'All' ? 'bg-slate-200 dark:bg-slate-700 border-slate-300 dark:border-slate-600 text-slate-800 dark:text-white' : 'bg-slate-50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700/50'}`}
+                  >
+                    All: {approvedPunches + rejectedPunches}
+                  </button>
+                  <button
+                    onClick={() => setMissedPunchFilter(REQUEST_STATUS.APPROVED.code)}
+                    className={`min-w-[80px] h-[36px] flex items-center justify-center rounded-lg border transition-colors ${missedPunchFilter === REQUEST_STATUS.APPROVED.code ? 'bg-emerald-100 dark:bg-emerald-900/40 border-emerald-300 dark:border-emerald-700 text-emerald-700 dark:text-emerald-300' : 'bg-slate-50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/20'}`}
+                  >
+                    Approved: {approvedPunches}
+                  </button>
+                  <button
+                    onClick={() => setMissedPunchFilter(REQUEST_STATUS.REJECTED.code)}
+                    className={`min-w-[80px] h-[36px] flex items-center justify-center rounded-lg border transition-colors ${missedPunchFilter === REQUEST_STATUS.REJECTED.code ? 'bg-red-100 dark:bg-red-900/40 border-red-300 dark:border-red-700 text-red-700 dark:text-red-300' : 'bg-slate-50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20'}`}
+                  >
+                    Rejected: {rejectedPunches}
+                  </button>
+                </div>
                 <button onClick={() => navigate('/admin/missing-punch-report')} title="Show Report" className="p-1.5 hover:bg-indigo-100 dark:hover:bg-indigo-500/20 text-indigo-600 dark:text-indigo-400 rounded transition-colors flex items-center justify-center">
                   <ExternalLink className="w-5 h-5" />
                 </button>
@@ -722,29 +773,38 @@ const AdminDashboard: React.FC = () => {
                     <Table className="w-4 h-4" />
                   </div>
                   <h2 className="text-[17px] font-bold text-slate-800 dark:text-white">Recent Punching</h2>
+                  {/* <div className="relative z-50 ml-2">
+                    <DatePicker
+                      selected={currentDate}
+                      onChange={(date) => { if (date) setCurrentDate(date); }}
+                      maxDate={new Date()}
+                      dateFormat="dd MMM yyyy"
+                      className="px-3 h-[36px] bg-slate-100 hover:bg-slate-200 dark:bg-[#0b1120] border border-slate-200 dark:border-slate-700 rounded-lg text-[13px] font-semibold focus:ring-2 focus:ring-blue-500 outline-none dark:text-white dark:[color-scheme:dark] w-[130px] text-slate-700 cursor-pointer text-center transition-colors"
+                    />
+                  </div> */}
                 </div>
                 <div className="hidden sm:flex items-center gap-2 text-[11px] font-bold">
                   <button
                     onClick={() => setRecentPunchingFilter('All')}
-                    className={`px-3 py-1.5 rounded-lg border transition-colors ${recentPunchingFilter === 'All' ? 'bg-slate-200 dark:bg-slate-700 border-slate-300 dark:border-slate-600 text-slate-800 dark:text-white' : 'bg-slate-50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700/50'}`}
+                    className={`min-w-[100px] h-[36px] flex items-center justify-center rounded-lg border transition-colors ${recentPunchingFilter === 'All' ? 'bg-slate-200 dark:bg-slate-700 border-slate-300 dark:border-slate-600 text-slate-800 dark:text-white' : 'bg-slate-50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700/50'}`}
                   >
                     All: {recentPunchesData.length}
                   </button>
                   <button
                     onClick={() => setRecentPunchingFilter('Present')}
-                    className={`px-3 py-1.5 rounded-lg border transition-colors ${recentPunchingFilter === 'Present' ? 'bg-emerald-100 dark:bg-emerald-900/40 border-emerald-300 dark:border-emerald-700 text-emerald-700 dark:text-emerald-300' : 'bg-slate-50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/20'}`}
+                    className={`min-w-[100px] h-[36px] flex items-center justify-center rounded-lg border transition-colors ${recentPunchingFilter === 'Present' ? 'bg-emerald-100 dark:bg-emerald-900/40 border-emerald-300 dark:border-emerald-700 text-emerald-700 dark:text-emerald-300' : 'bg-slate-50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/20'}`}
                   >
                     Present: {recentPresentCount}
                   </button>
                   <button
                     onClick={() => setRecentPunchingFilter('Absent')}
-                    className={`px-3 py-1.5 rounded-lg border transition-colors ${recentPunchingFilter === 'Absent' ? 'bg-red-100 dark:bg-red-900/40 border-red-300 dark:border-red-700 text-red-700 dark:text-red-300' : 'bg-slate-50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20'}`}
+                    className={`min-w-[100px] h-[36px] flex items-center justify-center rounded-lg border transition-colors ${recentPunchingFilter === 'Absent' ? 'bg-red-100 dark:bg-red-900/40 border-red-300 dark:border-red-700 text-red-700 dark:text-red-300' : 'bg-slate-50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20'}`}
                   >
                     Absent: {recentAbsentCount}
                   </button>
                   <button
                     onClick={() => setRecentPunchingFilter('Leave')}
-                    className={`px-3 py-1.5 rounded-lg border transition-colors ${recentPunchingFilter === 'Leave' ? 'bg-amber-100 dark:bg-amber-900/40 border-amber-300 dark:border-amber-700 text-amber-700 dark:text-amber-300' : 'bg-slate-50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700 text-amber-600 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-900/20'}`}
+                    className={`min-w-[100px] h-[36px] flex items-center justify-center rounded-lg border transition-colors ${recentPunchingFilter === 'Leave' ? 'bg-amber-100 dark:bg-amber-900/40 border-amber-300 dark:border-amber-700 text-amber-700 dark:text-amber-300' : 'bg-slate-50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700 text-amber-600 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-900/20'}`}
                   >
                     Leave: {recentLeaveCount}
                   </button>
@@ -754,7 +814,7 @@ const AdminDashboard: React.FC = () => {
             customBottomLeft={
               <div className="flex items-center gap-2 text-xs font-bold text-blue-600 dark:text-blue-400">
                 <Calendar className="w-4 h-4" />
-                <span>{format(new Date(), 'EEEE, dd-MM-yyyy')}</span>
+                <span>{format(currentDate, 'EEEE, dd-MM-yyyy')}</span>
               </div>
             }
             searchFn={(item, query) =>

@@ -214,45 +214,53 @@ const EmployeeRequests: React.FC = () => {
   return (
     <div className="flex flex-col h-[calc(100vh-100px)] animate-fade-in-up">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4 shrink-0 relative z-20">
-        <div className="flex bg-slate-100 dark:bg-[#1e293b] p-1 rounded-xl">
+        <div className="flex gap-3">
           <button
             onClick={() => setActiveTab('Leave')}
-            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${activeTab === 'Leave' ? 'bg-white dark:bg-slate-700 text-blue-600 dark:text-blue-400 shadow-sm' : 'text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200'}`}
+            className={`min-w-[180px] px-5 py-2 rounded-lg text-sm font-semibold transition-all border ${activeTab === 'Leave' ? 'bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-200 dark:border-blue-500/30 shadow-sm' : 'bg-white dark:bg-slate-800 text-slate-500 dark:text-slate-400 border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600 hover:text-slate-700 dark:hover:text-slate-200'}`}
           >
             Leave
           </button>
           <button
             onClick={() => setActiveTab(ATTENDANCE_BASE_MAP.MISSPUNCH.label)}
-            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${activeTab === ATTENDANCE_BASE_MAP.MISSPUNCH.label ? 'bg-white dark:bg-slate-700 text-blue-600 dark:text-blue-400 shadow-sm' : 'text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200'}`}
+            className={`min-w-[180px] px-5 py-2 rounded-lg text-sm font-semibold transition-all border ${activeTab === ATTENDANCE_BASE_MAP.MISSPUNCH.label ? 'bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-200 dark:border-blue-500/30 shadow-sm' : 'bg-white dark:bg-slate-800 text-slate-500 dark:text-slate-400 border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600 hover:text-slate-700 dark:hover:text-slate-200'}`}
           >
             Missed Punch
           </button>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          {['All', REQUEST_STATUS.PENDING.code, 'Approved', 'Rejected'].map(status => {
+          {[REQUEST_STATUS.ALL.code, REQUEST_STATUS.PENDING.code, REQUEST_STATUS.APPROVED.code, REQUEST_STATUS.REJECTED.code].map(status => {
+            const currentTabRequests = myRequests.filter(r => (activeTab === 'Leave' ? r.type === 'Leave' : (r.type === ATTENDANCE_BASE_MAP.MISSPUNCH.label || r.type === ATTENDANCE_BASE_MAP.MISSPUNCH.value)));
+            const counts: Record<string, number> = {
+              All: currentTabRequests.length,
+              [REQUEST_STATUS.PENDING.code]: currentTabRequests.filter(r => r.status === REQUEST_STATUS.PENDING.code).length,
+              Approved: currentTabRequests.filter(r => r.status === REQUEST_STATUS.APPROVED.code).length,
+              Rejected: currentTabRequests.filter(r => r.status === REQUEST_STATUS.REJECTED.code).length,
+            };
+
             let activeColor = 'bg-slate-100 text-slate-700 border-slate-300 dark:bg-slate-700/80 dark:text-slate-200 dark:border-slate-600';
-            if (status === 'Approved') activeColor = 'bg-emerald-100 text-emerald-700 border-emerald-200 dark:bg-emerald-500/10 dark:text-emerald-400 dark:border-emerald-500/20';
-            else if (status === 'Rejected') activeColor = 'bg-red-100 text-red-700 border-red-200 dark:bg-red-500/10 dark:text-red-400 dark:border-red-500/20';
+            if (status === REQUEST_STATUS.APPROVED.code) activeColor = 'bg-emerald-100 text-emerald-700 border-emerald-200 dark:bg-emerald-500/10 dark:text-emerald-400 dark:border-emerald-500/20';
+            else if (status === REQUEST_STATUS.REJECTED.code) activeColor = 'bg-red-100 text-red-700 border-red-200 dark:bg-red-500/10 dark:text-red-400 dark:border-red-500/20';
             else if (status === REQUEST_STATUS.PENDING.code) activeColor = 'bg-amber-100 text-amber-700 border-amber-200 dark:bg-amber-500/10 dark:text-amber-400 dark:border-amber-500/20';
 
-            const isActive = status === 'All' ? statusFilter === null : statusFilter === status;
+            const isActive = status === REQUEST_STATUS.ALL.code ? statusFilter === null : statusFilter === status;
 
             return (
               <button
                 key={status}
-                onClick={() => setStatusFilter(status === 'All' ? null : status)}
-                className={`px-3 py-1.5 text-xs font-semibold rounded-lg border transition-colors ${isActive
+                onClick={() => setStatusFilter(status === REQUEST_STATUS.ALL.code ? null : status)}
+                className={`min-w-[100px] h-[36px] flex items-center justify-center text-xs font-semibold rounded-lg border transition-colors ${isActive
                   ? activeColor
                   : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50 dark:bg-[#1e293b] dark:text-slate-300 dark:border-slate-700 dark:hover:bg-slate-800'
                   }`}
               >
-                {status}
+                {status}: {counts[status]}
               </button>
             );
           })}
         </div>
         <div className="flex flex-wrap items-center gap-3">
-          <div className="relative flex items-center bg-white dark:bg-[#1e293b] border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 shadow-sm focus-within:ring-2 focus-within:ring-blue-500 transition-all">
+          <div className="relative flex items-center bg-white dark:bg-[#1e293b] border border-slate-200 dark:border-slate-700 rounded-xl px-3 h-[36px] shadow-sm focus-within:ring-2 focus-within:ring-blue-500 transition-all">
             <Calendar className="w-4 h-4 text-slate-400 mr-2 shrink-0" />
             <DatePicker
               selectsRange={true}
@@ -273,7 +281,7 @@ const EmployeeRequests: React.FC = () => {
                 placeholder="Search requests..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-10 pr-4 py-2 bg-white dark:bg-[#1e293b] border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 outline-none dark:text-white transition-all w-full sm:w-64 shadow-sm placeholder:text-slate-400"
+                className="pl-10 pr-4 h-[36px] w-full bg-white dark:bg-[#1e293b] border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 outline-none dark:text-white transition-all sm:w-64 shadow-sm placeholder:text-slate-400"
               />
             </div>
           )}

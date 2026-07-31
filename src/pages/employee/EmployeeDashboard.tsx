@@ -5,7 +5,9 @@ import { useAuth } from '../../context/AuthContext';
 import { useAppData } from '../../context/AppContext';
 import Loader from '../../components/Loader';
 import { format, startOfMonth, getDay, getDaysInMonth, addMonths, subMonths, isAfter, startOfDay, isSameMonth } from 'date-fns';
-import { Calendar as CalendarIcon, Send, ChevronLeft, ChevronRight, ExternalLink } from 'lucide-react';
+import { LogOut, Calendar as CalendarIcon, Clock, ArrowRight, UserCircle, Bell, X, Moon, Sun, Table, ChevronLeft, ChevronRight, Check, XCircle, MoreVertical, ExternalLink, Send } from 'lucide-react';
+import DatePicker from 'react-datepicker';
+import 'react-datepicker/dist/react-datepicker.css';
 import { ATTENDANCE_BASE_MAP, ATTENDANCE_STATUS, ATTENDANCE_STATUS_MAP, DAYS, DEFAULT_ATTENDANCE_COLORS } from '../../constants';
 import { fetchEmployeePunchData, fetchLeaveTypes } from '../../api';
 import { normalizeAttendanceStatus, calculateTimeNum, getAttendanceFieldStyle } from '../../utils/attendanceUtils';
@@ -248,21 +250,21 @@ const EmployeeDashboard: React.FC = () => {
             <div className="p-4 border-b border-slate-200 dark:border-slate-700/60 bg-slate-50 dark:bg-[#182333]/50 flex items-center justify-between transition-colors shrink-0">
               <h3 className="font-semibold text-slate-800 dark:text-white flex items-center gap-2">
                 <CalendarIcon className="w-5 h-5 text-blue-500 dark:text-blue-400" />
-                My Attendance ({format(currentDate, 'MMMM yyyy')})
+                My Attendance
               </h3>
               <div className="flex gap-3 items-center">
                 <button onClick={() => navigate('/employee/attendance')} title="Show Report" className="p-1.5 hover:bg-blue-100 dark:hover:bg-blue-500/20 text-blue-600 dark:text-blue-400 rounded transition-colors flex items-center justify-center">
                   <ExternalLink className="w-5 h-5" />
                 </button>
-                <div className="flex gap-1">
-                  <button onClick={handlePrevMonth} className="p-1.5 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-500 dark:text-slate-400 rounded transition-colors"><ChevronLeft className="w-4 h-4" /></button>
-                  <button
-                    onClick={handleNextMonth}
-                    disabled={isSameMonth(currentDate, new Date())}
-                    className={`p-1.5 rounded transition-colors ${isSameMonth(currentDate, new Date()) ? 'text-slate-300 dark:text-slate-700 cursor-not-allowed' : 'hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-500 dark:text-slate-400'}`}
-                  >
-                    <ChevronRight className="w-4 h-4" />
-                  </button>
+                <div className="relative z-50">
+                  <DatePicker
+                    selected={currentDate}
+                    onChange={(date) => { if (date) setCurrentDate(date); }}
+                    maxDate={new Date()}
+                    dateFormat="MMMM yyyy"
+                    showMonthYearPicker
+                    className="px-3 h-[36px] bg-slate-100 hover:bg-slate-200 dark:bg-[#0b1120] border border-slate-200 dark:border-slate-700 rounded-lg text-[13px] font-semibold focus:ring-2 focus:ring-blue-500 outline-none dark:text-white dark:[color-scheme:dark] w-[150px] text-slate-700 cursor-pointer text-center transition-colors"
+                  />
                 </div>
               </div>
             </div>

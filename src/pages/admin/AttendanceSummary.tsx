@@ -3,6 +3,8 @@ import { useAuth } from '../../context/AuthContext';
 import { useAppData } from '../../context/AppContext';
 import { Users, UserX, CalendarOff, ChevronLeft, ChevronRight, Clock } from 'lucide-react';
 import { addDays, format, subDays } from 'date-fns';
+import DatePicker from 'react-datepicker';
+import 'react-datepicker/dist/react-datepicker.css';
 import Loader from '../../components/Loader';
 import { fetchEmployeePunchData } from '../../api';
 import { AttendanceTable, type ColumnDef } from '../../components/AttendanceTable';
@@ -224,23 +226,14 @@ const AttendanceSummary: React.FC = () => {
               <div className="flex items-center gap-6">
                 <div className="flex items-center gap-4">
                   <h3 className="text-[17px] font-bold text-slate-800 dark:text-white">Employee Logins Details</h3>
-                  <div className="flex items-center gap-1 bg-white dark:bg-[#0b1120] border border-slate-200 dark:border-slate-700 rounded-lg p-1 shadow-sm">
-                    <button
-                      onClick={() => setCurrentDate(prev => subDays(prev, 1))}
-                      className="p-1 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-md transition-colors text-slate-600 dark:text-slate-400"
-                    >
-                      <ChevronLeft className="w-4 h-4" />
-                    </button>
-                    <span className="text-sm font-bold px-2 text-slate-700 dark:text-slate-300">
-                      {format(currentDate, 'dd MMM yyyy')}
-                    </span>
-                    <button
-                      onClick={() => setCurrentDate(prev => addDays(prev, 1))}
-                      disabled={format(currentDate, 'yyyy-MM-dd') === format(new Date(), 'yyyy-MM-dd')}
-                      className="p-1 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-md transition-colors text-slate-600 dark:text-slate-400 disabled:opacity-30 disabled:cursor-not-allowed"
-                    >
-                      <ChevronRight className="w-4 h-4" />
-                    </button>
+                  <div className="relative z-50">
+                    <DatePicker
+                      selected={currentDate}
+                      onChange={(date) => { if (date) setCurrentDate(date); }}
+                      maxDate={new Date()}
+                      dateFormat="dd MMM yyyy"
+                      className="px-3 h-[36px] bg-slate-100 hover:bg-slate-200 dark:bg-[#0b1120] border border-slate-200 dark:border-slate-700 rounded-lg text-[13px] font-semibold focus:ring-2 focus:ring-blue-500 outline-none dark:text-white dark:[color-scheme:dark] w-[130px] text-slate-700 cursor-pointer text-center transition-colors"
+                    />
                   </div>
                 </div>
                 <div className="hidden sm:flex items-center gap-1 text-[11px] font-bold overflow-x-auto custom-scrollbar pb-1 max-w-[800px]">

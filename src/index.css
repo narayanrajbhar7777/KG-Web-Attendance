@@ -51,3 +51,55 @@
 .loader-bar-5 {
   animation-delay: -0.7s;
 }
+
+/* Custom React DatePicker Styles for Dark Mode */
+.dark .react-datepicker {
+  background-color: #1e293b;
+  border-color: #334155;
+  color: #f8fafc;
+}
+.dark .react-datepicker__header {
+  background-color: #0f172a;
+  border-bottom-color: #334155;
+}
+.dark .react-datepicker__current-month,
+.dark .react-datepicker-time__header,
+.dark .react-datepicker-year-header,
+.dark .react-datepicker__day-name {
+  color: #f8fafc;
+}
+.dark .react-datepicker__day,
+.dark .react-datepicker__month-text,
+.dark .react-datepicker__quarter-text,
+.dark .react-datepicker__year-text {
+  color: #e2e8f0;
+}
+.dark .react-datepicker__day:hover,
+.dark .react-datepicker__month-text:hover,
+.dark .react-datepicker__quarter-text:hover,
+.dark .react-datepicker__year-text:hover {
+  background-color: #334155;
+}
+.dark .react-datepicker__day--selected,
+.dark .react-datepicker__day--in-selecting-range,
+.dark .react-datepicker__day--in-range,
+.dark .react-datepicker__month-text--selected,
+.dark .react-datepicker__month-text--in-selecting-range,
+.dark .react-datepicker__month-text--in-range,
+.dark .react-datepicker__quarter-text--selected,
+.dark .react-datepicker__quarter-text--in-selecting-range,
+.dark .react-datepicker__quarter-text--in-range,
+.dark .react-datepicker__year-text--selected,
+.dark .react-datepicker__year-text--in-selecting-range,
+.dark .react-datepicker__year-text--in-range {
+  background-color: #3b82f6;
+  color: #fff;
+}
+.dark .react-datepicker__day--keyboard-selected,
+.dark .react-datepicker__month-text--keyboard-selected,
+.dark .react-datepicker__quarter-text--keyboard-selected,
+.dark .react-datepicker__year-text--keyboard-selected {
+  background-color: #2563eb;
+  color: #fff;
+}
+
