@@ -105,6 +105,7 @@ const Layout: React.FC = () => {
     { label: 'Admin Dashboard', path: '/admin', icon: LayoutDashboard },
     { label: 'Punch-In Logs', path: '/admin/summary', icon: CalendarCheck },
     { label: 'Attendance Tracker', path: '/admin/details', icon: FileText },
+    { label: 'Worker Cut Off', path: '/admin/settings/worker-cut-off', icon: Clock },
   ];
 
   const employeeLinks = [
@@ -343,14 +344,14 @@ const Layout: React.FC = () => {
                       </button>
                       <button
                         onClick={() => {
-                          navigate('/admin/settings/cut-off-master');
+                          navigate('/admin/settings/manager-cut-off');
                           setIsAdminMenuOpen(false);
                         }}
                         className="w-full text-left px-4 py-2.5 text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors border-b border-slate-100 dark:border-slate-700"
                       >
-                        Cut Off Auto
+                        Manager Cut Off
                       </button>
-                      <button
+                      {/* <button
                         onClick={() => {
                           navigate('/admin/settings/manager-cut-off');
                           setIsAdminMenuOpen(false);
@@ -358,8 +359,8 @@ const Layout: React.FC = () => {
                         className="w-full text-left px-4 py-2.5 text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors border-b border-slate-100 dark:border-slate-700"
                       >
                         Cut Off Manager
-                      </button>
-                      <button
+                      </button> */}
+                      {/* <button
                         onClick={() => {
                           navigate('/admin/settings/worker-cut-off');
                           setIsAdminMenuOpen(false);
@@ -367,7 +368,7 @@ const Layout: React.FC = () => {
                         className="w-full text-left px-4 py-2.5 text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors border-b border-slate-100 dark:border-slate-700"
                       >
                         Cut Off Worker
-                      </button>
+                      </button> */}
                       <button
                         onClick={() => {
                           navigate('/admin/policy');
@@ -395,7 +396,7 @@ const Layout: React.FC = () => {
                       >
                         Leave Master
                       </button>
-                      <button
+                      {/* <button
                         onClick={() => {
                           navigate('/settings/email-configuration');
                           setIsAdminMenuOpen(false);
@@ -403,12 +404,26 @@ const Layout: React.FC = () => {
                         className="w-full text-left px-4 py-2.5 text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
                       >
                         Email Configuration
-                      </button>
+                      </button> */}
                     </div>
                   </div>
                 )}
               </div>
             )}
+
+            {/* <div className="relative" ref={ruleModalRef}>
+              <button
+                title="Attendance Rule"
+                onClick={() => setIsRuleModalOpen(!isRuleModalOpen)}
+                className="w-9 h-9 flex items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800 transition-colors font-bold"
+              >
+                R
+              </button>
+              <AttendanceRuleModal
+                isOpen={isRuleModalOpen}
+                onClose={() => setIsRuleModalOpen(false)}
+              />
+            </div> */}
 
             <div className="relative" ref={settingsRef}>
               <button

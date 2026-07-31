@@ -1,11 +1,9 @@
-import { KG_WEB_APP0_API_URL, KG_WEB_APP_API_URL, KG_WEB_MAIL_API_URL } from '../constants';
+import { KG_WEB_APP0_API_URL, KG_WEB_MAIL_API_URL } from '../constants';
 import type { AppRequest } from '../types';
 import { format } from 'date-fns';
 
 export const fetchUsers = async () => {
   return [];
-  // const res = await fetchWithAuth(`${API_BASE_URL}/users`);
-  // return res.json();
 };
 
 export const fetchRequests = async (managerId?: string, silent = false) => {
@@ -63,7 +61,7 @@ const parseNotificationDate = (dateStr: string) => {
 
 export const fetchNotifications = async (userId: string, silent = false) => {
   try {
-    const res = await fetch(`${KG_WEB_APP_API_URL}/RptComProd/FetchEmpNotifications`, {
+    const res = await fetch(`${KG_WEB_APP0_API_URL}/RptComProd/FetchEmpNotifications`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', ...(silent && { 'X-Silent-Fetch': 'true' }) },
       body: JSON.stringify({ user_id: userId })
@@ -177,7 +175,7 @@ export const deleteRequestAPI = async (id: string) => {
 
 export const createNotification = async (message: string, targetUserId?: string) => {
   try {
-    const res = await fetch(`${KG_WEB_APP_API_URL}/RptComProd/EMPInsertNotification`, {
+    const res = await fetch(`${KG_WEB_APP0_API_URL}/RptComProd/EMPInsertNotification`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -199,7 +197,7 @@ export const createNotification = async (message: string, targetUserId?: string)
 
 export const markNotificationsAsReadAPI = async (ids: (number | string)[]) => {
   try {
-    const res = await fetch(`${KG_WEB_APP_API_URL}/RptComProd/EMPUpdateNotification`, {
+    const res = await fetch(`${KG_WEB_APP0_API_URL}/RptComProd/EMPUpdateNotification`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -218,7 +216,7 @@ export const markNotificationsAsReadAPI = async (ids: (number | string)[]) => {
 
 export const deleteNotificationAPI = async (id: number | string) => {
   try {
-    const res = await fetch(`${KG_WEB_APP_API_URL}/RptComProd/EMPDeleteNotification`, {
+    const res = await fetch(`${KG_WEB_APP0_API_URL}/RptComProd/EMPDeleteNotification`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -261,7 +259,7 @@ export const sendEmailNotification = async (email: string, subject: string, mess
 
 export const fetchSettings = async (userId: string) => {
   try {
-    const res = await fetch(`${KG_WEB_APP_API_URL}/RptComProd/FetchEmpUserSettings`, {
+    const res = await fetch(`${KG_WEB_APP0_API_URL}/RptComProd/FetchEmpUserSettings`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ user_id: userId })
@@ -286,7 +284,7 @@ export const fetchSettings = async (userId: string) => {
 
 export const insertSettings = async (userId: string, data: any) => {
   try {
-    const res = await fetch(`${KG_WEB_APP_API_URL}/RptComProd/EMPInsertUserSettings`, {
+    const res = await fetch(`${KG_WEB_APP0_API_URL}/RptComProd/EMPInsertUserSettings`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -308,7 +306,7 @@ export const insertSettings = async (userId: string, data: any) => {
 
 export const updateSettings = async (userId: string, data: any) => {
   try {
-    const fetchRes = await fetch(`${KG_WEB_APP_API_URL}/RptComProd/FetchEmpUserSettings`, {
+    const fetchRes = await fetch(`${KG_WEB_APP0_API_URL}/RptComProd/FetchEmpUserSettings`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ user_id: userId })
@@ -331,7 +329,7 @@ export const updateSettings = async (userId: string, data: any) => {
     const customColors = data.customColors !== undefined ? data.customColors : currentCustomColors;
 
     const endpoint = settingsExist ? 'EMPUpdateUserSettings' : 'EMPInsertUserSettings';
-    const res = await fetch(`${KG_WEB_APP_API_URL}/RptComProd/${endpoint}`, {
+    const res = await fetch(`${KG_WEB_APP0_API_URL}/RptComProd/${endpoint}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -353,7 +351,7 @@ export const updateSettings = async (userId: string, data: any) => {
 
 export const deleteSettings = async (userId: string) => {
   try {
-    const res = await fetch(`${KG_WEB_APP_API_URL}/RptComProd/EMPDeleteUserSettings`, {
+    const res = await fetch(`${KG_WEB_APP0_API_URL}/RptComProd/EMPDeleteUserSettings`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -472,9 +470,9 @@ export const loginEmployeeExternal = async (credentials: any) => {
   return res.json();
 };
 
-export const fetchEmployeeDetails = async (empId: string, silent = false) => {
-  const comp = empId.substring(0, 2);
-  const code = empId.substring(2);
+export const fetchEmployeeDetails = async (empId: string = '', silent = false) => {
+  const comp = empId ? empId.substring(0, 2) : '';
+  const code = empId ? empId.substring(2) : '';
 
   const res = await fetch(`${KG_WEB_APP0_API_URL}/powerbi/GetEmpDet?p_E_COMP=${comp}&p_E_CODE=${code}`, {
     headers: silent ? { 'X-Silent-Fetch': 'true' } : {}
@@ -482,7 +480,7 @@ export const fetchEmployeeDetails = async (empId: string, silent = false) => {
   return res.json();
 };
 
-export const fetchEmployeeDataExternal = async (empId: string, frDate: string, toDate: string, silent = false) => {
+export const fetchEmployeePunchData = async (empId: string, frDate: string, toDate: string, silent = false) => {
   let punchDet = null;
   try {
     const punchDetRes = await fetch(`${KG_WEB_APP0_API_URL}/powerbi/GetEmpPunchDet?p_Frdate=${frDate}&p_Todate=${toDate}&P_EMP_ID=${empId}`, {
@@ -496,17 +494,9 @@ export const fetchEmployeeDataExternal = async (empId: string, frDate: string, t
   return punchDet;
 };
 
-export const fetchEmployeeDetailsExternal = async (empId: string) => {
-  const comp = empId.substring(0, 2);
-  const code = empId.substring(2);
-  const res = await fetch(`${KG_WEB_APP0_API_URL}/powerbi/GetEmpDet?p_E_COMP=${comp}&p_E_CODE=${code}`);
-  return res.json();
-};
-
-// Leave Management APIs
 export const fetchLeaveTypes = async () => {
   try {
-    const res = await fetch(`${KG_WEB_APP_API_URL}/RptComProd/FetchEmpLeaveTypes`, {
+    const res = await fetch(`${KG_WEB_APP0_API_URL}/RptComProd/FetchEmpLeaveTypes`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({})
@@ -531,7 +521,7 @@ export const addLeaveType = async (data: any) => {
       name: data.name,
       is_active: data.isActive ? 1 : 0
     };
-    const res = await fetch(`${KG_WEB_APP_API_URL}/RptComProd/EMPInsertLeaveType`, {
+    const res = await fetch(`${KG_WEB_APP0_API_URL}/RptComProd/EMPInsertLeaveType`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ LeaveTypeList: [payload] })
@@ -551,7 +541,7 @@ export const updateLeaveType = async (id: number | string, data: any) => {
       ...(data.name !== undefined && { name: data.name }),
       ...(data.isActive !== undefined && { is_active: data.isActive ? 1 : 0 })
     };
-    const res = await fetch(`${KG_WEB_APP_API_URL}/RptComProd/EMPUpdateLeaveType`, {
+    const res = await fetch(`${KG_WEB_APP0_API_URL}/RptComProd/EMPUpdateLeaveType`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ LeaveTypeList: [payload] })
@@ -565,7 +555,7 @@ export const updateLeaveType = async (id: number | string, data: any) => {
 
 export const deleteLeaveType = async (id: number | string) => {
   try {
-    const res = await fetch(`${KG_WEB_APP_API_URL}/RptComProd/EMPDeleteLeaveType`, {
+    const res = await fetch(`${KG_WEB_APP0_API_URL}/RptComProd/EMPDeleteLeaveType`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ LeaveTypeList: [{ id: Number(id) }] })
@@ -635,12 +625,12 @@ export const deleteEmployeeLeave = async (id: string) => {
 };
 
 // Cut Off Master APIs
-export const fetchDeptMgrCutoff = async () => {
+export const fetchDeptMgrCutoff = async (payload = {}) => {
   try {
-    const res = await fetch(`http://172.16.34.22:8080/kg_web_app/KGAPI/RptComProd/FetchEmpDeptMgrCutoffAuto`, {
+    const res = await fetch(`${KG_WEB_APP0_API_URL}/RptComProd/FetchEmpDeptMgrCutoffAuto`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({})
+      body: JSON.stringify(payload)
     });
     const data = await res.json();
     return data.DeptMgrCutoffList || [];
@@ -652,7 +642,7 @@ export const fetchDeptMgrCutoff = async () => {
 
 export const updateDeptMgrCutoff = async (cutoffData: any) => {
   try {
-    const res = await fetch(`http://172.16.34.22:8080/kg_web_app/KGAPI/RptComProd/EMPUpdateDeptMgrCutoff`, {
+    const res = await fetch(`${KG_WEB_APP0_API_URL}/RptComProd/EMPUpdateDeptMgrCutoff`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ DeptMgrCutoffList: [cutoffData] })
@@ -667,7 +657,7 @@ export const updateDeptMgrCutoff = async (cutoffData: any) => {
 // Manager Cut Off APIs
 export const fetchManagerCutoff = async (payload = {}) => {
   try {
-    const res = await fetch(`http://172.16.34.22:8080/kg_web_app/KGAPI/RptComProd/FetchEmpDeptMgrCutoff`, {
+    const res = await fetch(`${KG_WEB_APP0_API_URL}/RptComProd/FetchEmpDeptMgrCutoff`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload)
@@ -682,7 +672,7 @@ export const fetchManagerCutoff = async (payload = {}) => {
 
 export const insertManagerCutoff = async (cutoffData: any) => {
   try {
-    const res = await fetch(`http://172.16.34.22:8080/kg_web_app/KGAPI/RptComProd/EMPInsertDeptMgrCutoff`, {
+    const res = await fetch(`${KG_WEB_APP0_API_URL}/RptComProd/EMPInsertDeptMgrCutoff`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ DeptMgrCutoffList: [cutoffData] })
@@ -696,7 +686,7 @@ export const insertManagerCutoff = async (cutoffData: any) => {
 
 export const updateManagerCutoff = async (cutoffData: any) => {
   try {
-    const res = await fetch(`http://172.16.34.22:8080/kg_web_app/KGAPI/RptComProd/EMPUpdateDeptMgrCutoff`, {
+    const res = await fetch(`${KG_WEB_APP0_API_URL}/RptComProd/EMPUpdateDeptMgrCutoff`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ DeptMgrCutoffList: [cutoffData] })
@@ -710,7 +700,7 @@ export const updateManagerCutoff = async (cutoffData: any) => {
 
 export const deleteManagerCutoff = async (cutoffData: any) => {
   try {
-    const res = await fetch(`http://172.16.34.22:8080/kg_web_app/KGAPI/RptComProd/EMPDeleteDeptMgrCutoff`, {
+    const res = await fetch(`${KG_WEB_APP0_API_URL}/RptComProd/EMPDeleteDeptMgrCutoff`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ DeptMgrCutoffList: [cutoffData] })
@@ -725,7 +715,7 @@ export const deleteManagerCutoff = async (cutoffData: any) => {
 // Worker Cut Off APIs
 export const fetchWorkerCutoff = async (payload = {}) => {
   try {
-    const res = await fetch(`http://172.16.34.22:8080/kg_web_app/KGAPI/RptComProd/FetchEmpMgrWkrExtend`, {
+    const res = await fetch(`${KG_WEB_APP0_API_URL}/RptComProd/FetchEmpMgrWkrExtend`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload)
@@ -740,7 +730,7 @@ export const fetchWorkerCutoff = async (payload = {}) => {
 
 export const insertWorkerCutoff = async (cutoffData: any) => {
   try {
-    const res = await fetch(`http://172.16.34.22:8080/kg_web_app/KGAPI/RptComProd/EMPInsertMgrWkrExtend`, {
+    const res = await fetch(`${KG_WEB_APP0_API_URL}/RptComProd/EMPInsertMgrWkrExtend`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ MgrWkrExtendList: [cutoffData] })
@@ -754,7 +744,7 @@ export const insertWorkerCutoff = async (cutoffData: any) => {
 
 export const updateWorkerCutoff = async (cutoffData: any) => {
   try {
-    const res = await fetch(`http://172.16.34.22:8080/kg_web_app/KGAPI/RptComProd/EMPUpdateMgrWkrExtend`, {
+    const res = await fetch(`${KG_WEB_APP0_API_URL}/RptComProd/EMPUpdateMgrWkrExtend`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ MgrWkrExtendList: [cutoffData] })
@@ -768,7 +758,7 @@ export const updateWorkerCutoff = async (cutoffData: any) => {
 
 export const deleteWorkerCutoff = async (cutoffData: any) => {
   try {
-    const res = await fetch(`http://172.16.34.22:8080/kg_web_app/KGAPI/RptComProd/EMPDeleteMgrWkrExtend`, {
+    const res = await fetch(`${KG_WEB_APP0_API_URL}/RptComProd/EMPDeleteMgrWkrExtend`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ MgrWkrExtendList: [cutoffData] })

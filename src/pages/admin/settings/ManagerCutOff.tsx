@@ -1,20 +1,19 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Search, Edit2, Trash2, X, Save, RefreshCw, ChevronLeft, ChevronRight, CheckSquare, Square, Plus } from 'lucide-react';
+import { Search, Edit2, X, RefreshCw, ChevronLeft, ChevronRight, CheckSquare, Square } from 'lucide-react';
 import Select, { components } from 'react-select';
 import { toast } from 'react-hot-toast';
-import { fetchManagerCutoff, insertManagerCutoff, updateManagerCutoff, deleteManagerCutoff } from '../../../api';
+import { fetchDeptMgrCutoff, updateDeptMgrCutoff } from '../../../api';
 import Loader from '../../../components/Loader';
 import { useAuth } from '../../../context/AuthContext';
-import { Navigate } from 'react-router-dom';
 
 interface CutOffData {
   e_comp: string;
   brname: string;
   manager_code: string;
   mgrname: string;
-  hod_code?: string;
-  hod_name?: string;
-  buffer_time?: string;
+  hod_code: string;
+  hod_name: string;
+  buffer_time: string;
   day_start_time: string;
   day_close_time: string;
 }
@@ -35,21 +34,19 @@ const CustomOption = (props: any) => {
 };
 
 const customSelectClassNames = {
-  control: (state: any) => 
-    `flex items-center justify-between px-2 h-[38px] w-full xl:w-[280px] bg-slate-50 dark:bg-[#0b1120] border rounded-lg text-sm transition-colors cursor-pointer shrink-0 ${
-      state.isFocused 
-        ? 'border-blue-500 ring-1 ring-blue-500' 
-        : 'border-slate-200 dark:border-slate-700 hover:border-blue-400 dark:hover:border-slate-500'
+  control: (state: any) =>
+    `flex items-center justify-between px-2 h-[38px] w-full xl:w-[280px] bg-slate-50 dark:bg-[#0b1120] border rounded-lg text-sm transition-colors cursor-pointer shrink-0 ${state.isFocused
+      ? 'border-blue-500 ring-1 ring-blue-500'
+      : 'border-slate-200 dark:border-slate-700 hover:border-blue-400 dark:hover:border-slate-500'
     }`,
   menu: () => 'absolute z-50 w-full mt-1 bg-white dark:bg-[#1e293b] border border-slate-200 dark:border-slate-700 rounded-lg shadow-lg overflow-hidden',
   menuList: () => 'max-h-[300px] overflow-y-auto custom-scrollbar',
-  option: (state: any) => `px-3 py-2 text-sm cursor-pointer transition-colors truncate ${
-    state.isSelected 
-      ? 'bg-blue-50 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300 font-medium' 
-      : state.isFocused
-        ? 'bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200'
-        : 'text-slate-700 dark:text-slate-300'
-  }`,
+  option: (state: any) => `px-3 py-2 text-sm cursor-pointer transition-colors truncate ${state.isSelected
+    ? 'bg-blue-50 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300 font-medium'
+    : state.isFocused
+      ? 'bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200'
+      : 'text-slate-700 dark:text-slate-300'
+    }`,
   singleValue: () => 'text-slate-700 dark:text-slate-300 font-medium truncate',
   input: () => 'text-slate-700 dark:text-slate-300',
   placeholder: () => 'text-slate-500 dark:text-slate-400 font-medium',
@@ -65,7 +62,9 @@ const customSelectClassNames = {
 
 const CustomValueContainer = ({ children, ...props }: any) => {
   const selectedCount = props.getValue().length;
+
   const otherChildren: any[] = [];
+
   React.Children.forEach(children, (child: any) => {
     if (child && child.props && child.props.data) {
       // Ignore pills
@@ -73,6 +72,7 @@ const CustomValueContainer = ({ children, ...props }: any) => {
       otherChildren.push(child);
     }
   });
+
   return (
     <components.ValueContainer {...props}>
       {selectedCount > 0 && (
@@ -103,19 +103,17 @@ const MultiSelectDropdown = ({ options, value, onChange, placeholder }: any) => 
 
   const handleSelectAll = () => onChange(options.map((o: any) => o.value));
   const handleClearAll = () => onChange([]);
-  
+
   const MenuList = (props: any) => (
     <components.MenuList {...props}>
       <div className="flex justify-between items-center px-3 py-2 border-b border-slate-100 dark:border-slate-700/50 sticky top-0 bg-white dark:bg-[#1e293b] z-10">
-        <button 
-          type="button"
+        <button
           onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); handleSelectAll(); }}
           className="text-xs font-bold text-blue-600 hover:text-blue-700 dark:text-blue-400 transition-colors"
         >
           Select All
         </button>
-        <button 
-          type="button"
+        <button
           onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); handleClearAll(); }}
           className="text-xs font-bold text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 transition-colors"
         >
@@ -151,15 +149,9 @@ const MultiSelectDropdown = ({ options, value, onChange, placeholder }: any) => 
 };
 
 const ManagerCutOff: React.FC = () => {
-  const { user } = useAuth();
-  
-  if (user?.role !== 'Admin') {
-    return <Navigate to="/" replace />;
-  }
-
   const [cutoffList, setCutoffList] = useState<CutOffData[]>([]);
   const [loading, setLoading] = useState(true);
-
+  const { user } = useAuth();
   // Filters
   const [searchText, setSearchText] = useState('');
   const [filterCompany, setFilterCompany] = useState<string[]>([]);
@@ -170,15 +162,11 @@ const ManagerCutOff: React.FC = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(30);
 
-  // Modal State
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [modalMode, setModalMode] = useState<'add' | 'edit'>('add');
-  const [selectedCutoff, setSelectedCutoff] = useState<CutOffData | null>(null);
+  // Edit State
+  const [editingKey, setEditingKey] = useState<string | null>(null);
+  const [editForm, setEditForm] = useState<CutOffData | null>(null);
   const [saving, setSaving] = useState(false);
-
-  // Delete State
-  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
-  const [deleting, setDeleting] = useState(false);
+  const [fetchingHod, setFetchingHod] = useState(false);
 
   useEffect(() => {
     loadData();
@@ -187,83 +175,60 @@ const ManagerCutOff: React.FC = () => {
   const loadData = async () => {
     try {
       setLoading(true);
-      const data = await fetchManagerCutoff();
+      const data = await fetchDeptMgrCutoff();
       setCutoffList(data);
     } catch (err) {
-      toast.error('Unable to fetch manager cutoff data.');
+      toast.error('Unable to fetch Cut Off Master data.');
     } finally {
       setLoading(false);
     }
   };
 
-  const handleAdd = () => {
-    setModalMode('add');
-    setSelectedCutoff({
-      e_comp: '',
-      brname: '',
-      manager_code: '',
-      mgrname: '',
-      day_start_time: '',
-      day_close_time: ''
-    });
-    setIsModalOpen(true);
+  const handleEdit = (record: CutOffData, idx: number) => {
+    setEditingKey(`${currentPage}_${idx}`);
+    setEditForm({ ...record });
   };
 
-  const handleEdit = (record: CutOffData) => {
-    setModalMode('edit');
-    setSelectedCutoff({ ...record });
-    setIsModalOpen(true);
+  const handleCancelEdit = () => {
+    setEditingKey(null);
+    setEditForm(null);
   };
 
-  const handleDeleteClick = (record: CutOffData) => {
-    setSelectedCutoff(record);
-    setIsDeleteModalOpen(true);
-  };
+  const handleFetchHod = async (code: string) => {
 
-  const confirmDelete = async () => {
-    if (!selectedCutoff) return;
+    if (!code) return;
     try {
-      setDeleting(true);
-      const payload = {
-        e_comp: selectedCutoff.e_comp,
-        brname: selectedCutoff.brname,
-        manager_code: selectedCutoff.manager_code
-      };
-      const response = await deleteManagerCutoff(payload);
-      if (response && response.status === 'success') {
-        toast.success('Manager cutoff deleted successfully');
-        setIsDeleteModalOpen(false);
-        await loadData();
+      setFetchingHod(true);
+
+      const currentEmployee = user?.employee_list?.find(emp => emp.e_code === code);
+      if (currentEmployee) {
+        setEditForm(prev => prev ? ({ ...prev, hod_name: currentEmployee.e_name, mgrname: currentEmployee.e_name }) : prev);
+        toast.success('HOD Name auto-fetched successfully');
       } else {
-        toast.error('Unable to delete manager cutoff');
+        toast.error('HOD not found with this code');
       }
     } catch (err) {
-      toast.error('Unable to delete manager cutoff');
+      console.error(err);
+      toast.error('Failed to fetch HOD details');
     } finally {
-      setDeleting(false);
+      setFetchingHod(false);
     }
   };
 
-  const handleSave = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!selectedCutoff) return;
 
-    // Validation
-    if (!selectedCutoff.e_comp || !selectedCutoff.brname || !selectedCutoff.manager_code || !selectedCutoff.mgrname || !selectedCutoff.day_start_time || !selectedCutoff.day_close_time) {
-      toast.error('All fields are required.');
-      return;
-    }
-
+  const handleSave = async () => {
+    if (!editForm) return;
     const timeRegex = /^([0-1][0-9]|2[0-3]):[0-5][0-9]$/;
-    if (!timeRegex.test(selectedCutoff.day_start_time)) {
+    if (!timeRegex.test(editForm.day_start_time)) {
       toast.error('Invalid Day Start Time format. Use HH:mm');
       return;
     }
-    if (!timeRegex.test(selectedCutoff.day_close_time)) {
+    if (!timeRegex.test(editForm.day_close_time)) {
       toast.error('Invalid Day Close Time format. Use HH:mm');
       return;
     }
-    if (selectedCutoff.day_close_time <= selectedCutoff.day_start_time) {
+
+    if (editForm.day_close_time <= editForm.day_start_time) {
       toast.error('Day Close Time must be greater than Day Start Time.');
       return;
     }
@@ -271,35 +236,28 @@ const ManagerCutOff: React.FC = () => {
     try {
       setSaving(true);
       const payload = {
-        e_comp: selectedCutoff.e_comp,
-        brname: selectedCutoff.brname,
-        manager_code: selectedCutoff.manager_code,
-        mgrname: selectedCutoff.mgrname,
-        day_start_time: selectedCutoff.day_start_time,
-        day_close_time: selectedCutoff.day_close_time
+        e_comp: editForm.e_comp,
+        brname: editForm.brname,
+        manager_code: editForm.manager_code,
+        mgrname: editForm.mgrname,
+        hod_code: editForm.hod_code,
+        hod_name: editForm.hod_name,
+        buffer_time: editForm.buffer_time,
+        day_start_time: editForm.day_start_time,
+        day_close_time: editForm.day_close_time
       };
 
-      if (modalMode === 'add') {
-        const response = await insertManagerCutoff(payload);
-        if (response && response.status === 'success') {
-          toast.success('Manager cutoff created successfully');
-          setIsModalOpen(false);
-          await loadData();
-        } else {
-          toast.error('Unable to save manager cutoff');
-        }
+      const response = await updateDeptMgrCutoff(payload);
+      if (response && response.status === 'success') {
+        toast.success('Department manager cutoff updated successfully');
+        setEditingKey(null);
+        setEditForm(null);
+        await loadData();
       } else {
-        const response = await updateManagerCutoff(payload);
-        if (response && response.status === 'success') {
-          toast.success('Manager cutoff updated successfully');
-          setIsModalOpen(false);
-          await loadData();
-        } else {
-          toast.error('Unable to update manager cutoff');
-        }
+        toast.error('Unable to update department manager cutoff');
       }
     } catch (err) {
-      toast.error(`Unable to ${modalMode === 'add' ? 'save' : 'update'} manager cutoff`);
+      toast.error('Unable to update department manager cutoff');
     } finally {
       setSaving(false);
     }
@@ -333,6 +291,7 @@ const ManagerCutOff: React.FC = () => {
     });
   }, [cutoffList, searchText, filterCompany, filterBranch, filterManager]);
 
+  // Reset pagination when filters change
   useEffect(() => {
     setCurrentPage(1);
   }, [searchText, filterCompany, filterBranch, filterManager]);
@@ -374,6 +333,7 @@ const ManagerCutOff: React.FC = () => {
     );
   }
 
+
   return (
     <div className="relative flex flex-col h-[calc(100vh-104px)] md:h-[calc(100vh-120px)] animate-fadeIn overflow-hidden">
       {/* Filters Area (Fixed) */}
@@ -413,19 +373,12 @@ const ManagerCutOff: React.FC = () => {
             className="flex items-center gap-2 px-4 py-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-lg text-sm font-medium transition-colors whitespace-nowrap"
           >
             <RefreshCw className="w-4 h-4" />
-            Clear
-          </button>
-          <button
-            onClick={handleAdd}
-            className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition-colors whitespace-nowrap shadow-sm shadow-blue-500/20"
-          >
-            <Plus className="w-4 h-4" />
-            Add
+            Clear Filters
           </button>
         </div>
       </div>
 
-      {/* Table Container */}
+      {/* Table Container (Scrollable) */}
       <div className="flex-1 bg-white dark:bg-[#1e293b] rounded-t-2xl shadow-sm border-t border-l border-r border-slate-200 dark:border-slate-700/60 overflow-hidden flex flex-col min-h-0">
         <div className="flex-1 overflow-y-auto overflow-x-auto custom-scrollbar">
           <table className="w-full text-left border-collapse min-w-[1000px]">
@@ -435,6 +388,9 @@ const ManagerCutOff: React.FC = () => {
                 <th className="px-3 py-2 text-slate-500 dark:text-slate-400 text-[10px] font-bold uppercase tracking-widest border-b border-slate-200 dark:border-slate-700/60 whitespace-nowrap bg-slate-50 dark:bg-[#182333]">Branch</th>
                 <th className="px-3 py-2 text-slate-500 dark:text-slate-400 text-[10px] font-bold uppercase tracking-widest border-b border-slate-200 dark:border-slate-700/60 whitespace-nowrap bg-slate-50 dark:bg-[#182333]">Manager Code</th>
                 <th className="px-3 py-2 text-slate-500 dark:text-slate-400 text-[10px] font-bold uppercase tracking-widest border-b border-slate-200 dark:border-slate-700/60 whitespace-nowrap bg-slate-50 dark:bg-[#182333]">Manager Name</th>
+                <th className="px-3 py-2 text-slate-500 dark:text-slate-400 text-[10px] font-bold uppercase tracking-widest border-b border-slate-200 dark:border-slate-700/60 whitespace-nowrap bg-slate-50 dark:bg-[#182333]">HOD Code</th>
+                <th className="px-3 py-2 text-slate-500 dark:text-slate-400 text-[10px] font-bold uppercase tracking-widest border-b border-slate-200 dark:border-slate-700/60 whitespace-nowrap bg-slate-50 dark:bg-[#182333]">HOD Name</th>
+                <th className="px-3 py-2 text-slate-500 dark:text-slate-400 text-[10px] font-bold uppercase tracking-widest border-b border-slate-200 dark:border-slate-700/60 whitespace-nowrap bg-slate-50 dark:bg-[#182333]">Buffer Time</th>
                 <th className="px-3 py-2 text-slate-500 dark:text-slate-400 text-[10px] font-bold uppercase tracking-widest border-b border-slate-200 dark:border-slate-700/60 text-center whitespace-nowrap bg-slate-50 dark:bg-[#182333]">Day Start</th>
                 <th className="px-3 py-2 text-slate-500 dark:text-slate-400 text-[10px] font-bold uppercase tracking-widest border-b border-slate-200 dark:border-slate-700/60 text-center whitespace-nowrap bg-slate-50 dark:bg-[#182333]">Day Close</th>
                 <th className="px-3 py-2 text-slate-500 dark:text-slate-400 text-[10px] font-bold uppercase tracking-widest border-b border-slate-200 dark:border-slate-700/60 text-center sticky right-0 z-30 bg-slate-50 dark:bg-[#182333] shadow-[-4px_0_15px_-3px_rgba(0,0,0,0.05)] dark:shadow-[-4px_0_15px_-3px_rgba(0,0,0,0.4)]">Action</th>
@@ -442,43 +398,145 @@ const ManagerCutOff: React.FC = () => {
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-slate-700/50">
               {paginatedData.length > 0 ? (
-                paginatedData.map((item, idx) => (
-                  <tr key={idx} className="hover:bg-slate-50/50 dark:hover:bg-[#2a374a]/30 transition-colors group">
-                    <td className="px-3 py-1.5 text-xs text-slate-600 dark:text-slate-300 whitespace-nowrap">{item.e_comp || '-'}</td>
-                    <td className="px-3 py-1.5 text-xs text-slate-600 dark:text-slate-300 whitespace-nowrap">{item.brname || '-'}</td>
-                    <td className="px-3 py-1.5 text-xs text-slate-600 dark:text-slate-300 whitespace-nowrap">{item.manager_code || '-'}</td>
-                    <td className="px-3 py-1.5 text-xs text-slate-600 dark:text-slate-300 whitespace-nowrap">{item.mgrname || '-'}</td>
-                    <td className="px-3 py-1.5 text-center whitespace-nowrap">
-                      <span className="px-2 py-0.5 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded text-xs font-semibold font-mono">
-                        {item.day_start_time || '-'}
-                      </span>
-                    </td>
-                    <td className="px-3 py-1.5 text-center whitespace-nowrap">
-                      <span className="px-2 py-0.5 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded text-xs font-semibold font-mono">
-                        {item.day_close_time || '-'}
-                      </span>
-                    </td>
-                    <td className="px-3 py-1.5 text-center sticky right-0 bg-white dark:bg-[#1e293b] group-hover:bg-slate-50/50 dark:group-hover:bg-[#2a374a] shadow-[-4px_0_15px_-3px_rgba(0,0,0,0.05)] dark:shadow-[-4px_0_15px_-3px_rgba(0,0,0,0.2)] transition-colors flex items-center justify-center gap-1.5">
-                      <button
-                        onClick={() => handleEdit(item)}
-                        className="w-7 h-7 rounded-lg flex items-center justify-center text-blue-600 bg-blue-50 hover:bg-blue-100 dark:bg-blue-900/20 dark:text-blue-400 dark:hover:bg-blue-900/40 transition-colors"
-                        title="Edit"
-                      >
-                        <Edit2 className="w-3.5 h-3.5" />
-                      </button>
-                      <button
-                        onClick={() => handleDeleteClick(item)}
-                        className="w-7 h-7 rounded-lg flex items-center justify-center text-red-600 bg-red-50 hover:bg-red-100 dark:bg-red-900/20 dark:text-red-400 dark:hover:bg-red-900/40 transition-colors"
-                        title="Delete"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
-                    </td>
-                  </tr>
-                ))
+                paginatedData.map((item, idx) => {
+                  const rowKey = `${currentPage}_${idx}`;
+                  const isEditing = editingKey === rowKey;
+
+                  return (
+                    <tr key={rowKey} className="hover:bg-slate-50/50 dark:hover:bg-[#2a374a]/30 transition-colors group">
+                      <td className="px-3 py-1.5 text-xs text-slate-600 dark:text-slate-300 whitespace-nowrap">
+                        {item.e_comp || '-'}
+                      </td>
+                      <td className="px-3 py-1.5 text-xs text-slate-600 dark:text-slate-300 whitespace-nowrap">
+                        {item.brname || '-'}
+                      </td>
+                      <td className="px-3 py-1.5 text-xs text-slate-600 dark:text-slate-300 whitespace-nowrap">
+                        {item.manager_code || '-'}
+                      </td>
+                      <td className="px-3 py-1.5 text-xs text-slate-600 dark:text-slate-300 whitespace-nowrap">
+                        {item.mgrname || '-'}
+                      </td>
+                      {isEditing && editForm ? (
+                        <>
+                          <td className="px-3 py-1.5 text-xs whitespace-nowrap">
+                            <input
+                              type="text"
+                              value={editForm.hod_code || ''}
+                              onChange={(e) => setEditForm({ ...editForm, hod_code: e.target.value })}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') {
+                                  e.preventDefault();
+                                  handleFetchHod(e.currentTarget.value.trim());
+                                }
+                              }}
+                              onBlur={(e) => handleFetchHod(e.target.value)}
+                              className="w-full px-2 py-1 bg-white dark:bg-[#0b1120] border border-slate-200 dark:border-slate-700 rounded text-xs focus:ring-1 focus:ring-blue-500 outline-none dark:text-white"
+                            />
+                          </td>
+                          <td className="px-3 py-1.5 text-xs whitespace-nowrap">
+                            <div className="relative">
+                              <input
+                                type="text"
+                                value={editForm.hod_name || ''}
+                                onChange={(e) => setEditForm({ ...editForm, hod_name: e.target.value })}
+                                disabled={fetchingHod}
+                                className={`w-full px-2 py-1 bg-white dark:bg-[#0b1120] border border-slate-200 dark:border-slate-700 rounded text-xs focus:ring-1 focus:ring-blue-500 outline-none dark:text-white ${fetchingHod ? 'opacity-70 pr-8' : ''}`}
+                              />
+                              {fetchingHod && (
+                                <div className="absolute right-2 top-1/2 -translate-y-1/2 text-blue-500">
+                                  <RefreshCw className="w-3 h-3 animate-spin" />
+                                </div>
+                              )}
+                              {fetchingHod && (
+                                <div className="absolute bottom-[1px] left-[1px] right-[1px] h-[2px] bg-blue-100/50 dark:bg-blue-900/50 overflow-hidden rounded-b-sm pointer-events-none">
+                                  <div className="h-full bg-blue-500 animate-pulse w-full"></div>
+                                </div>
+                              )}
+                            </div>
+                          </td>
+                          <td className="px-3 py-1.5 text-xs whitespace-nowrap">
+                            <input
+                              type="number"
+                              value={editForm.buffer_time || ''}
+                              onChange={(e) => setEditForm({ ...editForm, buffer_time: e.target.value })}
+                              className="w-16 px-2 py-1 bg-white dark:bg-[#0b1120] border border-slate-200 dark:border-slate-700 rounded text-xs focus:ring-1 focus:ring-blue-500 outline-none dark:text-white"
+                            />
+                          </td>
+                          <td className="px-3 py-1.5 text-center whitespace-nowrap">
+                            <input
+                              type="time"
+                              value={editForm.day_start_time}
+                              onChange={(e) => setEditForm({ ...editForm, day_start_time: e.target.value })}
+                              className="w-24 px-2 py-1 bg-white dark:bg-[#0b1120] border border-slate-200 dark:border-slate-700 rounded text-xs focus:ring-1 focus:ring-blue-500 outline-none dark:text-white [color-scheme:light] dark:[color-scheme:dark]"
+                            />
+                          </td>
+                          <td className="px-3 py-1.5 text-center whitespace-nowrap">
+                            <input
+                              type="time"
+                              value={editForm.day_close_time}
+                              onChange={(e) => setEditForm({ ...editForm, day_close_time: e.target.value })}
+                              className="w-24 px-2 py-1 bg-white dark:bg-[#0b1120] border border-slate-200 dark:border-slate-700 rounded text-xs focus:ring-1 focus:ring-blue-500 outline-none dark:text-white [color-scheme:light] dark:[color-scheme:dark]"
+                            />
+                          </td>
+                          <td className="px-3 py-1.5 text-center sticky right-0 bg-white dark:bg-[#1e293b] shadow-[-4px_0_15px_-3px_rgba(0,0,0,0.05)] dark:shadow-[-4px_0_15px_-3px_rgba(0,0,0,0.2)] transition-colors">
+                            <div className="flex items-center justify-center gap-2">
+                              <button
+                                onClick={handleSave}
+                                disabled={saving}
+                                className="w-6 h-6 rounded flex items-center justify-center text-green-600 bg-green-50 hover:bg-green-100 dark:bg-green-900/20 dark:text-green-400 dark:hover:bg-green-900/40 transition-colors disabled:opacity-50"
+                                title="Save"
+                              >
+                                <CheckSquare className="w-3.5 h-3.5" />
+                              </button>
+                              <button
+                                onClick={handleCancelEdit}
+                                disabled={saving}
+                                className="w-6 h-6 rounded flex items-center justify-center text-red-600 bg-red-50 hover:bg-red-100 dark:bg-red-900/20 dark:text-red-400 dark:hover:bg-red-900/40 transition-colors disabled:opacity-50"
+                                title="Cancel"
+                              >
+                                <X className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                          </td>
+                        </>
+                      ) : (
+                        <>
+                          <td className="px-3 py-1.5 text-xs text-slate-600 dark:text-slate-300 whitespace-nowrap">
+                            {item.hod_code || '-'}
+                          </td>
+                          <td className="px-3 py-1.5 text-xs text-slate-600 dark:text-slate-300 whitespace-nowrap">
+                            {item.hod_name || '-'}
+                          </td>
+                          <td className="px-3 py-1.5 text-xs text-slate-600 dark:text-slate-300 whitespace-nowrap">
+                            {item.buffer_time || '-'}
+                          </td>
+                          <td className="px-3 py-1.5 text-center whitespace-nowrap">
+                            <span className="px-2 py-0.5 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded text-xs font-semibold font-mono">
+                              {item.day_start_time || '-'}
+                            </span>
+                          </td>
+                          <td className="px-3 py-1.5 text-center whitespace-nowrap">
+                            <span className="px-2 py-0.5 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded text-xs font-semibold font-mono">
+                              {item.day_close_time || '-'}
+                            </span>
+                          </td>
+                          <td className="px-3 py-1.5 text-center sticky right-0 bg-white dark:bg-[#1e293b] group-hover:bg-slate-50/50 dark:group-hover:bg-[#2a374a] shadow-[-4px_0_15px_-3px_rgba(0,0,0,0.05)] dark:shadow-[-4px_0_15px_-3px_rgba(0,0,0,0.2)] transition-colors">
+                            <button
+                              onClick={() => handleEdit(item, idx)}
+                              className="w-7 h-7 rounded-lg flex items-center justify-center mx-auto text-blue-600 bg-blue-50 hover:bg-blue-100 dark:bg-blue-900/20 dark:text-blue-400 dark:hover:bg-blue-900/40 transition-colors"
+                              title="Edit Cut Off Times"
+                            >
+                              <Edit2 className="w-3.5 h-3.5" />
+                            </button>
+                          </td>
+                        </>
+                      )}
+                    </tr>
+                  );
+                })
               ) : (
                 <tr>
-                  <td colSpan={7} className="px-3 py-6 text-center text-slate-500 dark:text-slate-400">
+                  <td colSpan={10} className="px-3 py-6 text-center text-slate-500 dark:text-slate-400">
                     No records found
                   </td>
                 </tr>
@@ -510,146 +568,7 @@ const ManagerCutOff: React.FC = () => {
         {totalPages > 1 && renderPagination()}
       </div>
 
-      {/* Add/Edit Modal */}
-      {isModalOpen && selectedCutoff && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm animate-fadeIn">
-          <div className="bg-white dark:bg-[#1e293b] rounded-2xl shadow-xl w-full max-w-md overflow-hidden animate-slideUp">
-            <div className="flex justify-between items-center p-5 border-b border-slate-200 dark:border-slate-700/60">
-              <h3 className="font-bold text-slate-800 dark:text-white text-lg">{modalMode === 'add' ? 'Add Manager Cut Off' : 'Edit Manager Cut Off'}</h3>
-              <button
-                type="button"
-                onClick={() => setIsModalOpen(false)}
-                className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
 
-            <form onSubmit={handleSave} className="p-6 space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Company</label>
-                  <input
-                    type="text"
-                    required
-                    value={selectedCutoff.e_comp}
-                    onChange={(e) => setSelectedCutoff({ ...selectedCutoff, e_comp: e.target.value })}
-                    className="w-full px-3 py-2 bg-slate-50 dark:bg-[#0b1120] border border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none dark:text-white transition-all"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Branch</label>
-                  <input
-                    type="text"
-                    required
-                    value={selectedCutoff.brname}
-                    onChange={(e) => setSelectedCutoff({ ...selectedCutoff, brname: e.target.value })}
-                    className="w-full px-3 py-2 bg-slate-50 dark:bg-[#0b1120] border border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none dark:text-white transition-all"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Manager Code</label>
-                  <input
-                    type="text"
-                    required
-                    value={selectedCutoff.manager_code}
-                    onChange={(e) => setSelectedCutoff({ ...selectedCutoff, manager_code: e.target.value })}
-                    className="w-full px-3 py-2 bg-slate-50 dark:bg-[#0b1120] border border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none dark:text-white transition-all"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Manager Name</label>
-                  <input
-                    type="text"
-                    required
-                    value={selectedCutoff.mgrname}
-                    onChange={(e) => setSelectedCutoff({ ...selectedCutoff, mgrname: e.target.value })}
-                    className="w-full px-3 py-2 bg-slate-50 dark:bg-[#0b1120] border border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none dark:text-white transition-all"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">Day Start Time (HH:mm)</label>
-                <input
-                  type="time"
-                  required
-                  value={selectedCutoff.day_start_time}
-                  onChange={(e) => setSelectedCutoff({ ...selectedCutoff, day_start_time: e.target.value })}
-                  className="w-full px-4 py-2.5 bg-white dark:bg-[#0b1120] border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-medium focus:ring-2 focus:ring-blue-500 outline-none dark:text-white transition-all shadow-sm [color-scheme:light] dark:[color-scheme:dark]"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">Day Close Time (HH:mm)</label>
-                <input
-                  type="time"
-                  required
-                  value={selectedCutoff.day_close_time}
-                  onChange={(e) => setSelectedCutoff({ ...selectedCutoff, day_close_time: e.target.value })}
-                  className="w-full px-4 py-2.5 bg-white dark:bg-[#0b1120] border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-medium focus:ring-2 focus:ring-blue-500 outline-none dark:text-white transition-all shadow-sm [color-scheme:light] dark:[color-scheme:dark]"
-                />
-              </div>
-
-              <div className="pt-4 flex gap-3">
-                <button
-                  type="button"
-                  onClick={() => setIsModalOpen(false)}
-                  className="flex-1 px-4 py-2.5 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 rounded-xl font-medium hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={saving}
-                  className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white rounded-xl font-medium transition-all"
-                >
-                  {saving ? (
-                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                  ) : (
-                    <Save className="w-4 h-4" />
-                  )}
-                  {saving ? 'Saving...' : 'Save'}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* Delete Confirmation Modal */}
-      {isDeleteModalOpen && selectedCutoff && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm animate-fadeIn">
-          <div className="bg-white dark:bg-[#1e293b] rounded-2xl shadow-xl w-full max-w-sm overflow-hidden animate-slideUp">
-            <div className="p-6 text-center">
-              <div className="w-12 h-12 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center mx-auto mb-4">
-                <Trash2 className="w-6 h-6 text-red-600 dark:text-red-400" />
-              </div>
-              <h3 className="font-bold text-slate-800 dark:text-white text-lg mb-2">Delete Manager Cut Off</h3>
-              <p className="text-sm text-slate-500 dark:text-slate-400 mb-6">
-                Are you sure you want to delete this manager cutoff for <b>{selectedCutoff.mgrname}</b>?
-              </p>
-              <div className="flex gap-3">
-                <button
-                  type="button"
-                  onClick={() => setIsDeleteModalOpen(false)}
-                  className="flex-1 px-4 py-2.5 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 rounded-xl font-medium hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="button"
-                  onClick={confirmDelete}
-                  disabled={deleting}
-                  className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-red-600 hover:bg-red-700 disabled:opacity-50 text-white rounded-xl font-medium transition-all"
-                >
-                  {deleting ? 'Deleting...' : 'Delete'}
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 };

@@ -2,8 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { format, startOfMonth, getDaysInMonth, addMonths, subMonths, isSameMonth } from 'date-fns';
 import { useNavigate } from 'react-router-dom';
-import { fetchEmployeeDataExternal, fetchEmployeePolicies } from '../../api';
-import { ATTENDANCE_STATUS_MAP, DEFAULT_ATTENDANCE_COLORS } from '../../constants';
+import { fetchEmployeePunchData, fetchEmployeePolicies, fetchDeptMgrCutoff, fetchManagerCutoff, fetchWorkerCutoff } from '../../api';
+import { ATTENDANCE_STATUS, ATTENDANCE_STATUS_MAP, DEFAULT_ATTENDANCE_COLORS, DEFAULT_IN_TIME, DEFAULT_OUT_TIME } from '../../constants';
 import { useAppData } from '../../context/AppContext';
 import { ChevronLeft, ChevronRight, X } from 'lucide-react';
 import Loader from '../../components/Loader';
@@ -12,7 +12,7 @@ import { calculateTime, calculateTimeNum, normalizeAttendanceStatus } from '../.
 
 const MyAttendance: React.FC = () => {
   const { user } = useAuth();
-  const { customColors, masterConfig } = useAppData();
+  const { customColors, masterConfig, cutoffSettings } = useAppData();
   const navigate = useNavigate();
   const [records, setRecords] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -26,32 +26,66 @@ const MyAttendance: React.FC = () => {
   });
 
   const [cachedPolicy, setCachedPolicy] = useState<any>(null);
+  const [isRuleModalOpen, setIsRuleModalOpen] = useState(false);
 
   const fetchData = async () => {
     if (!user) return;
     try {
       setLoading(true);
 
-
-
       const frDate = format(startOfMonth(currentDate), 'dd-MMM-yyyy');
       const toDate = format(new Date(currentDate.getFullYear(), currentDate.getMonth(), getDaysInMonth(currentDate)), 'dd-MMM-yyyy');
 
-      const extData = await fetchEmployeeDataExternal(user.id, frDate, toDate);
+      const extData = await fetchEmployeePunchData(user.id, frDate, toDate);
       const punchData = extData?.EMP_PUNCH_DATA || [];
 
       let myPolicy = cachedPolicy;
       if (!myPolicy) {
         const policies = await fetchEmployeePolicies();
-        myPolicy = policies.find((p: any) => p.employeeId === user.id) || { inTime: '09:00', outTime: '18:00', weekOffs: [0] };
+        myPolicy = policies.find((p: any) => p.employeeId === user.id) || { inTime: DEFAULT_IN_TIME, outTime: DEFAULT_OUT_TIME, weekOffs: [0] };
         setCachedPolicy(myPolicy);
+      }
+
+      let activeCutoff = undefined;
+
+      const payload = { e_comp: user.code, manager_code: user.manager_code };
+
+      try {
+        if (cutoffSettings.cutoff_worker === 'Y') {
+          const workerData = await fetchWorkerCutoff({ e_comp: user.code, worker_code: user.code });
+          if (workerData && workerData.length > 0) activeCutoff = workerData[0];
+        }
+        if (!activeCutoff && (cutoffSettings.cutoff_worker === 'Y' || cutoffSettings.cutoff_manager === 'Y')) {
+          const mgrData = await fetchManagerCutoff(payload);
+          if (mgrData && mgrData.length > 0) activeCutoff = mgrData[0];
+        }
+        if (!activeCutoff && (cutoffSettings.cutoff_worker === 'Y' || cutoffSettings.cutoff_manager === 'Y' || cutoffSettings.cutoff_auto === 'Y')) {
+          const autoData = await fetchDeptMgrCutoff(payload);
+          if (autoData && autoData.length > 0) activeCutoff = autoData[0];
+        }
+      } catch (err) {
+        console.error("Error fetching dynamic cutoff", err);
+      }
+
+      let cutoffConfig = undefined;
+      if (activeCutoff) {
+        cutoffConfig = {
+          inTime: activeCutoff.in_time,
+          outTime: activeCutoff.out_time,
+          bufferTime: activeCutoff.buffer_time
+        };
+      } else if (cutoffSettings.cuttoff_defalut === 'Y' || Object.keys(cutoffSettings).length > 0) {
+        cutoffConfig = {
+          inTime: cutoffSettings.cuttoff_in || myPolicy.inTime,
+          outTime: cutoffSettings.cuttoff_out || myPolicy.outTime,
+          bufferTime: cutoffSettings.cuttoff_buffer || '15'
+        };
       }
 
       const [pInH, pInM] = myPolicy.inTime.split(':').map(Number);
       const [pOutH, pOutM] = myPolicy.outTime.split(':').map(Number);
       let standardShiftMs = (pOutH * 60 + pOutM) * 60000 - (pInH * 60 + pInM) * 60000;
-      if (standardShiftMs < 0) standardShiftMs += 24 * 60 * 60 * 1000; // handle overnight shifts
-
+      if (standardShiftMs < 0) standardShiftMs += 24 * 60 * 60 * 1000;
       let totalWorkingDays = 0;
       let totalWorkingMs = 0;
       let totalOvertimeMs = 0;
@@ -61,23 +95,33 @@ const MyAttendance: React.FC = () => {
       const parsedRecords = punchData
         .filter((p: any) => {
           const dateStr = p.logindate ? p.logindate.split(' ')[0] : '';
+          const recordDate = new Date(dateStr);
           const isUserRecord = p.emp_id === user.code || String(p.emp_id) === String(user.code);
-          return isUserRecord && new Date(dateStr) <= new Date();
+          return isUserRecord && recordDate <= new Date() && isSameMonth(recordDate, currentDate);
         })
         .map((p: any) => {
           const date = p.logindate ? p.logindate.split(' ')[0] : '';
           const checkIn = p.intime ? p.intime.split(' ')[1]?.substring(0, 5) : '';
           const checkOut = p.outtime ? p.outtime.split(' ')[1]?.substring(0, 5) : '';
 
-          const status = normalizeAttendanceStatus(p.status, checkIn, checkOut, date);
+          const status = normalizeAttendanceStatus(p.status, checkIn, checkOut, date, cutoffConfig);
 
-          const { total, overtime } = calculateTime(checkIn, checkOut);
+          let targetHours = 9;
+          if (cutoffConfig) {
+            const [inH, inM] = cutoffConfig.inTime.split(':').map(Number);
+            const [outH, outM] = cutoffConfig.outTime.split(':').map(Number);
+            let reqMins = (outH * 60 + outM) - (inH * 60 + inM);
+            if (reqMins < 0) reqMins += 24 * 60;
+            targetHours = reqMins / 60;
+          }
+
+          const { total, overtime } = calculateTime(checkIn, checkOut, targetHours);
 
           let diffMs = 0;
           if (checkIn && checkOut && checkIn !== '-' && checkOut !== '-') {
-            const { totalMins } = calculateTimeNum(checkIn, checkOut);
+            const { totalMins } = calculateTimeNum(checkIn, checkOut, targetHours);
             diffMs = totalMins * 60 * 1000;
-            totalOvertimeMs += Math.max(0, diffMs - standardShiftMs);
+            totalOvertimeMs += Math.max(0, diffMs - targetHours * 60 * 60 * 1000);
           }
 
           const totalHours = total;
@@ -90,12 +134,12 @@ const MyAttendance: React.FC = () => {
         }).map((r: any) => {
           let finalStatus = r.status;
 
-          if (['P', 'P/MP', 'HD', 'MP', 'In'].includes(finalStatus)) {
+          if ([ATTENDANCE_STATUS.PRESENT, ATTENDANCE_STATUS.PRESENT_MISSPUNCH, ATTENDANCE_STATUS.HALF_DAY, ATTENDANCE_STATUS.MISSPUNCH, ATTENDANCE_STATUS.IN].includes(finalStatus)) {
             totalWorkingDays += 1;
             totalWorkingMs += r.diffMs;
-          } else if (finalStatus === 'A') {
+          } else if (finalStatus === ATTENDANCE_STATUS.ABSENT) {
             totalAbsents += 1;
-          } else if (finalStatus === 'WO') {
+          } else if (finalStatus === ATTENDANCE_STATUS.WEEK_OFF) {
             totalWeekOffs += 1;
           }
 

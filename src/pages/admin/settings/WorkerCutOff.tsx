@@ -1,32 +1,18 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Search, Edit2, Trash2, X, Save, RefreshCw, ChevronLeft, ChevronRight, CheckSquare, Square, Plus } from 'lucide-react';
+import { Search, Edit2, Trash2, X, Save, RefreshCw, ChevronLeft, ChevronRight, CheckSquare, Square } from 'lucide-react';
 import Select, { components } from 'react-select';
 import { toast } from 'react-hot-toast';
 import { fetchWorkerCutoff, insertWorkerCutoff, updateWorkerCutoff, deleteWorkerCutoff } from '../../../api';
 import Loader from '../../../components/Loader';
 import { useAuth } from '../../../context/AuthContext';
 import { Navigate } from 'react-router-dom';
-
-interface WorkerCutOffData {
-  e_comp: string;
-  brname: string;
-  manager_code: string;
-  mgrname: string;
-  worker_code: string;
-  extend_for: string;
-  day_start_time: string;
-  day_close_time: string;
-}
+import type { WorkerCutOffData } from '../../../types';
 
 const CustomOption = (props: any) => {
   return (
     <components.Option {...props}>
       <div className="flex items-center gap-2">
-        {props.isSelected ? (
-          <CheckSquare className="w-4 h-4 text-blue-600 dark:text-blue-400 shrink-0" />
-        ) : (
-          <Square className="w-4 h-4 text-slate-400 dark:text-slate-500 shrink-0" />
-        )}
+        {props.isSelected ? (<CheckSquare className="w-4 h-4 text-blue-600 dark:text-blue-400 shrink-0" />) : (<Square className="w-4 h-4 text-slate-400 dark:text-slate-500 shrink-0" />)}
         <span className="truncate">{props.label}</span>
       </div>
     </components.Option>
@@ -34,19 +20,10 @@ const CustomOption = (props: any) => {
 };
 
 const customSelectClassNames = {
-  control: (state: any) =>
-    `flex items-center justify-between px-2 h-[38px] w-full xl:w-[280px] bg-slate-50 dark:bg-[#0b1120] border rounded-lg text-sm transition-colors cursor-pointer shrink-0 ${state.isFocused
-      ? 'border-blue-500 ring-1 ring-blue-500'
-      : 'border-slate-200 dark:border-slate-700 hover:border-blue-400 dark:hover:border-slate-500'
-    }`,
+  control: (state: any) => `flex items-center justify-between px-2 h-[38px] w-full xl:w-[280px] bg-slate-50 dark:bg-[#0b1120] border rounded-lg text-sm transition-colors cursor-pointer shrink-0 ${state.isFocused ? 'border-blue-500 ring-1 ring-blue-500' : 'border-slate-200 dark:border-slate-700 hover:border-blue-400 dark:hover:border-slate-500'}`,
   menu: () => 'absolute z-50 w-full mt-1 bg-white dark:bg-[#1e293b] border border-slate-200 dark:border-slate-700 rounded-lg shadow-lg overflow-hidden',
   menuList: () => 'max-h-[300px] overflow-y-auto custom-scrollbar',
-  option: (state: any) => `px-3 py-2 text-sm cursor-pointer transition-colors truncate ${state.isSelected
-    ? 'bg-blue-50 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300 font-medium'
-    : state.isFocused
-      ? 'bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200'
-      : 'text-slate-700 dark:text-slate-300'
-    }`,
+  option: (state: any) => `px-3 py-2 text-sm cursor-pointer transition-colors truncate ${state.isSelected ? 'bg-blue-50 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300 font-medium' : state.isFocused ? 'bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200' : 'text-slate-700 dark:text-slate-300'}`,
   singleValue: () => 'text-slate-700 dark:text-slate-300 font-medium truncate',
   input: () => 'text-slate-700 dark:text-slate-300',
   placeholder: () => 'text-slate-500 dark:text-slate-400 font-medium',
@@ -63,13 +40,7 @@ const customSelectClassNames = {
 const CustomValueContainer = ({ children, ...props }: any) => {
   const selectedCount = props.getValue().length;
   const otherChildren: any[] = [];
-  React.Children.forEach(children, (child: any) => {
-    if (child && child.props && child.props.data) {
-      // Ignore pills
-    } else {
-      otherChildren.push(child);
-    }
-  });
+  React.Children.forEach(children, (child: any) => { if (child && child.props && child.props.data) { } else { otherChildren.push(child); } });
   return (
     <components.ValueContainer {...props}>
       {selectedCount > 0 && (
@@ -87,15 +58,9 @@ const MultiSelectDropdown = ({ options, value, onChange, placeholder }: any) => 
   const wrapperRef = React.useRef<HTMLDivElement>(null);
 
   React.useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (wrapperRef.current && !wrapperRef.current.contains(event.target as Node)) {
-        setIsOpen(false);
-      }
-    };
+    const handleClickOutside = (event: MouseEvent) => { if (wrapperRef.current && !wrapperRef.current.contains(event.target as Node)) { setIsOpen(false); } };
     document.addEventListener('mousedown', handleClickOutside);
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-    };
+    return () => { document.removeEventListener('mousedown', handleClickOutside); };
   }, []);
 
   const handleSelectAll = () => onChange(options.map((o: any) => o.value));
@@ -157,36 +122,50 @@ const WorkerCutOff: React.FC = () => {
   const [cutoffList, setCutoffList] = useState<WorkerCutOffData[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // Filters
   const [searchText, setSearchText] = useState('');
   const [filterCompany, setFilterCompany] = useState<string[]>([]);
   const [filterBranch, setFilterBranch] = useState<string[]>([]);
   const [filterManager, setFilterManager] = useState<string[]>([]);
   const [filterWorker, setFilterWorker] = useState<string[]>([]);
 
-  // Pagination
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(30);
 
-  // Modal State
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [modalMode, setModalMode] = useState<'add' | 'edit'>('add');
   const [selectedCutoff, setSelectedCutoff] = useState<WorkerCutOffData | null>(null);
+
+  const [editingKey, setEditingKey] = useState<string | null>(null);
+  const [editForm, setEditForm] = useState<WorkerCutOffData | null>(null);
   const [saving, setSaving] = useState(false);
 
-  // Delete State
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
-  useEffect(() => {
-    loadData();
-  }, []);
+  useEffect(() => { loadData(); }, []);
 
   const loadData = async () => {
     try {
       setLoading(true);
-      const data = await fetchWorkerCutoff();
-      setCutoffList(data);
+      const data = await fetchWorkerCutoff({ manager_code: user?.code || '' });
+      const empList = user?.employee_list || [];
+      const enrichedList = empList.map((emp: any) => {
+        const cutoff = data.find((d: WorkerCutOffData) => d.worker_code === emp.e_code);
+        return {
+          e_comp: emp.e_comp || user?.code || '',
+          brname: emp.s_mgrcomp || '',
+          manager_code: emp.manager_code || emp.s_mgrcd || user?.code || '',
+          mgrname: emp.mgrname || user?.name || '',
+          worker_code: emp.e_code,
+          worker_name: emp.e_name,
+          designation: emp.e_desg || '',
+          extend_for: cutoff ? cutoff.extend_for : '',
+          day_start_time: cutoff ? cutoff.day_start_time : '',
+          day_close_time: cutoff ? cutoff.day_close_time : '',
+          _isNew: !cutoff
+        };
+      });
+
+      setCutoffList(enrichedList);
     } catch (err) {
       toast.error('Unable to fetch worker cutoff data.');
     } finally {
@@ -194,25 +173,34 @@ const WorkerCutOff: React.FC = () => {
     }
   };
 
-  const handleAdd = () => {
-    setModalMode('add');
-    setSelectedCutoff({
-      e_comp: '',
-      brname: '',
-      manager_code: '',
-      mgrname: '',
-      worker_code: '',
-      extend_for: '',
-      day_start_time: '',
-      day_close_time: ''
-    });
-    setIsModalOpen(true);
+  const [fetchingWorker, setFetchingWorker] = useState(false);
+  const handleFetchWorker = async (code: string) => {
+    if (!code) return;
+    try {
+      setFetchingWorker(true);
+      const currentEmployee = user?.employee_list?.find(emp => emp.e_code === code);
+      if (currentEmployee) {
+        setEditForm(prev => prev ? { ...prev, worker_name: currentEmployee.e_name, mgrname: currentEmployee.mgrname || user?.name || '' } : null);
+        setSelectedCutoff(prev => prev ? { ...prev, worker_name: currentEmployee.e_name, mgrname: currentEmployee.mgrname || user?.name || '' } : null);
+        toast.success('Worker Name auto-fetched successfully');
+      } else {
+        toast.error('Failed to fetch Worker details');
+      }
+    } catch (error) {
+      toast.error('Failed to fetch Worker details');
+    } finally {
+      setFetchingWorker(false);
+    }
   };
 
-  const handleEdit = (record: WorkerCutOffData) => {
-    setModalMode('edit');
-    setSelectedCutoff({ ...record });
-    setIsModalOpen(true);
+  const handleEdit = (record: WorkerCutOffData, idx: number) => {
+    setEditingKey(`${currentPage}_${idx}`);
+    setEditForm({ ...record });
+  };
+
+  const handleCancelEdit = () => {
+    setEditingKey(null);
+    setEditForm(null);
   };
 
   const handleDeleteClick = (record: WorkerCutOffData) => {
@@ -245,11 +233,10 @@ const WorkerCutOff: React.FC = () => {
     }
   };
 
-  const handleSave = async (e: React.FormEvent) => {
+  const handleAddSave = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedCutoff) return;
 
-    // Validation
     if (!selectedCutoff.e_comp || !selectedCutoff.brname || !selectedCutoff.manager_code || !selectedCutoff.worker_code || !selectedCutoff.day_start_time || !selectedCutoff.day_close_time || !selectedCutoff.extend_for) {
       toast.error('All fields are required.');
       return;
@@ -281,27 +268,63 @@ const WorkerCutOff: React.FC = () => {
         extend_for: selectedCutoff.extend_for
       };
 
-      if (modalMode === 'add') {
-        const response = await insertWorkerCutoff(payload);
-        if (response && response.status === 'success') {
-          toast.success('Worker cutoff created successfully');
-          setIsModalOpen(false);
-          await loadData();
-        } else {
-          toast.error('Unable to save worker cutoff');
-        }
+      const response = await insertWorkerCutoff(payload);
+      if (response && (response.status === 'success' || response.MgrWkrExtendList)) {
+        toast.success('Worker cutoff created successfully');
+        setIsModalOpen(false);
+        await loadData();
       } else {
-        const response = await updateWorkerCutoff(payload);
-        if (response && response.status === 'success') {
-          toast.success('Worker cutoff updated successfully');
-          setIsModalOpen(false);
-          await loadData();
-        } else {
-          toast.error('Unable to update worker cutoff');
-        }
+        toast.error('Unable to save worker cutoff');
       }
     } catch (err) {
-      toast.error(`Unable to ${modalMode === 'add' ? 'save' : 'update'} worker cutoff`);
+      toast.error('Unable to save worker cutoff');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleEditSave = async () => {
+    if (!editForm) return;
+
+    const timeRegex = /^([0-1][0-9]|2[0-3]):[0-5][0-9]$/;
+    if (!timeRegex.test(editForm.day_start_time)) {
+      toast.error('Invalid Day Start Time format. Use HH:mm');
+      return;
+    }
+    if (!timeRegex.test(editForm.day_close_time)) {
+      toast.error('Invalid Day Close Time format. Use HH:mm');
+      return;
+    }
+    if (editForm.day_close_time <= editForm.day_start_time) {
+      toast.error('Day Close Time must be greater than Day Start Time.');
+      return;
+    }
+
+    try {
+      setSaving(true);
+      const payload = {
+        e_comp: editForm.e_comp,
+        brname: editForm.brname,
+        manager_code: editForm.manager_code,
+        mgrname: editForm.mgrname,
+        worker_code: editForm.worker_code,
+        day_start_time: editForm.day_start_time,
+        day_close_time: editForm.day_close_time,
+        extend_for: editForm.extend_for
+      };
+
+      const response = editForm._isNew ? await insertWorkerCutoff(payload) : await updateWorkerCutoff(payload);
+
+      if (response && (response.status === 'success' || response.MgrWkrExtendList)) {
+        toast.success('Worker cutoff updated successfully');
+        setEditingKey(null);
+        setEditForm(null);
+        await loadData();
+      } else {
+        toast.error('Unable to update worker cutoff');
+      }
+    } catch (err) {
+      toast.error('Unable to update worker cutoff');
     } finally {
       setSaving(false);
     }
@@ -323,12 +346,8 @@ const WorkerCutOff: React.FC = () => {
   const filteredData = useMemo(() => {
     return cutoffList.filter(item => {
       const matchSearch =
-        item.e_comp?.toLowerCase().includes(searchText.toLowerCase()) ||
-        item.brname?.toLowerCase().includes(searchText.toLowerCase()) ||
-        item.mgrname?.toLowerCase().includes(searchText.toLowerCase()) ||
-        item.manager_code?.toLowerCase().includes(searchText.toLowerCase()) ||
         item.worker_code?.toLowerCase().includes(searchText.toLowerCase()) ||
-        item.extend_for?.toLowerCase().includes(searchText.toLowerCase());
+        item.worker_name?.toLowerCase().includes(searchText.toLowerCase());
 
       const matchesCompany = filterCompany.length === 0 || filterCompany.includes(item.e_comp);
       const matchesBranch = filterBranch.length === 0 || filterBranch.includes(item.brname);
@@ -404,17 +423,11 @@ const WorkerCutOff: React.FC = () => {
             onChange={setFilterManager}
             placeholder="All Managers"
           />
-          {/* <MultiSelectDropdown
-            options={workers.map(w => ({ value: w, label: w }))}
-            value={filterWorker.map(w => ({ value: w, label: w }))}
-            onChange={setFilterWorker}
-            placeholder="All Workers"
-          /> */}
           <div className="relative w-full xl:w-[280px] shrink-0">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
             <input
               type="text"
-              placeholder="Search..."
+              placeholder="Search by employee code or name..."
               value={searchText}
               onChange={(e) => setSearchText(e.target.value)}
               className="w-full h-[38px] pl-9 pr-4 bg-slate-50 dark:bg-[#0b1120] border border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none dark:text-white transition-colors"
@@ -427,13 +440,6 @@ const WorkerCutOff: React.FC = () => {
             <RefreshCw className="w-4 h-4" />
             Clear
           </button>
-          <button
-            onClick={handleAdd}
-            className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition-colors whitespace-nowrap shadow-sm shadow-blue-500/20"
-          >
-            <Plus className="w-4 h-4" />
-            Add
-          </button>
         </div>
       </div>
 
@@ -443,55 +449,111 @@ const WorkerCutOff: React.FC = () => {
           <table className="w-full text-left border-collapse min-w-[1000px]">
             <thead className="sticky top-0 z-20 bg-slate-50 dark:bg-[#182333] shadow-sm">
               <tr>
-                <th className="px-3 py-2 text-slate-500 dark:text-slate-400 text-[10px] font-bold uppercase tracking-widest border-b border-slate-200 dark:border-slate-700/60 whitespace-nowrap bg-slate-50 dark:bg-[#182333]">Company</th>
-                <th className="px-3 py-2 text-slate-500 dark:text-slate-400 text-[10px] font-bold uppercase tracking-widest border-b border-slate-200 dark:border-slate-700/60 whitespace-nowrap bg-slate-50 dark:bg-[#182333]">Branch</th>
-                <th className="px-3 py-2 text-slate-500 dark:text-slate-400 text-[10px] font-bold uppercase tracking-widest border-b border-slate-200 dark:border-slate-700/60 whitespace-nowrap bg-slate-50 dark:bg-[#182333]">Manager Code</th>
-                <th className="px-3 py-2 text-slate-500 dark:text-slate-400 text-[10px] font-bold uppercase tracking-widest border-b border-slate-200 dark:border-slate-700/60 whitespace-nowrap bg-slate-50 dark:bg-[#182333]">Manager Name</th>
-                <th className="px-3 py-2 text-slate-500 dark:text-slate-400 text-[10px] font-bold uppercase tracking-widest border-b border-slate-200 dark:border-slate-700/60 whitespace-nowrap bg-slate-50 dark:bg-[#182333]">Worker Code</th>
-                <th className="px-3 py-2 text-slate-500 dark:text-slate-400 text-[10px] font-bold uppercase tracking-widest border-b border-slate-200 dark:border-slate-700/60 whitespace-nowrap bg-slate-50 dark:bg-[#182333]">Extend For</th>
+                <th className="px-3 py-2 text-slate-500 dark:text-slate-400 text-[10px] font-bold uppercase tracking-widest border-b border-slate-200 dark:border-slate-700/60 whitespace-nowrap bg-slate-50 dark:bg-[#182333]">Emp Code</th>
+                <th className="px-3 py-2 text-slate-500 dark:text-slate-400 text-[10px] font-bold uppercase tracking-widest border-b border-slate-200 dark:border-slate-700/60 whitespace-nowrap bg-slate-50 dark:bg-[#182333]">Emp Name</th>
                 <th className="px-3 py-2 text-slate-500 dark:text-slate-400 text-[10px] font-bold uppercase tracking-widest border-b border-slate-200 dark:border-slate-700/60 text-center whitespace-nowrap bg-slate-50 dark:bg-[#182333]">Day Start</th>
                 <th className="px-3 py-2 text-slate-500 dark:text-slate-400 text-[10px] font-bold uppercase tracking-widest border-b border-slate-200 dark:border-slate-700/60 text-center whitespace-nowrap bg-slate-50 dark:bg-[#182333]">Day Close</th>
+                <th className="px-3 py-2 text-slate-500 dark:text-slate-400 text-[10px] font-bold uppercase tracking-widest border-b border-slate-200 dark:border-slate-700/60 whitespace-nowrap bg-slate-50 dark:bg-[#182333]">Extend For</th>
                 <th className="px-3 py-2 text-slate-500 dark:text-slate-400 text-[10px] font-bold uppercase tracking-widest border-b border-slate-200 dark:border-slate-700/60 text-center sticky right-0 z-30 bg-slate-50 dark:bg-[#182333] shadow-[-4px_0_15px_-3px_rgba(0,0,0,0.05)] dark:shadow-[-4px_0_15px_-3px_rgba(0,0,0,0.4)]">Action</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-slate-700/50">
               {paginatedData.length > 0 ? (
-                paginatedData.map((item, idx) => (
-                  <tr key={idx} className="hover:bg-slate-50/50 dark:hover:bg-[#2a374a]/30 transition-colors group">
-                    <td className="px-3 py-1.5 text-xs text-slate-600 dark:text-slate-300 whitespace-nowrap">{item.e_comp || '-'}</td>
-                    <td className="px-3 py-1.5 text-xs text-slate-600 dark:text-slate-300 whitespace-nowrap">{item.brname || '-'}</td>
-                    <td className="px-3 py-1.5 text-xs text-slate-600 dark:text-slate-300 whitespace-nowrap">{item.manager_code || '-'}</td>
-                    <td className="px-3 py-1.5 text-xs text-slate-600 dark:text-slate-300 whitespace-nowrap">{item.mgrname || '-'}</td>
-                    <td className="px-3 py-1.5 text-xs text-slate-600 dark:text-slate-300 whitespace-nowrap">{item.worker_code || '-'}</td>
-                    <td className="px-3 py-1.5 text-xs text-slate-600 dark:text-slate-300 whitespace-nowrap">{item.extend_for || '-'}</td>
-                    <td className="px-3 py-1.5 text-center whitespace-nowrap">
-                      <span className="px-2 py-0.5 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded text-xs font-semibold font-mono">
-                        {item.day_start_time || '-'}
-                      </span>
-                    </td>
-                    <td className="px-3 py-1.5 text-center whitespace-nowrap">
-                      <span className="px-2 py-0.5 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded text-xs font-semibold font-mono">
-                        {item.day_close_time || '-'}
-                      </span>
-                    </td>
-                    <td className="px-3 py-1.5 text-center sticky right-0 bg-white dark:bg-[#1e293b] group-hover:bg-slate-50/50 dark:group-hover:bg-[#2a374a] shadow-[-4px_0_15px_-3px_rgba(0,0,0,0.05)] dark:shadow-[-4px_0_15px_-3px_rgba(0,0,0,0.2)] transition-colors flex items-center justify-center gap-1.5">
-                      <button
-                        onClick={() => handleEdit(item)}
-                        className="w-7 h-7 rounded-lg flex items-center justify-center text-blue-600 bg-blue-50 hover:bg-blue-100 dark:bg-blue-900/20 dark:text-blue-400 dark:hover:bg-blue-900/40 transition-colors"
-                        title="Edit"
-                      >
-                        <Edit2 className="w-3.5 h-3.5" />
-                      </button>
-                      <button
-                        onClick={() => handleDeleteClick(item)}
-                        className="w-7 h-7 rounded-lg flex items-center justify-center text-red-600 bg-red-50 hover:bg-red-100 dark:bg-red-900/20 dark:text-red-400 dark:hover:bg-red-900/40 transition-colors"
-                        title="Delete"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
-                    </td>
-                  </tr>
-                ))
+                paginatedData.map((item, idx) => {
+                  const rowKey = `${currentPage}_${idx}`;
+                  const isEditing = editingKey === rowKey;
+
+                  return (
+                    <tr key={rowKey} className="hover:bg-slate-50/50 dark:hover:bg-[#2a374a]/30 transition-colors group">
+                      {isEditing && editForm ? (
+                        <>
+                          <td className="px-3 py-1.5 text-xs text-slate-600 dark:text-slate-300 whitespace-nowrap font-medium">
+                            {item.worker_code || '-'}
+                          </td>
+                          <td className="px-3 py-1.5 text-xs text-slate-600 dark:text-slate-300 whitespace-nowrap font-medium">
+                            {item.worker_name || '-'}
+                          </td>
+                          <td className="px-3 py-1.5 text-center whitespace-nowrap">
+                            <input
+                              type="time"
+                              value={editForm.day_start_time}
+                              onChange={(e) => setEditForm({ ...editForm, day_start_time: e.target.value })}
+                              className="w-24 px-2 py-1 bg-white dark:bg-[#0b1120] border border-slate-200 dark:border-slate-700 rounded text-xs focus:ring-1 focus:ring-blue-500 outline-none dark:text-white [color-scheme:light] dark:[color-scheme:dark]"
+                            />
+                          </td>
+                          <td className="px-3 py-1.5 text-center whitespace-nowrap">
+                            <input
+                              type="time"
+                              value={editForm.day_close_time}
+                              onChange={(e) => setEditForm({ ...editForm, day_close_time: e.target.value })}
+                              className="w-24 px-2 py-1 bg-white dark:bg-[#0b1120] border border-slate-200 dark:border-slate-700 rounded text-xs focus:ring-1 focus:ring-blue-500 outline-none dark:text-white [color-scheme:light] dark:[color-scheme:dark]"
+                            />
+                          </td>
+                          <td className="px-3 py-1.5 text-xs whitespace-nowrap">
+                            <input
+                              type="text"
+                              value={editForm.extend_for}
+                              onChange={(e) => setEditForm({ ...editForm, extend_for: e.target.value })}
+                              className="w-full min-w-[150px] px-2 py-1 bg-white dark:bg-[#0b1120] border border-slate-200 dark:border-slate-700 rounded text-xs focus:ring-1 focus:ring-blue-500 outline-none dark:text-white"
+                            />
+                          </td>
+                          <td className="px-3 py-1.5 text-center sticky right-0 bg-white dark:bg-[#1e293b] shadow-[-4px_0_15px_-3px_rgba(0,0,0,0.05)] dark:shadow-[-4px_0_15px_-3px_rgba(0,0,0,0.2)] transition-colors">
+                            <div className="flex items-center justify-center gap-2">
+                              <button
+                                onClick={handleEditSave}
+                                disabled={saving}
+                                className="w-6 h-6 rounded flex items-center justify-center text-green-600 bg-green-50 hover:bg-green-100 dark:bg-green-900/20 dark:text-green-400 dark:hover:bg-green-900/40 transition-colors disabled:opacity-50"
+                                title="Save"
+                              >
+                                <CheckSquare className="w-3.5 h-3.5" />
+                              </button>
+                              <button
+                                onClick={handleCancelEdit}
+                                disabled={saving}
+                                className="w-6 h-6 rounded flex items-center justify-center text-red-600 bg-red-50 hover:bg-red-100 dark:bg-red-900/20 dark:text-red-400 dark:hover:bg-red-900/40 transition-colors disabled:opacity-50"
+                                title="Cancel"
+                              >
+                                <X className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                          </td>
+                        </>
+                      ) : (
+                        <>
+                          <td className="px-3 py-1.5 text-xs text-slate-600 dark:text-slate-300 whitespace-nowrap font-medium">{item.worker_code || '-'}</td>
+                          <td className="px-3 py-1.5 text-xs text-slate-600 dark:text-slate-300 whitespace-nowrap font-medium">{item.worker_name || '-'}</td>
+                          <td className="px-3 py-1.5 text-center whitespace-nowrap">
+                            <span className="px-2 py-0.5 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded text-xs font-semibold font-mono">
+                              {item.day_start_time || '-'}
+                            </span>
+                          </td>
+                          <td className="px-3 py-1.5 text-center whitespace-nowrap">
+                            <span className="px-2 py-0.5 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded text-xs font-semibold font-mono">
+                              {item.day_close_time || '-'}
+                            </span>
+                          </td>
+                          <td className="px-3 py-1.5 text-xs text-slate-600 dark:text-slate-300 whitespace-nowrap">{item.extend_for || '-'}</td>
+                          <td className="px-3 py-1.5 text-center sticky right-0 bg-white dark:bg-[#1e293b] group-hover:bg-slate-50/50 dark:group-hover:bg-[#2a374a] shadow-[-4px_0_15px_-3px_rgba(0,0,0,0.05)] dark:shadow-[-4px_0_15px_-3px_rgba(0,0,0,0.2)] transition-colors flex items-center justify-center gap-1.5">
+                            <button
+                              onClick={() => handleEdit(item, idx)}
+                              className="w-7 h-7 rounded-lg flex items-center justify-center text-blue-600 bg-blue-50 hover:bg-blue-100 dark:bg-blue-900/20 dark:text-blue-400 dark:hover:bg-blue-900/40 transition-colors"
+                              title="Edit"
+                            >
+                              <Edit2 className="w-3.5 h-3.5" />
+                            </button>
+                            <button
+                              onClick={() => handleDeleteClick(item)}
+                              className="w-7 h-7 rounded-lg flex items-center justify-center text-red-600 bg-red-50 hover:bg-red-100 dark:bg-red-900/20 dark:text-red-400 dark:hover:bg-red-900/40 transition-colors"
+                              title="Delete"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </td>
+                        </>
+                      )}
+                    </tr>
+                  );
+                })
               ) : (
                 <tr>
                   <td colSpan={9} className="px-3 py-6 text-center text-slate-500 dark:text-slate-400">
@@ -526,12 +588,12 @@ const WorkerCutOff: React.FC = () => {
         {totalPages > 1 && renderPagination()}
       </div>
 
-      {/* Add/Edit Modal */}
+      {/* Add Modal */}
       {isModalOpen && selectedCutoff && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm animate-fadeIn">
           <div className="bg-white dark:bg-[#1e293b] rounded-2xl shadow-xl w-full max-w-lg overflow-hidden animate-slideUp">
             <div className="flex justify-between items-center p-5 border-b border-slate-200 dark:border-slate-700/60">
-              <h3 className="font-bold text-slate-800 dark:text-white text-lg">{modalMode === 'add' ? 'Add Worker Cut Off' : 'Edit Worker Cut Off'}</h3>
+              <h3 className="font-bold text-slate-800 dark:text-white text-lg">Add Worker Cut Off</h3>
               <button
                 type="button"
                 onClick={() => setIsModalOpen(false)}
@@ -541,57 +603,42 @@ const WorkerCutOff: React.FC = () => {
               </button>
             </div>
 
-            <form onSubmit={handleSave} className="p-6 space-y-4">
+            <form onSubmit={handleAddSave} className="p-6 space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Company</label>
-                  <input
-                    type="text"
-                    required
-                    value={selectedCutoff.e_comp}
-                    onChange={(e) => setSelectedCutoff({ ...selectedCutoff, e_comp: e.target.value })}
-                    className="w-full px-3 py-2 bg-slate-50 dark:bg-[#0b1120] border border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none dark:text-white transition-all"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Branch</label>
-                  <input
-                    type="text"
-                    required
-                    value={selectedCutoff.brname}
-                    onChange={(e) => setSelectedCutoff({ ...selectedCutoff, brname: e.target.value })}
-                    className="w-full px-3 py-2 bg-slate-50 dark:bg-[#0b1120] border border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none dark:text-white transition-all"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Manager Code</label>
-                  <input
-                    type="text"
-                    required
-                    value={selectedCutoff.manager_code}
-                    onChange={(e) => setSelectedCutoff({ ...selectedCutoff, manager_code: e.target.value })}
-                    className="w-full px-3 py-2 bg-slate-50 dark:bg-[#0b1120] border border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none dark:text-white transition-all"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Manager Name</label>
-                  <input
-                    type="text"
-                    required
-                    value={selectedCutoff.mgrname || ''}
-                    onChange={(e) => setSelectedCutoff({ ...selectedCutoff, mgrname: e.target.value })}
-                    className="w-full px-3 py-2 bg-slate-50 dark:bg-[#0b1120] border border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none dark:text-white transition-all"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Worker Code</label>
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Code (Worker)</label>
                   <input
                     type="text"
                     required
                     value={selectedCutoff.worker_code}
                     onChange={(e) => setSelectedCutoff({ ...selectedCutoff, worker_code: e.target.value })}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        handleFetchWorker(e.currentTarget.value.trim());
+                      }
+                    }}
+                    onBlur={(e) => handleFetchWorker(e.target.value)}
                     className="w-full px-3 py-2 bg-slate-50 dark:bg-[#0b1120] border border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none dark:text-white transition-all"
                   />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Name (Worker)</label>
+                  <div className="relative">
+                    <input
+                      type="text"
+                      required
+                      value={selectedCutoff.worker_name || ''}
+                      onChange={(e) => setSelectedCutoff({ ...selectedCutoff, worker_name: e.target.value })}
+                      disabled={fetchingWorker}
+                      className={`w-full px-3 py-2 bg-slate-50 dark:bg-[#0b1120] border border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none dark:text-white transition-all ${fetchingWorker ? 'opacity-70 pr-8' : ''}`}
+                    />
+                    {fetchingWorker && (
+                      <div className="absolute right-3 top-1/2 -translate-y-1/2 text-blue-500">
+                        <RefreshCw className="w-4 h-4 animate-spin" />
+                      </div>
+                    )}
+                  </div>
                 </div>
                 <div>
                   <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Extend For</label>

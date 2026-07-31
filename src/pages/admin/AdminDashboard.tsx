@@ -2,18 +2,19 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { useAppData } from '../../context/AppContext';
-import { fetchRequests, fetchUsers, fetchEmployeeDataExternal } from '../../api';
+import { fetchRequests, fetchEmployeePunchData } from '../../api';
 import type { AppRequest, User } from '../../types';
 import { Calendar, EyeOff, Table, Check, X, Clock, Search, ExternalLink } from 'lucide-react';
 import { format } from 'date-fns';
 import { AttendanceTable, type ColumnDef } from '../../components/AttendanceTable';
-import { getStatusColor, normalizeAttendanceStatus, calculateTime } from '../../utils/attendanceUtils';
+import { normalizeAttendanceStatus, calculateTime } from '../../utils/attendanceUtils';
+import { ATTENDANCE_STATUS, DEFAULT_ATTENDANCE_COLORS, REQUEST_STATUS, ATTENDANCE_BASE_MAP } from '../../constants';
 import Loader from '../../components/Loader';
 
 const AdminDashboard: React.FC = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { updateRequestStatus: apiUpdateRequestStatus, addNotification } = useAppData();
+  const { updateRequestStatus: apiUpdateRequestStatus, addNotification, customColors } = useAppData();
   const [requests, setRequests] = useState<AppRequest[]>([]);
   const [actionNotes, setActionNotes] = useState<{ [key: string]: string }>({});
   const [users, setUsers] = useState<User[]>([]);
@@ -35,12 +36,9 @@ const AdminDashboard: React.FC = () => {
           }
         } catch (e) { console.error("Failed fetchRequests:", e); }
 
-        let usersData: any[] = [];
-        try { usersData = await fetchUsers(); } catch (e) { console.error("Failed fetchUsers:", e); }
-
         let extData;
         if (user) {
-          try { extData = await fetchEmployeeDataExternal(user.id, todayStr, todayStr, true); } catch (e) { console.error("Failed fetchEmployeeDataExternal:", e); }
+          try { extData = await fetchEmployeePunchData(user.id, todayStr, todayStr, true); } catch (e) { console.error("Failed fetchEmployeePunchData:", e); }
         }
         const sortedReqs = (reqsData || []).sort((a: any, b: any) => {
           const idA = typeof a.id === 'string' ? parseInt(a.id, 10) : (a.id || 0);
@@ -48,7 +46,7 @@ const AdminDashboard: React.FC = () => {
           return idB - idA;
         });
         setRequests(sortedReqs);
-        setUsers(usersData || []);
+
         if (extData) {
           const punchData = extData?.EMP_PUNCH_DATA || [];
           let allEmployees: User[] = (user?.employee_list || []).map((e: any) => ({
@@ -127,15 +125,15 @@ const AdminDashboard: React.FC = () => {
   const [punchReportPage, setPunchReportPage] = useState(0);
   const itemsPerPage = 10;
 
-  const pendingLeaves = requests.filter(r => r.type === 'Leave' && r.status === 'Pending').length;
-  const approvedLeaves = requests.filter(r => r.type === 'Leave' && r.status === 'Approved').length;
-  const rejectedLeaves = requests.filter(r => r.type === 'Leave' && r.status === 'Rejected').length;
+  const pendingLeaves = requests.filter(r => r.type === 'Leave' && r.status === REQUEST_STATUS.PENDING.code).length;
+  const approvedLeaves = requests.filter(r => r.type === 'Leave' && r.status === REQUEST_STATUS.APPROVED.code).length;
+  const rejectedLeaves = requests.filter(r => r.type === 'Leave' && r.status === REQUEST_STATUS.REJECTED.code).length;
 
-  const pendingPunches = requests.filter(r => (r.type === 'Missed Punch' || r.type === 'Misspunch') && r.status === 'Pending').length;
-  const approvedPunches = requests.filter(r => (r.type === 'Missed Punch' || r.type === 'Misspunch') && r.status === 'Approved').length;
-  const rejectedPunches = requests.filter(r => (r.type === 'Missed Punch' || r.type === 'Misspunch') && r.status === 'Rejected').length;
+  const pendingPunches = requests.filter(r => (r.type === ATTENDANCE_BASE_MAP.MISSPUNCH.label || r.type === ATTENDANCE_BASE_MAP.MISSPUNCH.value) && r.status === REQUEST_STATUS.PENDING.code).length;
+  const approvedPunches = requests.filter(r => (r.type === ATTENDANCE_BASE_MAP.MISSPUNCH.label || r.type === ATTENDANCE_BASE_MAP.MISSPUNCH.value) && r.status === REQUEST_STATUS.APPROVED.code).length;
+  const rejectedPunches = requests.filter(r => (r.type === ATTENDANCE_BASE_MAP.MISSPUNCH.label || r.type === ATTENDANCE_BASE_MAP.MISSPUNCH.value) && r.status === REQUEST_STATUS.REJECTED.code).length;
 
-  const pendingRequestsList = requests.filter(r => r.status === 'Pending');
+  const pendingRequestsList = requests.filter(r => r.status === REQUEST_STATUS.PENDING.code);
 
   const pendingLeaveList = pendingRequestsList.filter(r => {
     if (r.type !== 'Leave') return false;
@@ -146,8 +144,7 @@ const AdminDashboard: React.FC = () => {
   });
 
   const pendingPunchList = pendingRequestsList.filter(r => {
-    // console.log(`Type: ${r.type}`);
-    if (r.type !== 'Missed Punch' && r.type !== 'Misspunch') return false;
+    if (r.type !== ATTENDANCE_BASE_MAP.MISSPUNCH.label && r.type !== ATTENDANCE_BASE_MAP.MISSPUNCH.value) return false;
     if (!punchesSearch) return true;
     const user = users.find(u => u.id === r.userId || u.code === r.userId);
     const searchTarget = user ? `${user.name} ${user.code}` : r.userId;
@@ -155,7 +152,7 @@ const AdminDashboard: React.FC = () => {
   });
 
   const processedLeaveRequests = requests.filter(r => {
-    if (r.status === 'Pending' || r.type !== 'Leave') return false;
+    if (r.status === REQUEST_STATUS.PENDING.code || r.type !== 'Leave') return false;
     if (!leaveReportSearch) return true;
     const user = users.find(u => u.id === r.userId || u.code === r.userId);
     const searchTarget = user ? `${user.name} ${user.code}` : r.userId;
@@ -163,8 +160,7 @@ const AdminDashboard: React.FC = () => {
   });
 
   const processedMissedPunchRequests = requests.filter(r => {
-    // console.log(`${r.id} | ${r.type} | ${r.reason} | ${r.inTime} | ${r.outTime}`)
-    if (r.status === 'Pending' || (r.type !== 'Missed Punch' && r.type !== 'Misspunch')) return false;
+    if (r.status === REQUEST_STATUS.PENDING.code || (r.type !== ATTENDANCE_BASE_MAP.MISSPUNCH.label && r.type !== ATTENDANCE_BASE_MAP.MISSPUNCH.value)) return false;
     if (!punchReportSearch) return true;
     const user = users.find(u => u.id === r.userId || u.code === r.userId);
     const searchTarget = user ? `${user.name} ${user.code}` : r.userId;
@@ -176,9 +172,9 @@ const AdminDashboard: React.FC = () => {
   const pagedProcessedLeaveRequests = processedLeaveRequests.slice(leaveReportPage * itemsPerPage, (leaveReportPage + 1) * itemsPerPage);
   const pagedprocessedMissedPunchRequests = processedMissedPunchRequests.slice(punchReportPage * itemsPerPage, (punchReportPage + 1) * itemsPerPage);
 
-  const recentPresentCount = recentPunchesData.filter(r => ['P', 'P/MP', 'HD', 'MP', 'In', 'PH'].includes(r.status)).length;
-  const recentAbsentCount = recentPunchesData.filter(r => r.status === 'A').length;
-  const recentLeaveCount = recentPunchesData.filter(r => r.status === 'L').length;
+  const recentPresentCount = recentPunchesData.filter(r => [ATTENDANCE_STATUS.PRESENT, ATTENDANCE_STATUS.PRESENT_MISSPUNCH, ATTENDANCE_STATUS.HALF_DAY, ATTENDANCE_STATUS.MISSPUNCH, ATTENDANCE_STATUS.IN, ATTENDANCE_STATUS.PRESENT_ON_HOLIDAY].includes(r.status)).length;
+  const recentAbsentCount = recentPunchesData.filter(r => r.status === ATTENDANCE_STATUS.ABSENT).length;
+  const recentLeaveCount = recentPunchesData.filter(r => r.status === ATTENDANCE_STATUS.LEAVE).length;
 
   const PaginationFooter = ({ page, setPage, total, label }: any) => {
     const totalPages = Math.ceil(total / itemsPerPage);
@@ -204,7 +200,7 @@ const AdminDashboard: React.FC = () => {
     { key: 'checkIn', label: 'In', render: (item) => <span className="text-sm text-slate-500 dark:text-slate-400 font-medium whitespace-nowrap">{item.checkIn !== '-' ? item.checkIn : '-'}</span> },
     { key: 'checkOut', label: 'Out', render: (item) => <span className="text-sm text-slate-500 dark:text-slate-400 font-medium whitespace-nowrap">{item.checkOut !== '-' ? item.checkOut : '-'}</span> },
     { key: 'duration', label: 'Working Hr', render: (item) => <span className="text-sm text-slate-500 dark:text-slate-400 font-medium whitespace-nowrap">{item.duration !== '-' ? item.duration : '-'}</span> },
-    { key: 'status', label: 'Status', render: (item) => <span className={`text-sm font-medium ${getStatusColor(item.status)}`}>{item.status}</span> },
+    { key: 'status', label: 'Status', render: (item) => <span className="text-sm font-bold" style={{ color: customColors[item.status] || DEFAULT_ATTENDANCE_COLORS[item.status] || '' }}>{item.status}</span> },
   ];
 
   return (
@@ -709,9 +705,9 @@ const AdminDashboard: React.FC = () => {
         <div className="h-[450px]">
           <AttendanceTable
             data={recentPunchesData.filter(r => {
-              if (recentPunchingFilter === 'Present') return ['P', 'P/MP', 'HD', 'MP', 'In', 'PH'].includes(r.status);
-              if (recentPunchingFilter === 'Absent') return r.status === 'A';
-              if (recentPunchingFilter === 'Leave') return r.status === 'L';
+              if (recentPunchingFilter === 'Present') return [ATTENDANCE_STATUS.PRESENT, ATTENDANCE_STATUS.PRESENT_MISSPUNCH, ATTENDANCE_STATUS.HALF_DAY, ATTENDANCE_STATUS.MISSPUNCH, ATTENDANCE_STATUS.IN, ATTENDANCE_STATUS.PRESENT_ON_HOLIDAY].includes(r.status);
+              if (recentPunchingFilter === 'Absent') return r.status === ATTENDANCE_STATUS.ABSENT;
+              if (recentPunchingFilter === 'Leave') return r.status === ATTENDANCE_STATUS.LEAVE;
               return true; // 'All'
             })}
             columns={recentPunchesColumns}

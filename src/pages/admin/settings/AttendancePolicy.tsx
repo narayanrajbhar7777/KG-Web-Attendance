@@ -4,16 +4,7 @@ import Loader from '../../../components/Loader';
 import { fetchUsers, fetchEmployeePolicies, createEmployeePolicy, updateEmployeePolicy } from '../../../api';
 import { useAppData } from '../../../context/AppContext';
 import type { User, AttendancePolicy } from '../../../types';
-
-const daysOfWeek = [
-  { label: 'S', name: 'Sunday', value: 0 },
-  { label: 'M', name: 'Monday', value: 1 },
-  { label: 'T', name: 'Tuesday', value: 2 },
-  { label: 'W', name: 'Wednesday', value: 3 },
-  { label: 'T', name: 'Thursday', value: 4 },
-  { label: 'F', name: 'Friday', value: 5 },
-  { label: 'S', name: 'Saturday', value: 6 },
-];
+import { DAYS, DEFAULT_IN_TIME, DEFAULT_OUT_TIME } from '../../../constants';
 
 const AttendancePolicyPage: React.FC = () => {
   const { addNotification } = useAppData();
@@ -53,7 +44,7 @@ const AttendancePolicyPage: React.FC = () => {
 
   const handlePolicyChange = (employeeId: string, field: string, value: any) => {
     setPolicies(prev => {
-      const existing = prev[employeeId] || { id: '', employeeId, inTime: '09:00', outTime: '18:00', weekOffs: [0] };
+      const existing = prev[employeeId] || { id: '', employeeId, inTime: DEFAULT_IN_TIME, outTime: DEFAULT_OUT_TIME, weekOffs: [0] };
       return {
         ...prev,
         [employeeId]: {
@@ -66,7 +57,7 @@ const AttendancePolicyPage: React.FC = () => {
 
   const handleToggleDay = (employeeId: string, dayValue: number) => {
     setPolicies(prev => {
-      const existing = prev[employeeId] || { id: '', employeeId, inTime: '09:00', outTime: '18:00', weekOffs: [0] };
+      const existing = prev[employeeId] || { id: '', employeeId, inTime: DEFAULT_IN_TIME, outTime: DEFAULT_OUT_TIME, weekOffs: [0] };
       const currentWeekOffs = existing.weekOffs || [];
       const isChecked = currentWeekOffs.includes(dayValue);
       const newOffs = isChecked
@@ -93,7 +84,7 @@ const AttendancePolicyPage: React.FC = () => {
         await updateEmployeePolicy(existingPolicy.id, existingPolicy);
       } else {
         // Create new
-        const policyToSave = existingPolicy || { employeeId, inTime: '09:00', outTime: '18:00', weekOffs: [0] };
+        const policyToSave = existingPolicy || { employeeId, inTime: DEFAULT_IN_TIME, outTime: DEFAULT_OUT_TIME, weekOffs: [0] };
         await createEmployeePolicy({
           employeeId: policyToSave.employeeId,
           inTime: policyToSave.inTime,
@@ -164,7 +155,7 @@ const AttendancePolicyPage: React.FC = () => {
                     <td colSpan={6} className="py-12 text-center text-slate-500">No employees found.</td>
                   </tr>
                 ) : filteredEmployees.map((emp) => {
-                  const policy = policies[emp.id] || { id: '', employeeId: emp.id, inTime: '09:00', outTime: '18:00', weekOffs: [0] };
+                  const policy = policies[emp.id] || { id: '', employeeId: emp.id, inTime: DEFAULT_IN_TIME, outTime: DEFAULT_OUT_TIME, weekOffs: [0] };
                   const isSaving = savingRows[emp.id];
 
                   return (
@@ -196,7 +187,7 @@ const AttendancePolicyPage: React.FC = () => {
                       </td>
                       <td className="p-4">
                         <div className="flex justify-center gap-1.5">
-                          {daysOfWeek.map((day, idx) => {
+                          {Object.values(DAYS).map((day, idx) => {
                             const isSelected = (policy.weekOffs || []).includes(day.value);
                             return (
                               <button

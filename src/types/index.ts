@@ -79,3 +79,17 @@ export interface AppNotification {
   isRead: boolean;
   createdAt: string;
 }
+
+export interface WorkerCutOffData {
+  e_comp: string;
+  brname: string;
+  manager_code: string;
+  mgrname: string;
+  worker_code: string;
+  worker_name?: string;
+  designation?: string;
+  extend_for: string;
+  day_start_time: string;
+  day_close_time: string;
+  _isNew?: boolean;
+}

@@ -8,7 +8,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import DatePicker from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
-import { FETCH_API_INTERVAL } from '../../constants';
+import { FETCH_API_INTERVAL, REQUEST_STATUS } from '../../constants';
 
 export default function LeaveRequestsReportPage() {
   const { masterConfig: appMasterConfig } = useAppData();
@@ -183,7 +183,7 @@ export default function LeaveRequestsReportPage() {
 
           <div className="flex flex-wrap items-center gap-3">
             <div className="hidden md:flex bg-slate-100/50 dark:bg-[#0b1120] p-1 rounded-lg border border-slate-200/60 dark:border-slate-700/60 mr-2">
-              {(['All', 'Pending', 'Approved', 'Rejected'] as const).map(f => (
+              {(['All', REQUEST_STATUS.PENDING.code, 'Approved', 'Rejected'] as const).map(f => (
                 <button
                   key={f}
                   onClick={() => { setFilterStatus(f); setCurrentPage(0); }}
@@ -301,7 +301,7 @@ export default function LeaveRequestsReportPage() {
                       <td className="py-4 px-4">
                         <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-bold border ${req.status === 'Approved'
                           ? 'bg-emerald-100 text-emerald-500 dark:bg-emerald-500/10 dark:text-emerald-400 border-emerald-200 dark:border-emerald-500/20'
-                          : req.status === 'Pending' ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-500/10 dark:text-yellow-400 border-yellow-200 dark:border-yellow-500/20'
+                          : req.status === REQUEST_STATUS.PENDING.code ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-500/10 dark:text-yellow-400 border-yellow-200 dark:border-yellow-500/20'
                             : 'bg-red-100 text-red-500 dark:bg-red-500/10 dark:text-red-400 border-red-200 dark:border-red-500/20'
                           }`}>
                           {req.status}

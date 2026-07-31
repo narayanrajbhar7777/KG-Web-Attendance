@@ -4,9 +4,10 @@ import { useAppData } from '../../context/AppContext';
 import { Users, UserX, CalendarOff, ChevronLeft, ChevronRight, Clock } from 'lucide-react';
 import { addDays, format, subDays } from 'date-fns';
 import Loader from '../../components/Loader';
-import { fetchEmployeeDataExternal } from '../../api';
+import { fetchEmployeePunchData } from '../../api';
 import { AttendanceTable, type ColumnDef } from '../../components/AttendanceTable';
-import { calculateTime, getFullStatus, getStatusColor, normalizeAttendanceStatus } from '../../utils/attendanceUtils';
+import { calculateTime, getFullStatus, normalizeAttendanceStatus, getAttendanceFieldStyle } from '../../utils/attendanceUtils';
+import { ATTENDANCE_STATUS, ATTENDANCE_STATUS_MAP, ATTENDANCE_SUMMARY_FILTERS, DEFAULT_ATTENDANCE_COLORS } from '../../constants';
 
 const AttendanceSummary: React.FC = () => {
   const { customColors } = useAppData();
@@ -47,7 +48,7 @@ const AttendanceSummary: React.FC = () => {
         setEmployeesList(allEmployees);
       }
 
-      const punchRes = await fetchEmployeeDataExternal(user.id, todayStr, todayStr);
+      const punchRes = await fetchEmployeePunchData(user.id, todayStr, todayStr);
       const punchData = punchRes?.EMP_PUNCH_DATA || [];
 
       const attendance = allEmployees.map((emp: any) => {
@@ -94,9 +95,9 @@ const AttendanceSummary: React.FC = () => {
   attendance.forEach((emp: any) => {
     const todayRecord = emp.records.find((r: any) => r.date === todayStr);
     if (todayRecord) {
-      if (todayRecord.status === 'P' || todayRecord.status === 'HD' || todayRecord.status === 'PH' || todayRecord.status === 'In') present++;
-      if (todayRecord.status === 'A') absent++;
-      if (todayRecord.status === 'L' || todayRecord.status === 'EL' || todayRecord.status === 'HDEL') onLeave++;
+      if (todayRecord.status === ATTENDANCE_STATUS.PRESENT || todayRecord.status === ATTENDANCE_STATUS.HALF_DAY || todayRecord.status === ATTENDANCE_STATUS.PRESENT_ON_HOLIDAY || todayRecord.status === ATTENDANCE_STATUS.IN) present++;
+      if (todayRecord.status === ATTENDANCE_STATUS.ABSENT) absent++;
+      if (todayRecord.status === ATTENDANCE_STATUS.LEAVE || todayRecord.status === ATTENDANCE_STATUS.EARNED_LEAVE || todayRecord.status === ATTENDANCE_STATUS.HALF_DAY_EARNED_LEAVE) onLeave++;
 
       if (todayRecord.checkIn) {
         const match = todayRecord.checkIn.match(/(\d+):(\d+)/);
@@ -140,9 +141,9 @@ const AttendanceSummary: React.FC = () => {
         const status = item.record?.status || '-';
         return (
           <span
-            className={`text-[13px] ${getStatusColor(status)}`}
+            className="text-[13px] font-bold"
             title={item.record ? getFullStatus(item.record.status) : 'No Data'}
-            style={item.record && customColors[item.record.status] ? { color: customColors[item.record.status] } : {}}
+            style={{ color: item.record ? customColors[item.record.status] || DEFAULT_ATTENDANCE_COLORS[item.record.status] : undefined }}
           >
             {status}
           </span>
@@ -202,18 +203,18 @@ const AttendanceSummary: React.FC = () => {
             className="border-0 shadow-none rounded-none"
             data={todayRecords.filter((item: any) => {
               const status = item.record?.status || '-';
-              if (attendanceFilter === 'All') return true;
-              if (attendanceFilter === 'Present') return ['P', 'HD', 'PH', 'In', 'P/MP'].includes(status);
-              if (attendanceFilter === 'Absent') return status === 'A';
-              if (attendanceFilter === 'Leave') return ['L', 'EL', 'HDEL'].includes(status);
-              if (attendanceFilter === 'In') return status === 'In';
-              if (attendanceFilter === 'Out') return item.record?.checkOut && item.record?.checkOut !== '-';
-              if (attendanceFilter === 'Late') return status === 'Late' || status === 'LATE';
-              if (attendanceFilter === 'Misspunch') return status === 'MP';
-              if (attendanceFilter === 'Present On Holiday') return status === 'PH';
-              if (attendanceFilter === 'Week Off') return status === 'WO';
-              if (attendanceFilter === 'Present/ Misspunch') return status === 'P/MP';
-              if (attendanceFilter === 'Half Day') return status === 'HD';
+              if (attendanceFilter === (ATTENDANCE_STATUS_MAP[ATTENDANCE_STATUS.ALL])) return true;
+              if (attendanceFilter === (ATTENDANCE_STATUS_MAP[ATTENDANCE_STATUS.PRESENT])) return [ATTENDANCE_STATUS.PRESENT, ATTENDANCE_STATUS.HALF_DAY, ATTENDANCE_STATUS.PRESENT_ON_HOLIDAY, ATTENDANCE_STATUS.IN, ATTENDANCE_STATUS.PRESENT_MISSPUNCH].includes(status);
+              if (attendanceFilter === (ATTENDANCE_STATUS_MAP[ATTENDANCE_STATUS.ABSENT])) return status === ATTENDANCE_STATUS.ABSENT;
+              if (attendanceFilter === (ATTENDANCE_STATUS_MAP[ATTENDANCE_STATUS.LEAVE])) return [ATTENDANCE_STATUS.LEAVE, ATTENDANCE_STATUS.EARNED_LEAVE, ATTENDANCE_STATUS.HALF_DAY_EARNED_LEAVE].includes(status);
+              if (attendanceFilter === (ATTENDANCE_STATUS_MAP[ATTENDANCE_STATUS.IN])) return status === ATTENDANCE_STATUS.IN;
+              if (attendanceFilter === (ATTENDANCE_STATUS_MAP[ATTENDANCE_STATUS.OUT])) return item.record?.checkOut && item.record?.checkOut !== '-';
+              if (attendanceFilter === (ATTENDANCE_STATUS_MAP[ATTENDANCE_STATUS.LATE])) return status === ATTENDANCE_STATUS.LATE;
+              if (attendanceFilter === (ATTENDANCE_STATUS_MAP[ATTENDANCE_STATUS.MISSPUNCH])) return status === ATTENDANCE_STATUS.MISSPUNCH;
+              if (attendanceFilter === (ATTENDANCE_STATUS_MAP[ATTENDANCE_STATUS.PRESENT_ON_HOLIDAY])) return status === ATTENDANCE_STATUS.PRESENT_ON_HOLIDAY;
+              if (attendanceFilter === (ATTENDANCE_STATUS_MAP[ATTENDANCE_STATUS.WEEK_OFF])) return status === ATTENDANCE_STATUS.WEEK_OFF;
+              if (attendanceFilter === (ATTENDANCE_STATUS_MAP[ATTENDANCE_STATUS.PRESENT_MISSPUNCH])) return status === ATTENDANCE_STATUS.PRESENT_MISSPUNCH;
+              if (attendanceFilter === (ATTENDANCE_STATUS_MAP[ATTENDANCE_STATUS.HALF_DAY])) return status === ATTENDANCE_STATUS.HALF_DAY;
               return true;
             })}
             columns={columns}
@@ -242,44 +243,35 @@ const AttendanceSummary: React.FC = () => {
                     </button>
                   </div>
                 </div>
-                <div className="hidden sm:flex items-center gap-2 text-[11px] font-bold overflow-x-auto custom-scrollbar pb-1 max-w-[800px]">
-                  {[
-                    { id: 'All', label: 'All', activeColor: 'bg-slate-200 dark:bg-slate-900 border-slate-300 dark:border-slate-600 text-slate-800 dark:text-white', defaultColor: 'bg-slate-50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700/50' },
-                    { id: 'Present', label: 'P', activeColor: 'bg-emerald-100 dark:bg-emerald-900/40 border-emerald-300 dark:border-emerald-700 text-emerald-700 dark:text-emerald-300', defaultColor: 'bg-slate-50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/20' },
-                    { id: 'Absent', label: 'A', activeColor: 'bg-red-100 dark:bg-red-900/40 border-red-300 dark:border-red-700 text-red-700 dark:text-red-300', defaultColor: 'bg-slate-50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20' },
-                    { id: 'In', label: 'I', activeColor: 'bg-green-100 dark:bg-green-500/40 border-green-100 dark:border-green-700 text-green-700 dark:text-green-300', defaultColor: 'bg-slate-50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700 text-green-600 dark:text-green-400 hover:bg-green-50 dark:hover:bg-green-900/20' },
-                    { id: 'Out', label: 'O', activeColor: 'bg-slate-200 dark:bg-slate-700 border-slate-300 dark:border-slate-600 text-slate-800 dark:text-white', defaultColor: 'bg-slate-50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700/50' },
-                    { id: 'Misspunch', label: 'MP', activeColor: 'bg-yellow-100 dark:bg-yellow-900/40 border-yellow-300 dark:border-yellow-700 text-yellow-700 dark:text-yellow-300', defaultColor: 'bg-slate-50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700 text-yellow-600 dark:text-yellow-400 hover:bg-yellow-50 dark:hover:bg-yellow-900/20' },
-                    { id: 'Late', label: 'La', activeColor: 'bg-orange-100 dark:bg-orange-900/40 border-orange-300 dark:border-orange-700 text-orange-700 dark:text-orange-300', defaultColor: 'bg-slate-50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700 text-orange-600 dark:text-orange-400 hover:bg-orange-50 dark:hover:bg-orange-900/20' },
-                    { id: 'Leave', label: 'Le', activeColor: 'bg-amber-100 dark:bg-amber-900/40 border-amber-300 dark:border-amber-700 text-amber-700 dark:text-amber-300', defaultColor: 'bg-slate-50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700 text-amber-600 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-900/20' },
-                    { id: 'Present On Holiday', label: 'POH', activeColor: 'bg-purple-100 dark:bg-purple-900/40 border-purple-300 dark:border-purple-700 text-purple-700 dark:text-purple-300', defaultColor: 'bg-slate-50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700 text-purple-600 dark:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-900/20' },
-                    { id: 'Week Off', label: 'WO', activeColor: 'bg-blue-100 dark:bg-blue-900/40 border-blue-300 dark:border-blue-700 text-blue-700 dark:text-blue-300', defaultColor: 'bg-slate-50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20' },
-                    { id: 'Present/ Misspunch', label: 'P/MP', activeColor: 'bg-yellow-100 dark:bg-yellow-900/40 border-yellow-300 dark:border-yellow-700 text-yellow-700 dark:text-yellow-300', defaultColor: 'bg-slate-50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700 text-yellow-600 dark:text-yellow-400 hover:bg-yellow-50 dark:hover:bg-yellow-900/20' },
-                    { id: 'Half Day', label: 'HD', activeColor: 'bg-slate-200 dark:bg-slate-700 border-slate-300 dark:border-slate-600 text-slate-800 dark:text-white', defaultColor: 'bg-slate-50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700/50' },
-                  ].map(tab => {
+                <div className="hidden sm:flex items-center gap-1 text-[11px] font-bold overflow-x-auto custom-scrollbar pb-1 max-w-[800px]">
+                  {ATTENDANCE_SUMMARY_FILTERS.map(tab => {
                     const isActive = attendanceFilter === tab.id;
+                    const fieldStyle = getAttendanceFieldStyle(tab.code, customColors, isActive);
                     const count = todayRecords.filter((item: any) => {
                       const status = item.record?.status || '-';
-                      if (tab.id === 'All') return true;
-                      if (tab.id === 'Present') return ['P', 'HD', 'PH', 'In', 'P/MP'].includes(status);
-                      if (tab.id === 'Absent') return status === 'A';
-                      if (tab.id === 'Leave') return ['L', 'EL', 'HDEL'].includes(status);
-                      if (tab.id === 'In') return status === 'In';
-                      if (tab.id === 'Out') return item.record?.checkOut && item.record?.checkOut !== '-';
-                      if (tab.id === 'Late') return status === 'Late' || status === 'LATE';
-                      if (tab.id === 'Misspunch') return status === 'MP';
-                      if (tab.id === 'Present On Holiday') return status === 'PH';
-                      if (tab.id === 'Week Off') return status === 'WO';
-                      if (tab.id === 'Present/ Misspunch') return status === 'P/MP';
-                      if (tab.id === 'Half Day') return status === 'HD';
+                      if (tab.id === (ATTENDANCE_STATUS_MAP[ATTENDANCE_STATUS.ALL])) return true;
+                      if (tab.id === (ATTENDANCE_STATUS_MAP[ATTENDANCE_STATUS.PRESENT])) return [ATTENDANCE_STATUS.PRESENT, ATTENDANCE_STATUS.HALF_DAY, ATTENDANCE_STATUS.PRESENT_ON_HOLIDAY, ATTENDANCE_STATUS.IN, ATTENDANCE_STATUS.PRESENT_MISSPUNCH].includes(status);
+                      if (tab.id === (ATTENDANCE_STATUS_MAP[ATTENDANCE_STATUS.PRESENT])) return [ATTENDANCE_STATUS.PRESENT, ATTENDANCE_STATUS.HALF_DAY, ATTENDANCE_STATUS.PRESENT_ON_HOLIDAY, ATTENDANCE_STATUS.IN, ATTENDANCE_STATUS.PRESENT_MISSPUNCH].includes(status);
+                      if (tab.id === (ATTENDANCE_STATUS_MAP[ATTENDANCE_STATUS.ABSENT])) return status === ATTENDANCE_STATUS.ABSENT;
+                      if (tab.id === (ATTENDANCE_STATUS_MAP[ATTENDANCE_STATUS.LEAVE])) return [ATTENDANCE_STATUS.LEAVE, ATTENDANCE_STATUS.EARNED_LEAVE, ATTENDANCE_STATUS.HALF_DAY_EARNED_LEAVE].includes(status);
+                      if (tab.id === (ATTENDANCE_STATUS_MAP[ATTENDANCE_STATUS.IN])) return status === ATTENDANCE_STATUS.IN;
+                      if (tab.id === (ATTENDANCE_STATUS_MAP[ATTENDANCE_STATUS.OUT])) return item.record?.checkOut && item.record?.checkOut !== '-';
+                      if (tab.id === (ATTENDANCE_STATUS_MAP[ATTENDANCE_STATUS.LATE])) return status === ATTENDANCE_STATUS.LATE;
+                      if (tab.id === (ATTENDANCE_STATUS_MAP[ATTENDANCE_STATUS.MISSPUNCH])) return status === ATTENDANCE_STATUS.MISSPUNCH;
+                      if (tab.id === (ATTENDANCE_STATUS_MAP[ATTENDANCE_STATUS.PRESENT_ON_HOLIDAY])) return status === ATTENDANCE_STATUS.PRESENT_ON_HOLIDAY;
+                      if (tab.id === (ATTENDANCE_STATUS_MAP[ATTENDANCE_STATUS.WEEK_OFF])) return status === ATTENDANCE_STATUS.WEEK_OFF;
+                      if (tab.id === (ATTENDANCE_STATUS_MAP[ATTENDANCE_STATUS.PRESENT_MISSPUNCH])) return status === ATTENDANCE_STATUS.PRESENT_MISSPUNCH;
+                      if (tab.id === (ATTENDANCE_STATUS_MAP[ATTENDANCE_STATUS.HALF_DAY])) return status === ATTENDANCE_STATUS.HALF_DAY;
                       return false;
                     }).length;
 
                     return (
                       <button
                         key={tab.id}
+                        title={tab.id}
                         onClick={() => setAttendanceFilter(tab.id)}
-                        className={`px-3 py-1.5 rounded-lg border transition-colors whitespace-nowrap ${isActive ? tab.activeColor : tab.defaultColor}`}
+                        className={`px-3 py-1.5 rounded-lg border transition-colors whitespace-nowrap hover:opacity-80 min-w-[62px] flex items-center justify-center`}
+                        style={fieldStyle}
                       >
                         {tab.label}: {count}
                       </button>

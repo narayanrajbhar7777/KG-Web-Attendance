@@ -5,6 +5,7 @@ import { saveAs } from 'file-saver';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { calculateTimeNum, formatDur, getAttendanceHeaders, generateShortName } from './attendanceUtils';
+import { ATTENDANCE_BASE_MAP, ATTENDANCE_STATUS } from '../constants';
 
 export const transformAttendanceRowsForExport = (employees: any[], attendance: any[], currentDate: Date) => {
   const year = currentDate.getFullYear();
@@ -40,10 +41,10 @@ export const transformAttendanceRowsForExport = (employees: any[], attendance: a
       const record = empAttendance.find((r: any) => r.date === dateStr);
       let status = record?.status || '-';
 
-      if (['P', 'P/MP', 'PH'].includes(status)) totalPresent++;
-      if (['A', 'L'].includes(status)) totalAbsent++;
-      if (status === 'MP') totalMissedPunches++;
-      if (status === 'PH') totalPresentOnHoliday++;
+      if ([ATTENDANCE_STATUS.PRESENT, ATTENDANCE_STATUS.PRESENT_MISSPUNCH, ATTENDANCE_STATUS.PRESENT_ON_HOLIDAY].includes(status)) totalPresent++;
+      if ([ATTENDANCE_STATUS.ABSENT, ATTENDANCE_STATUS.LEAVE].includes(status)) totalAbsent++;
+      if (status === ATTENDANCE_STATUS.MISSPUNCH) totalMissedPunches++;
+      if (status === ATTENDANCE_STATUS.PRESENT_ON_HOLIDAY) totalPresentOnHoliday++;
       const { totalMins } = calculateTimeNum(record?.checkIn, record?.checkOut);
       totalActualMins += totalMins;
 
@@ -57,11 +58,10 @@ export const transformAttendanceRowsForExport = (employees: any[], attendance: a
       displayedActualMins = expectedMonthlyMins;
       displayedOtMins = totalActualMins - expectedMonthlyMins;
     }
-    // console.log(`${emp.name} | P: ${totalPresent}, A: ${totalAbsent}, MP: ${totalMissedPunches}, PH: ${totalPresentOnHoliday}, AHrs: ${formatDur(totalActualMins)}, OTHrs: ${formatDur(displayedOtMins)}, THrs: ${formatDur(expectedMonthlyMins)}`)
     row['Working Days'] = fixedWorkingDays;
     row['Present Days'] = totalPresent;
     row['Absent Days'] = totalAbsent;
-    row['Missed Punch'] = totalMissedPunches;
+    row[ATTENDANCE_BASE_MAP.MISSPUNCH.label] = totalMissedPunches;
     row['Present on Holiday'] = totalPresentOnHoliday;
     row['Actual Hrs.'] = formatDur(displayedActualMins);
     row['Overtime Hrs.'] = formatDur(displayedOtMins);
@@ -120,14 +120,14 @@ export const exportAttendanceToExcel = async (exportObj: { data: any[], headers:
           }
         } else {
           switch (val) {
-            case 'P': case 'In': bgColor = 'FF16A34A'; textColor = 'FFFFFFFF'; break;
-            case 'A': bgColor = 'FFDC2626'; textColor = 'FFFFFFFF'; break;
-            case 'WO': bgColor = 'FF3B82F6'; textColor = 'FFFFFFFF'; break;
-            case 'MP': case 'P/MP': bgColor = 'FFCA8A04'; textColor = 'FFFFFFFF'; break;
-            case 'PH': bgColor = 'FF10B981'; textColor = 'FFFFFFFF'; break;
-            case 'HD': bgColor = 'FF94A3B8'; textColor = 'FFFFFFFF'; break;
-            case 'H': bgColor = 'FF9333EA'; textColor = 'FFFFFFFF'; break;
-            case 'L': bgColor = 'FFF59E0B'; textColor = 'FFFFFFFF'; break;
+            case ATTENDANCE_STATUS.PRESENT: case ATTENDANCE_STATUS.IN: bgColor = 'FF16A34A'; textColor = 'FFFFFFFF'; break;
+            case ATTENDANCE_STATUS.ABSENT: bgColor = 'FFDC2626'; textColor = 'FFFFFFFF'; break;
+            case ATTENDANCE_STATUS.WEEK_OFF: bgColor = 'FF3B82F6'; textColor = 'FFFFFFFF'; break;
+            case ATTENDANCE_STATUS.MISSPUNCH: case ATTENDANCE_STATUS.PRESENT_MISSPUNCH: bgColor = 'FFCA8A04'; textColor = 'FFFFFFFF'; break;
+            case ATTENDANCE_STATUS.PRESENT_ON_HOLIDAY: bgColor = 'FF10B981'; textColor = 'FFFFFFFF'; break;
+            case ATTENDANCE_STATUS.HALF_DAY: bgColor = 'FF94A3B8'; textColor = 'FFFFFFFF'; break;
+            case ATTENDANCE_STATUS.HOLIDAY: bgColor = 'FF9333EA'; textColor = 'FFFFFFFF'; break;
+            case ATTENDANCE_STATUS.LEAVE: bgColor = 'FFF59E0B'; textColor = 'FFFFFFFF'; break;
           }
         }
 
@@ -205,14 +205,14 @@ export const exportAttendanceToPdf = async (exportObj: { data: any[], headers: s
             }
           } else {
             switch (val) {
-              case 'P': case 'In': color = [22, 163, 74]; break;
-              case 'A': color = [220, 38, 38]; break;
-              case 'WO': color = [59, 130, 246]; break;
-              case 'MP': case 'P/MP': color = [202, 138, 4]; break;
-              case 'PH': color = [16, 185, 129]; break;
-              case 'HD': color = [148, 163, 184]; break;
-              case 'H': color = [147, 51, 234]; break;
-              case 'L': color = [245, 158, 11]; break;
+              case ATTENDANCE_STATUS.PRESENT: case ATTENDANCE_STATUS.IN: color = [22, 163, 74]; break;
+              case ATTENDANCE_STATUS.ABSENT: color = [220, 38, 38]; break;
+              case ATTENDANCE_STATUS.WEEK_OFF: color = [59, 130, 246]; break;
+              case ATTENDANCE_STATUS.MISSPUNCH: case ATTENDANCE_STATUS.PRESENT_MISSPUNCH: color = [202, 138, 4]; break;
+              case ATTENDANCE_STATUS.PRESENT_ON_HOLIDAY: color = [16, 185, 129]; break;
+              case ATTENDANCE_STATUS.HALF_DAY: color = [148, 163, 184]; break;
+              case ATTENDANCE_STATUS.HOLIDAY: color = [147, 51, 234]; break;
+              case ATTENDANCE_STATUS.LEAVE: color = [245, 158, 11]; break;
             }
           }
 

@@ -6,9 +6,10 @@ import { ChevronLeft, ChevronRight, Search, X, ExternalLink, Loader2, FileSpread
 import toast from 'react-hot-toast';
 import { transformAttendanceRowsForExport, exportAttendanceToExcel, exportAttendanceToCsv, exportAttendanceToPdf } from '../../utils/exportUtils';
 import Loader from '../../components/Loader';
-import { fetchEmployeeDataExternal } from '../../api';
+import { fetchEmployeePunchData } from '../../api';
 import { AttendanceTable } from '../../components/AttendanceTable';
 import { calculateTime, calculateTimeNum, formatDur, getFullStatus, getStatusColor, normalizeAttendanceStatus, generateShortName } from '../../utils/attendanceUtils';
+import { ATTENDANCE_STATUS, DEFAULT_ATTENDANCE_COLORS } from '../../constants';
 
 const AttendanceDetails: React.FC = () => {
   const { customColors } = useAppData();
@@ -55,7 +56,7 @@ const AttendanceDetails: React.FC = () => {
         setEmployeesList(allEmployees);
       }
 
-      const punchRes = await fetchEmployeeDataExternal(user.id, frDate, toDate);
+      const punchRes = await fetchEmployeePunchData(user.id, frDate, toDate);
       const punchData = punchRes?.EMP_PUNCH_DATA || [];
 
       const attendance = allEmployees.map((emp: any) => {
@@ -245,15 +246,15 @@ const AttendanceDetails: React.FC = () => {
                     key: 'overtime', label: ' Over Time', render: (item) => {
                       const { overtime } = calculateTime(item.record?.checkIn, item.record?.checkOut);
                       return <span className="font-medium text-emerald-600 dark:text-emerald-400 text-[13px]">
-                        {overtime !== '-' ? overtime.replace('h', 'h ').replace('MP', 'MP') : '-'}
+                        {overtime !== '-' ? overtime.replace('h', 'h ').replace(ATTENDANCE_STATUS.MISSPUNCH, ATTENDANCE_STATUS.MISSPUNCH) : '-'}
                       </span>
                     }
                   },
                   {
                     key: 'status', label: 'Status', render: (item) => {
-                      const customColor = customColors[item.status];
+                      const customColor = customColors[item.status] || DEFAULT_ATTENDANCE_COLORS[item.status];
                       return <span
-                        className={`text-[13px] ${customColor ? 'font-bold' : getStatusColor(item.status)}`}
+                        className="text-[13px] font-bold"
                         style={customColor ? { color: customColor } : {}}
                       >
                         {getFullStatus(item.status)}
@@ -366,7 +367,7 @@ const AttendanceDetails: React.FC = () => {
                         const record = empAttendance.find((r: any) => r.date === dateStr);
                         status = record?.status || '-';
                       }
-                      const customColor = customColors[status];
+                      const customColor = customColors[status] || DEFAULT_ATTENDANCE_COLORS[status];
                       return (
                         <td key={day} className={`py-3 px-1 text-center ${isFuture ? 'text-slate-300' : (customColor ? 'font-bold' : getStatusColor(status))}`} style={(!isFuture && customColor) ? { color: customColor } : {}}>{isFuture ? '' : status}</td>
                       );

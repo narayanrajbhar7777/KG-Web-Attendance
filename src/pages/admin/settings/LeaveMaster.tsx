@@ -16,7 +16,6 @@ const LeaveMaster: React.FC = () => {
   const [users, setUsers] = useState<User[]>([]);
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
 
-  // Map of leaveTypeId -> { enabled, days }
   const [allocationForm, setAllocationForm] = useState<Record<string, { enabled: boolean; days: number }>>({});
 
   const loadData = async () => {
@@ -56,7 +55,6 @@ const LeaveMaster: React.FC = () => {
 
   const handleSearch = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
-    // Local filtering is handled dynamically by filteredUsers below.
   };
 
   const filteredUsers = users.filter(u =>
@@ -65,7 +63,6 @@ const LeaveMaster: React.FC = () => {
     u.code.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  // When a user is selected, populate the form
   useEffect(() => {
     if (selectedUserId) {
       const userLeaves = employeeLeaves.filter(el => el.employeeId === selectedUserId);
@@ -116,7 +113,7 @@ const LeaveMaster: React.FC = () => {
       await Promise.all(promises);
 
       alert('Leave allocation saved successfully!');
-      loadData(); // refresh data
+      loadData();
     } catch (error) {
       console.error(error);
       alert('Failed to save leave allocation.');
@@ -150,12 +147,6 @@ const LeaveMaster: React.FC = () => {
                   className="w-full pl-10 pr-4 py-2 bg-white dark:bg-[#0b1120] border border-slate-300 dark:border-slate-600 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:text-white transition-colors"
                 />
               </div>
-              {/* <button
-                type="submit"
-                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition-colors whitespace-nowrap shadow-sm"
-              >
-                Search
-              </button> */}
             </form>
           </div>
 

@@ -6,9 +6,9 @@ import { useAppData } from '../../context/AppContext';
 import Loader from '../../components/Loader';
 import { format, startOfMonth, getDay, getDaysInMonth, addMonths, subMonths, isAfter, startOfDay, isSameMonth } from 'date-fns';
 import { Calendar as CalendarIcon, Send, ChevronLeft, ChevronRight, ExternalLink } from 'lucide-react';
-import { ATTENDANCE_STATUS_MAP, DEFAULT_ATTENDANCE_COLORS } from '../../constants';
-import { fetchEmployeeDataExternal, fetchLeaveTypes } from '../../api';
-import { normalizeAttendanceStatus, calculateTimeNum } from '../../utils/attendanceUtils';
+import { ATTENDANCE_BASE_MAP, ATTENDANCE_STATUS, ATTENDANCE_STATUS_MAP, DAYS, DEFAULT_ATTENDANCE_COLORS } from '../../constants';
+import { fetchEmployeePunchData, fetchLeaveTypes } from '../../api';
+import { normalizeAttendanceStatus, calculateTimeNum, getAttendanceFieldStyle } from '../../utils/attendanceUtils';
 
 const EmployeeDashboard: React.FC = () => {
   const { user, login } = useAuth();
@@ -57,7 +57,7 @@ const EmployeeDashboard: React.FC = () => {
 
 
 
-      const punchRes = await fetchEmployeeDataExternal(user.id, frDate, toDate);
+      const punchRes = await fetchEmployeePunchData(user.id, frDate, toDate);
 
       const empDet = currentEmpDet;
       const punchData = punchRes?.EMP_PUNCH_DATA || [];
@@ -181,7 +181,7 @@ const EmployeeDashboard: React.FC = () => {
       return !isAfter(startOfDay(d), today);
     })
     .map((r: any) => {
-      const approvedMispunch = empRequests.find((req: any) => req.type === 'Missed Punch' && req.date === r.date && req.status === 'Approved');
+      const approvedMispunch = empRequests.find((req: any) => req.type === ATTENDANCE_BASE_MAP.MISSPUNCH.label && req.date === r.date && req.status === 'Approved');
       const approvedLeave = empRequests.find((req: any) => req.type === 'Leave' && req.date === r.date && req.status === 'Approved');
 
       let finalStatus = r.status;
@@ -191,16 +191,16 @@ const EmployeeDashboard: React.FC = () => {
       return { ...r, status: finalStatus };
     });
 
-  const presentDays = pastAndPresentRecords.filter((r: any) => r.status === 'P' || r.status === 'In' || r.status === 'PH' || r.status === 'P/MP').length;
-  const weeklyOffs = pastAndPresentRecords.filter((r: any) => r.status === 'WO').length;
-  const halfDays = pastAndPresentRecords.filter((r: any) => r.status === 'HD').length;
-  const absents = pastAndPresentRecords.filter((r: any) => r.status === 'A').length;
-  const misspunchCount = pastAndPresentRecords.filter((r: any) => r.status === 'MP' || r.status === 'P/MP').length;
+  const presentDays = pastAndPresentRecords.filter((r: any) => r.status === ATTENDANCE_STATUS.PRESENT || r.status === ATTENDANCE_STATUS.IN || r.status === ATTENDANCE_STATUS.PRESENT_ON_HOLIDAY || r.status === ATTENDANCE_STATUS.PRESENT_MISSPUNCH).length;
+  const weeklyOffs = pastAndPresentRecords.filter((r: any) => r.status === ATTENDANCE_STATUS.WEEK_OFF).length;
+  const halfDays = pastAndPresentRecords.filter((r: any) => r.status === ATTENDANCE_STATUS.HALF_DAY).length;
+  const absents = pastAndPresentRecords.filter((r: any) => r.status === ATTENDANCE_STATUS.ABSENT).length;
+  const misspunchCount = pastAndPresentRecords.filter((r: any) => r.status === ATTENDANCE_STATUS.MISSPUNCH || r.status === ATTENDANCE_STATUS.PRESENT_MISSPUNCH).length;
 
   let totalHours = 0;
   let presentDaysCount = 0;
   pastAndPresentRecords.forEach((r: any) => {
-    if (r.status === 'P' || r.status === 'PH' || r.status === 'P/MP') {
+    if (r.status === ATTENDANCE_STATUS.PRESENT || r.status === ATTENDANCE_STATUS.PRESENT_ON_HOLIDAY || r.status === ATTENDANCE_STATUS.PRESENT_MISSPUNCH) {
       presentDaysCount++;
       if (r.checkIn && r.checkOut) {
         const { totalMins } = calculateTimeNum(r.checkIn, r.checkOut);
@@ -268,9 +268,9 @@ const EmployeeDashboard: React.FC = () => {
             </div>
             <div className="p-4 sm:p-6 flex-1 flex flex-col min-h-0 overflow-y-auto custom-scrollbar">
               <div className="grid grid-cols-7 gap-2 shrink-0 mb-2">
-                {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(d => (
-                  <div key={d} className="text-center text-xs font-semibold text-slate-400 uppercase tracking-wider">
-                    {d}
+                {Object.values(DAYS).map(d => (
+                  <div key={d.label} className="text-center text-xs font-semibold text-slate-400 uppercase tracking-wider">
+                    {d.label}
                   </div>
                 ))}
               </div>
@@ -298,30 +298,20 @@ const EmployeeDashboard: React.FC = () => {
                       }
                     }
 
-                    const approvedMispunch = empRequests.find((r: any) => r.type === 'Missed Punch' && r.date === dateStr && r.status === 'Approved');
+                    const approvedMispunch = empRequests.find((r: any) => r.type === ATTENDANCE_BASE_MAP.MISSPUNCH.label && r.date === dateStr && r.status === 'Approved');
                     if (approvedMispunch) {
                       status = 'P/MP';
                     }
                   }
 
-                  let bgColor = 'bg-slate-50 dark:bg-slate-800/50 text-slate-500 dark:text-slate-400';
-                  let customStyle: React.CSSProperties = {};
-                  const activeColor = customColors[status] || DEFAULT_ATTENDANCE_COLORS[status];
-
-                  if (activeColor) {
-                    customStyle = { backgroundColor: activeColor, color: '#ffffff', border: `1px solid ${activeColor}` };
-                    bgColor = 'font-bold shadow-sm';
-                  } else if (!isFuture && status !== '-') {
-                    if (status === 'P') bgColor = 'bg-green-100 dark:bg-green-500/20 text-green-700 dark:text-green-400 font-bold border border-green-200 dark:border-green-500/20';
-                    else if (status === 'A') bgColor = 'bg-red-100 dark:bg-red-500/20 text-red-700 dark:text-red-400 font-bold border border-red-200 dark:border-red-500/20';
-                    else if (status === 'WO') bgColor = 'bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300 border border-slate-300 dark:border-slate-600';
-                    else if (status === 'L') bgColor = 'bg-amber-100 dark:bg-amber-500/20 text-amber-700 dark:text-amber-400 font-bold border border-amber-200 dark:border-amber-500/20';
-                    else if (status === 'HD') bgColor = 'bg-blue-100 dark:bg-blue-500/20 text-blue-700 dark:text-blue-400 font-bold border border-blue-200 dark:border-blue-500/20';
-                    else if (status === 'PH') bgColor = 'bg-emerald-600 dark:bg-emerald-700/60 text-white dark:text-emerald-100 font-bold border border-emerald-700 dark:border-emerald-600';
-                    else if (status === 'H') bgColor = 'bg-fuchsia-100 dark:bg-fuchsia-500/20 text-fuchsia-700 dark:text-fuchsia-400 font-bold border border-fuchsia-200 dark:border-fuchsia-500/20';
-                    else if (status === 'MP' || status === 'P/MP') bgColor = 'bg-gradient-to-br from-green-200 to-red-200 dark:from-green-900/60 dark:to-red-900/60 text-slate-800 dark:text-slate-100 font-bold border border-slate-300 dark:border-slate-600';
-                    else if (status === 'In') bgColor = 'bg-cyan-100 dark:bg-cyan-500/20 text-cyan-700 dark:text-cyan-400 font-bold border border-cyan-200 dark:border-cyan-500/20';
+                  let bgColor = 'font-bold shadow-sm';
+                  if (isFuture || status === '-') {
+                    bgColor += ' bg-slate-50 dark:bg-slate-800/50 text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-slate-700/60';
                   }
+
+                  let customStyle: React.CSSProperties = isFuture || status === '-'
+                    ? {}
+                    : getAttendanceFieldStyle(status, customColors, true);
 
                   const displayStatus = isFuture ? '' : status;
                   const tooltip = !isFuture && displayStatus !== '-' ? `${day} ${displayStatus}: ${ATTENDANCE_STATUS_MAP[displayStatus] || displayStatus}` : '';
@@ -331,8 +321,8 @@ const EmployeeDashboard: React.FC = () => {
                       <div className="absolute opacity-0 group-hover:opacity-100 transition-opacity bg-slate-900 text-white text-[10px] py-1 px-2 rounded -top-8 left-1/2 -translate-x-1/2 whitespace-nowrap z-10 pointer-events-none">
                         {ATTENDANCE_STATUS_MAP[status] || status}
                       </div>
-                      <span className="text-xs opacity-80 mb-1" style={activeColor ? { textShadow: '0 1px 2px rgba(0,0,0,0.3)' } : {}}>{day}</span>
-                      <span className="text-sm" style={activeColor ? { textShadow: '0 1px 2px rgba(0,0,0,0.3)' } : {}}>{displayStatus}</span>
+                      <span className="text-xs opacity-80 mb-1">{day}</span>
+                      <span className="text-sm">{displayStatus}</span>
                     </div>
                   );
                 })}
@@ -360,8 +350,8 @@ const EmployeeDashboard: React.FC = () => {
                 </button>
                 <button
                   type="button"
-                  onClick={() => setRequestType('Missed Punch')}
-                  className={`flex-1 py-2 text-sm font-medium rounded-md transition-colors ${requestType === 'Missed Punch' ? 'bg-white dark:bg-[#1e293b] shadow dark:shadow-none text-blue-600 dark:text-blue-400' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300'
+                  onClick={() => setRequestType(ATTENDANCE_BASE_MAP.MISSPUNCH.label)}
+                  className={`flex-1 py-2 text-sm font-medium rounded-md transition-colors ${requestType === ATTENDANCE_BASE_MAP.MISSPUNCH.label ? 'bg-white dark:bg-[#1e293b] shadow dark:shadow-none text-blue-600 dark:text-blue-400' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300'
                     }`}
                 >
                   Missed Punch
@@ -438,7 +428,7 @@ const EmployeeDashboard: React.FC = () => {
                   </div>
                 )}
 
-                {requestType === 'Missed Punch' && (
+                {requestType === ATTENDANCE_BASE_MAP.MISSPUNCH.label && (
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">In</label>

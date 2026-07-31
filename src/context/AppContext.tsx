@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import Loader from '../components/Loader';
 import type { AppRequest, AppNotification } from '../types';
-import { fetchNotifications, fetchSettings, updateSettings, createNotification, markNotificationsAsReadAPI, createRequest, updateRequestStatusAPI, fetchMasterConfig, updateMasterConfig as updateMasterConfigAPI, sendEmailNotification, fetchEmployeeDetailsExternal } from '../api';
+import { fetchNotifications, fetchSettings, updateSettings, createNotification, markNotificationsAsReadAPI, createRequest, updateRequestStatusAPI, fetchMasterConfig, updateMasterConfig as updateMasterConfigAPI, sendEmailNotification } from '../api';
 import { useAuth } from './AuthContext';
 import { toast } from 'react-hot-toast';
 import { FETCH_API_INTERVAL } from '../constants';
@@ -22,9 +22,8 @@ interface AppContextType {
   setIsEmailNotificationsEnabled: (enabled: boolean) => void;
   masterConfig: any;
   setMasterConfig: (config: any) => void;
-
-  // Expose these via context to make it easier for components to call the API 
-  // without importing the API directly, or they can just import the API directly.
+  cutoffSettings: Record<string, string>;
+  updateCutoffSettings: (settings: Record<string, string>) => void;
   applyRequest: (req: Omit<AppRequest, 'id' | 'status'>) => Promise<void>;
   updateRequestStatus: (id: string, status: AppRequest['status'], reason: string, req?: AppRequest, approverNotes?: string) => Promise<void>;
 }
@@ -34,7 +33,7 @@ const AppContext = createContext<AppContextType | undefined>(undefined);
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
   const [customColors, setCustomColors] = useState<Record<string, string>>({});
-  const [theme, setTheme] = useState<Theme>('light');
+  const [theme, setTheme] = useState<Theme>('dark');
   const [isNotificationsEnabled, setIsNotificationsEnabledState] = useState(() => {
     return localStorage.getItem('notifications_enabled') !== 'false';
   });
@@ -176,10 +175,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       }
 
       if (targetUserId) {
-        // Send email to target user
         try {
-          const empDet = await fetchEmployeeDetailsExternal(targetUserId);
-          const email = empDet?.EMP_DATA?.[0]?.e_email;
+          const email = user.employee_list?.find((emp: any) => emp.id === targetUserId)?.e_email;
           if (email) {
             await sendEmailNotification(email, "New Notification from KG Workforce Portal", message);
           }
@@ -201,7 +198,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         // Assuming we update api/index.ts to accept an array of IDs.
         await markNotificationsAsReadAPI(unreadNotifs.map(n => n.id));
       }
-      
+
       setNotifications(prev => prev.map(n => {
         if (!n.targetUserId && role === 'Admin') return { ...n, isRead: true };
         if (n.targetUserId === userId) return { ...n, isRead: true };
@@ -220,6 +217,18 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       await updateSettings(user.id, { customColors: newColors });
     } catch (err) {
       console.error(err);
+    }
+  };
+
+  const updateCutoffSettings = async (settings: Record<string, string>) => {
+    if (!user) return;
+    const newColors = { ...customColors, ...settings };
+    setCustomColors(newColors);
+    try {
+      await updateSettings(user.id, { customColors: newColors });
+    } catch (err) {
+      console.error(err);
+      toast.error('Failed to save attendance rules');
     }
   };
 
@@ -248,7 +257,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       isNotificationsEnabled, setIsNotificationsEnabled,
       isEmailNotificationsEnabled, setIsEmailNotificationsEnabled,
       customColors, updateCustomColor, theme, toggleTheme,
-      applyRequest, updateRequestStatus, masterConfig, setMasterConfig
+      applyRequest, updateRequestStatus, masterConfig, setMasterConfig,
+      cutoffSettings: customColors, updateCutoffSettings
     }}>
       {children}
     </AppContext.Provider>

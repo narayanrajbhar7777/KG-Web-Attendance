@@ -9,6 +9,7 @@ import type { AppRequest } from '../../types';
 import { fetchEmployeeRequests, deleteRequestAPI, updateRequestAPI } from '../../api';
 import { useAppData } from '../../context/AppContext';
 import { toast } from 'react-hot-toast';
+import { ATTENDANCE_BASE_MAP, REQUEST_STATUS } from '../../constants';
 
 const EmployeeRequests: React.FC = () => {
   const { user } = useAuth();
@@ -44,16 +45,14 @@ const EmployeeRequests: React.FC = () => {
   const [dateRange, setDateRange] = useState<[Date | null, Date | null]>([null, null]);
   const [startDate, endDate] = dateRange;
   const [statusFilter, setStatusFilter] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<'Leave' | 'Missed Punch'>('Leave');
 
-  // Filter and Sort Logic
+  const [activeTab, setActiveTab] = useState<'Leave' | 'Missed Punch'>('Leave');
+  let result = myRequests.filter(req => activeTab === 'Leave' ? req.type === 'Leave' : (req.type === ATTENDANCE_BASE_MAP.MISSPUNCH.label || req.type === 'Misspunch'));
   const processedRequests = React.useMemo(() => {
-    let result = myRequests.filter(req => activeTab === 'Leave' ? req.type === 'Leave' : (req.type === 'Missed Punch' || req.type === 'Misspunch'));
 
     if (searchQuery.trim() !== '') {
       const q = searchQuery.toLowerCase();
       result = result.filter(r => {
-        // console.log(`R: ${r.actionedDate}`);
         let match = false;
         if (masterConfig?.myRequests?.columns?.type?.searchable !== false) {
           match = match || r.type.toLowerCase().includes(q) || Boolean(r.leaveType && r.leaveType.toLowerCase().includes(q));
@@ -103,7 +102,6 @@ const EmployeeRequests: React.FC = () => {
         return 0;
       });
     }
-    // console.log(`myRequests ${JSON.stringify(myRequests)}`);
     return result;
   }, [myRequests, searchQuery, sortConfig, statusFilter, startDate, endDate, activeTab]);
 
@@ -186,7 +184,6 @@ const EmployeeRequests: React.FC = () => {
   const saveEdit = async (req: AppRequest) => {
     const currentRequestData = myRequests.find((item) => item.id === req.id);
     if (!currentRequestData) return;
-    // console.log(`${req.id} | MYREQUEST: ===============>${JSON.stringify(currentRequestData)}`)
     const payload = {
       status: currentRequestData.status,
       reason: editReason,
@@ -197,7 +194,6 @@ const EmployeeRequests: React.FC = () => {
       inTime: currentRequestData?.inTime,
       outTime: currentRequestData?.outTime
     }
-    // console.log(`payload: ${JSON.stringify(payload)}`)
     await updateRequestAPI(req.id, payload);
 
     if (user) {
@@ -226,18 +222,18 @@ const EmployeeRequests: React.FC = () => {
             Leave
           </button>
           <button
-            onClick={() => setActiveTab('Missed Punch')}
-            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${activeTab === 'Missed Punch' ? 'bg-white dark:bg-slate-700 text-blue-600 dark:text-blue-400 shadow-sm' : 'text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200'}`}
+            onClick={() => setActiveTab(ATTENDANCE_BASE_MAP.MISSPUNCH.label)}
+            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${activeTab === ATTENDANCE_BASE_MAP.MISSPUNCH.label ? 'bg-white dark:bg-slate-700 text-blue-600 dark:text-blue-400 shadow-sm' : 'text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200'}`}
           >
             Missed Punch
           </button>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          {['All', 'Pending', 'Approved', 'Rejected'].map(status => {
+          {['All', REQUEST_STATUS.PENDING.code, 'Approved', 'Rejected'].map(status => {
             let activeColor = 'bg-slate-100 text-slate-700 border-slate-300 dark:bg-slate-700/80 dark:text-slate-200 dark:border-slate-600';
             if (status === 'Approved') activeColor = 'bg-emerald-100 text-emerald-700 border-emerald-200 dark:bg-emerald-500/10 dark:text-emerald-400 dark:border-emerald-500/20';
             else if (status === 'Rejected') activeColor = 'bg-red-100 text-red-700 border-red-200 dark:bg-red-500/10 dark:text-red-400 dark:border-red-500/20';
-            else if (status === 'Pending') activeColor = 'bg-amber-100 text-amber-700 border-amber-200 dark:bg-amber-500/10 dark:text-amber-400 dark:border-amber-500/20';
+            else if (status === REQUEST_STATUS.PENDING.code) activeColor = 'bg-amber-100 text-amber-700 border-amber-200 dark:bg-amber-500/10 dark:text-amber-400 dark:border-amber-500/20';
 
             const isActive = status === 'All' ? statusFilter === null : statusFilter === status;
 
@@ -368,7 +364,7 @@ const EmployeeRequests: React.FC = () => {
                       {req.approver_notes || '-'}
                     </td>
                     <td className="p-4 text-center">
-                      {req.status === 'Pending' ? (
+                      {req.status === REQUEST_STATUS.PENDING.code ? (
                         <div className="flex items-center justify-center gap-2">
                           {editingId === req.id ? (
                             <>
