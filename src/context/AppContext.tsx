@@ -6,7 +6,7 @@ import { useAuth } from './AuthContext';
 import { toast } from 'react-hot-toast';
 import { FETCH_API_INTERVAL } from '../constants';
 
-type Theme = 'light' | 'dark';
+type Theme = 'dark' | 'light';
 
 interface AppContextType {
   notifications: AppNotification[];

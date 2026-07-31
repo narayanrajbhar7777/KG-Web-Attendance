@@ -275,10 +275,10 @@ export const fetchSettings = async (userId: string) => {
       }
       return { theme: setting.theme, customColors };
     }
-    return { customColors: {}, theme: 'light' };
+    return { customColors: {}, theme: 'dark' };
   } catch (err) {
     console.error("Error fetching user settings:", err);
-    return { customColors: {}, theme: 'light' };
+    return { customColors: {}, theme: 'dark' };
   }
 };
 
@@ -291,7 +291,7 @@ export const insertSettings = async (userId: string, data: any) => {
         SettingsList: [
           {
             user_id: userId,
-            theme: data.theme || 'light',
+            theme: data.theme || 'dark',
             custom_colors: data.customColors || {}
           }
         ]
