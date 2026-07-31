@@ -30,17 +30,19 @@ const LoginPage: React.FC = () => {
 
       const userLoginData = await loginEmployeeExternal(payload);
 
-      if (userLoginData && userLoginData.p_emp_id) {
+      if (userLoginData && userLoginData.p_flg === 'Y' && userLoginData.token) {
+        localStorage.setItem('attendance_auth_token', userLoginData.token);
 
-        const empDetails = await fetchEmployeeDetails(userLoginData.p_emp_id);
+        const empDetails = await fetchEmployeeDetails(userLoginData.p_emp_id || userLoginData.p_user_name);
         const empDataArr = empDetails?.EMP_DATA || [];
         const loginUser = empDataArr.find((emp: any) => emp.e_code === userLoginData.p_emp_id);
         const isManager = empDataArr.some((emp: any) => emp.manager_code === userLoginData.p_emp_id);
 
         const loginUserRole: Role = isManager ? 'Admin' : 'Employee';
         const userObj = {
-          id: userLoginData.p_emp_id,
-          code: userLoginData.p_emp_id,
+          token: userLoginData.token,
+          id: userLoginData.p_emp_id || userLoginData.p_user_name,
+          code: userLoginData.p_emp_id || userLoginData.p_user_name,
           name: userLoginData.p_emp_name,
           role: loginUserRole,
 
@@ -48,7 +50,7 @@ const LoginPage: React.FC = () => {
           designation: loginUser?.e_desg || 'NA',
           employee_list: empDataArr,
           manager_code: loginUser?.s_mgrcd || null,
-          manager_name: loginUser?.mgrname || null
+          manager_name: loginUser?.mgrname || null,
         };
 
         login(userObj);

@@ -17,6 +17,11 @@ export default defineConfig({
         rewrite: (path) => path.replace(/^\/kgapi-data/, '/KG_WEB_APP0/KGAPI'),
         changeOrigin: true,
       },
+      '/api/kg_web_app': {
+        target: 'http://172.16.34.22:8080',
+        rewrite: (path) => path.replace(/^\/api\/kg_web_app/, '/kg_web_app/KGAPI'),
+        changeOrigin: true,
+      }
     }
   },
   plugins: [

@@ -1,5 +1,5 @@
-export const KG_WEB_APP0_API_URL = 'http://192.168.100.22:8080/KG_WEB_APP0/KGAPI';
-export const KG_WEB_APP_API_URL = 'http://172.16.34.22:8080/kg_web_app/KGAPI';
+export const KG_WEB_APP0_API_URL = '/api/kg_web_app';
+export const KG_WEB_APP_API_URL = '/api/kg_web_app';
 export const KG_WEB_MAIL_API_URL = 'http://172.16.37.219:ls/api';
 export const EMAIL_TOKEN = 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6ImU5NTBlM2RjLTZhYjMtNGYwMi04NDZiLTcyMTk2NjVmOTQzNSIsInJvbGUiOiJ1c2VyIiwiaWF0IjoxTzg0ODY3NDQzLCJleHAiOjE3ODU0NzIyNDN9.H0PdN--1Stf-ZVMAiqgZgfU-4d2f1Bq39FEdz2jK1I4';
 

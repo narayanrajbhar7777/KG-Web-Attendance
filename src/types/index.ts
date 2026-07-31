@@ -10,6 +10,7 @@ export interface User {
   employee_list?: any[];
   manager_code?: string | null;
   manager_name?: string | null;
+  token?: string;
 }
 
 export type AttendanceStatus = 'P' | 'A' | 'WO' | 'H' | 'HD' | 'PH' | 'EL' | 'HDEL' | 'L' | 'EO' | 'NJ' | 'LWP';
