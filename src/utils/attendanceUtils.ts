@@ -167,3 +167,16 @@ export const getAttendanceHeaders = (daysArray: string[] = []) => {
     "Total Hrs."
   ];
 };
+
+export const isRecordLate = (checkIn?: string) => {
+  if (!checkIn || checkIn === '-') return false;
+  const match = checkIn.match(/(\d+):(\d+)/);
+  if (match) {
+    let h = parseInt(match[1], 10);
+    const m = parseInt(match[2], 10);
+    if (checkIn.toLowerCase().includes('pm') && h < 12) h += 12;
+    if (checkIn.toLowerCase().includes('am') && h === 12) h = 0;
+    return h > 9 || (h === 9 && m > 0);
+  }
+  return false;
+};

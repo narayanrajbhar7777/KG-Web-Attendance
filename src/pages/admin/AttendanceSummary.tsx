@@ -8,7 +8,7 @@ import 'react-datepicker/dist/react-datepicker.css';
 import Loader from '../../components/Loader';
 import { fetchEmployeePunchData } from '../../api';
 import { AttendanceTable, type ColumnDef } from '../../components/AttendanceTable';
-import { calculateTime, getFullStatus, normalizeAttendanceStatus, getAttendanceFieldStyle } from '../../utils/attendanceUtils';
+import { calculateTime, getFullStatus, normalizeAttendanceStatus, getAttendanceFieldStyle, isRecordLate } from '../../utils/attendanceUtils';
 import { ATTENDANCE_STATUS, ATTENDANCE_STATUS_MAP, ATTENDANCE_SUMMARY_FILTERS, DEFAULT_ATTENDANCE_COLORS } from '../../constants';
 
 const AttendanceSummary: React.FC = () => {
@@ -100,20 +100,7 @@ const AttendanceSummary: React.FC = () => {
       if (todayRecord.status === ATTENDANCE_STATUS.PRESENT || todayRecord.status === ATTENDANCE_STATUS.HALF_DAY || todayRecord.status === ATTENDANCE_STATUS.PRESENT_ON_HOLIDAY || todayRecord.status === ATTENDANCE_STATUS.IN) present++;
       if (todayRecord.status === ATTENDANCE_STATUS.ABSENT) absent++;
       if (todayRecord.status === ATTENDANCE_STATUS.LEAVE || todayRecord.status === ATTENDANCE_STATUS.EARNED_LEAVE || todayRecord.status === ATTENDANCE_STATUS.HALF_DAY_EARNED_LEAVE) onLeave++;
-
-      if (todayRecord.checkIn) {
-        const match = todayRecord.checkIn.match(/(\d+):(\d+)/);
-        if (match) {
-          let h = parseInt(match[1], 10);
-          const m = parseInt(match[2], 10);
-          if (todayRecord.checkIn.toLowerCase().includes('pm') && h < 12) h += 12;
-          if (todayRecord.checkIn.toLowerCase().includes('am') && h === 12) h = 0;
-
-          if (h > 9 || (h === 9 && m > 0)) {
-            late++;
-          }
-        }
-      }
+      if (isRecordLate(todayRecord.checkIn)) late++;
     }
   });
 
@@ -211,7 +198,7 @@ const AttendanceSummary: React.FC = () => {
               if (attendanceFilter === (ATTENDANCE_STATUS_MAP[ATTENDANCE_STATUS.LEAVE])) return [ATTENDANCE_STATUS.LEAVE, ATTENDANCE_STATUS.EARNED_LEAVE, ATTENDANCE_STATUS.HALF_DAY_EARNED_LEAVE].includes(status);
               if (attendanceFilter === (ATTENDANCE_STATUS_MAP[ATTENDANCE_STATUS.IN])) return status === ATTENDANCE_STATUS.IN;
               if (attendanceFilter === (ATTENDANCE_STATUS_MAP[ATTENDANCE_STATUS.OUT])) return item.record?.checkOut && item.record?.checkOut !== '-';
-              if (attendanceFilter === (ATTENDANCE_STATUS_MAP[ATTENDANCE_STATUS.LATE])) return status === ATTENDANCE_STATUS.LATE;
+              if (attendanceFilter === (ATTENDANCE_STATUS_MAP[ATTENDANCE_STATUS.LATE])) return isRecordLate(item.record?.checkIn);
               if (attendanceFilter === (ATTENDANCE_STATUS_MAP[ATTENDANCE_STATUS.MISSPUNCH])) return status === ATTENDANCE_STATUS.MISSPUNCH;
               if (attendanceFilter === (ATTENDANCE_STATUS_MAP[ATTENDANCE_STATUS.PRESENT_ON_HOLIDAY])) return status === ATTENDANCE_STATUS.PRESENT_ON_HOLIDAY;
               if (attendanceFilter === (ATTENDANCE_STATUS_MAP[ATTENDANCE_STATUS.WEEK_OFF])) return status === ATTENDANCE_STATUS.WEEK_OFF;
@@ -249,7 +236,7 @@ const AttendanceSummary: React.FC = () => {
                       if (tab.id === (ATTENDANCE_STATUS_MAP[ATTENDANCE_STATUS.LEAVE])) return [ATTENDANCE_STATUS.LEAVE, ATTENDANCE_STATUS.EARNED_LEAVE, ATTENDANCE_STATUS.HALF_DAY_EARNED_LEAVE].includes(status);
                       if (tab.id === (ATTENDANCE_STATUS_MAP[ATTENDANCE_STATUS.IN])) return status === ATTENDANCE_STATUS.IN;
                       if (tab.id === (ATTENDANCE_STATUS_MAP[ATTENDANCE_STATUS.OUT])) return item.record?.checkOut && item.record?.checkOut !== '-';
-                      if (tab.id === (ATTENDANCE_STATUS_MAP[ATTENDANCE_STATUS.LATE])) return status === ATTENDANCE_STATUS.LATE;
+                      if (tab.id === (ATTENDANCE_STATUS_MAP[ATTENDANCE_STATUS.LATE])) return isRecordLate(item.record?.checkIn);
                       if (tab.id === (ATTENDANCE_STATUS_MAP[ATTENDANCE_STATUS.MISSPUNCH])) return status === ATTENDANCE_STATUS.MISSPUNCH;
                       if (tab.id === (ATTENDANCE_STATUS_MAP[ATTENDANCE_STATUS.PRESENT_ON_HOLIDAY])) return status === ATTENDANCE_STATUS.PRESENT_ON_HOLIDAY;
                       if (tab.id === (ATTENDANCE_STATUS_MAP[ATTENDANCE_STATUS.WEEK_OFF])) return status === ATTENDANCE_STATUS.WEEK_OFF;

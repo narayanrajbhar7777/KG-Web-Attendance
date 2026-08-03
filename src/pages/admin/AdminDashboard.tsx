@@ -7,7 +7,7 @@ import type { AppRequest, User } from '../../types';
 import { Calendar, EyeOff, Table, Check, X, Clock, Search, ExternalLink } from 'lucide-react';
 import { format } from 'date-fns';
 import { AttendanceTable, type ColumnDef } from '../../components/AttendanceTable';
-import { normalizeAttendanceStatus, calculateTime } from '../../utils/attendanceUtils';
+import { calculateTime, normalizeAttendanceStatus, isRecordLate } from '../../utils/attendanceUtils';
 import { ATTENDANCE_STATUS, DEFAULT_ATTENDANCE_COLORS, REQUEST_STATUS, ATTENDANCE_BASE_MAP } from '../../constants';
 import Loader from '../../components/Loader';
 
@@ -20,7 +20,7 @@ const AdminDashboard: React.FC = () => {
   const [users, setUsers] = useState<User[]>([]);
   const [recentPunchesData, setRecentPunchesData] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [recentPunchingFilter, setRecentPunchingFilter] = useState<'All' | 'Present' | 'Absent' | 'Leave'>('All');
+  const [recentPunchingFilter, setRecentPunchingFilter] = useState<'All' | 'Present' | 'Absent' | 'Leave' | 'Late'>('All');
   const [leaveReportFilter, setLeaveReportFilter] = useState<string>('All');
   const [missedPunchFilter, setMissedPunchFilter] = useState<string>('All');
   const [currentDate] = useState<Date>(new Date());
@@ -180,6 +180,7 @@ const AdminDashboard: React.FC = () => {
   const recentPresentCount = recentPunchesData.filter(r => [ATTENDANCE_STATUS.PRESENT, ATTENDANCE_STATUS.PRESENT_MISSPUNCH, ATTENDANCE_STATUS.HALF_DAY, ATTENDANCE_STATUS.MISSPUNCH, ATTENDANCE_STATUS.IN, ATTENDANCE_STATUS.PRESENT_ON_HOLIDAY].includes(r.status)).length;
   const recentAbsentCount = recentPunchesData.filter(r => r.status === ATTENDANCE_STATUS.ABSENT).length;
   const recentLeaveCount = recentPunchesData.filter(r => r.status === ATTENDANCE_STATUS.LEAVE).length;
+  const recentLateCount = recentPunchesData.filter(r => isRecordLate(r.checkIn)).length;
 
   const PaginationFooter = ({ page, setPage, total, label }: any) => {
     const totalPages = Math.ceil(total / itemsPerPage);
@@ -757,6 +758,7 @@ const AdminDashboard: React.FC = () => {
               if (recentPunchingFilter === 'Present') return [ATTENDANCE_STATUS.PRESENT, ATTENDANCE_STATUS.PRESENT_MISSPUNCH, ATTENDANCE_STATUS.HALF_DAY, ATTENDANCE_STATUS.MISSPUNCH, ATTENDANCE_STATUS.IN, ATTENDANCE_STATUS.PRESENT_ON_HOLIDAY].includes(r.status);
               if (recentPunchingFilter === 'Absent') return r.status === ATTENDANCE_STATUS.ABSENT;
               if (recentPunchingFilter === 'Leave') return r.status === ATTENDANCE_STATUS.LEAVE;
+              if (recentPunchingFilter === 'Late') return isRecordLate(r.checkIn);
               return true; // 'All'
             })}
             columns={recentPunchesColumns}
@@ -805,6 +807,12 @@ const AdminDashboard: React.FC = () => {
                     className={`min-w-[100px] h-[36px] flex items-center justify-center rounded-lg border transition-colors ${recentPunchingFilter === 'Leave' ? 'bg-amber-100 dark:bg-amber-900/40 border-amber-300 dark:border-amber-700 text-amber-700 dark:text-amber-300' : 'bg-slate-50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700 text-amber-600 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-900/20'}`}
                   >
                     Leave: {recentLeaveCount}
+                  </button>
+                  <button
+                    onClick={() => setRecentPunchingFilter('Late')}
+                    className={`min-w-[100px] h-[36px] flex items-center justify-center rounded-lg border transition-colors ${recentPunchingFilter === 'Late' ? 'bg-orange-100 dark:bg-orange-900/40 border-orange-300 dark:border-orange-700 text-orange-700 dark:text-orange-300' : 'bg-slate-50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700 text-orange-600 dark:text-orange-400 hover:bg-orange-50 dark:hover:bg-orange-900/20'}`}
+                  >
+                    Late: {recentLateCount}
                   </button>
                 </div>
               </div>
