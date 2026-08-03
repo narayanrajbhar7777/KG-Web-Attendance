@@ -1,4 +1,4 @@
-import { KG_WEB_APP0_API_URL, KG_WEB_APP_API_URL, KG_WEB_MAIL_API_URL } from '../constants';
+import { EMAIL_TOKEN, KG_WEB_APP0_API_URL, KG_WEB_APP_API_URL, KG_WEB_MAIL_API_URL } from '../constants';
 import type { AppRequest } from '../types';
 import { format } from 'date-fns';
 
@@ -267,7 +267,7 @@ export const sendEmailNotification = async (email: string, subject: string, mess
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6ImU5NTBlM2RjLTZhYjMtNGYwMi04NDZiLTcyMTk2NjVmOTQzNSIsInJvbGUiOiJ1c2VyIiwiaWF0IjoxNzg0ODY3NDQzLCJleHAiOjE3ODU0NzIyNDN9.H0PdN--1Stf-ZVMAiqgZgfU-4d2f1Bq39FEdz2jK1I4'
+        'Authorization': `${EMAIL_TOKEN}`
       },
       body: JSON.stringify({
         platform: "email",
