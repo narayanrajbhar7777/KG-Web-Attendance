@@ -427,7 +427,7 @@ const EmployeeDashboard: React.FC = () => {
               <div className="p-4 sm:p-6 flex-1 flex flex-col min-h-0 overflow-y-auto custom-scrollbar">
                 <div className="grid grid-cols-7 gap-2 shrink-0 mb-2">
                   {Object.values(DAYS).map(d => (
-                    <div key={d.label} className="text-center text-xs font-semibold text-slate-400 uppercase tracking-wider">
+                    <div key={d.name} className="text-center text-xs font-semibold text-slate-400 uppercase tracking-wider">
                       {d.label}
                     </div>
                   ))}
