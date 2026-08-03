@@ -4,11 +4,11 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { useAppData } from '../../context/AppContext';
 import Loader from '../../components/Loader';
-import { format, startOfMonth, getDay, getDaysInMonth, addMonths, subMonths, isAfter, startOfDay, isSameMonth } from 'date-fns';
-import { LogOut, Calendar as CalendarIcon, Clock, ArrowRight, UserCircle, Bell, X, Moon, Sun, Table, ChevronLeft, ChevronRight, Check, XCircle, MoreVertical, ExternalLink, Send } from 'lucide-react';
+import { format, startOfMonth, getDay, getDaysInMonth, isAfter, startOfDay } from 'date-fns';
+import { Calendar as CalendarIcon, ExternalLink, Send } from 'lucide-react';
 import DatePicker from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
-import { ATTENDANCE_BASE_MAP, ATTENDANCE_STATUS, ATTENDANCE_STATUS_MAP, DAYS, DEFAULT_ATTENDANCE_COLORS } from '../../constants';
+import { ATTENDANCE_BASE_MAP, ATTENDANCE_STATUS, ATTENDANCE_STATUS_MAP, DAYS } from '../../constants';
 import { fetchEmployeePunchData, fetchLeaveTypes } from '../../api';
 import { normalizeAttendanceStatus, calculateTimeNum, getAttendanceFieldStyle } from '../../utils/attendanceUtils';
 
@@ -108,9 +108,6 @@ const EmployeeDashboard: React.FC = () => {
 
   const { attendance: empAttendance, requests: empRequests = [], managers = [] } = dashboardData || {};
   const myAttendance = empAttendance?.records || [];
-
-  const handlePrevMonth = () => setCurrentDate(prev => subMonths(prev, 1));
-  const handleNextMonth = () => setCurrentDate(prev => addMonths(prev, 1));
 
   const monthStart = startOfMonth(currentDate);
   const daysInMonth = getDaysInMonth(currentDate);
@@ -259,7 +256,7 @@ const EmployeeDashboard: React.FC = () => {
                 <div className="relative z-50">
                   <DatePicker
                     selected={currentDate}
-                    onChange={(date) => { if (date) setCurrentDate(date); }}
+                    onChange={(date: Date | null) => { if (date) setCurrentDate(date); }}
                     maxDate={new Date()}
                     dateFormat="MMMM yyyy"
                     showMonthYearPicker

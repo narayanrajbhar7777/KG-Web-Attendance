@@ -4,10 +4,8 @@ import { useAuth } from '../../context/AuthContext';
 import { useAppData } from '../../context/AppContext';
 import { fetchRequests, fetchEmployeePunchData } from '../../api';
 import type { AppRequest, User } from '../../types';
-import { Calendar, EyeOff, Table, Check, X, Clock, Search, ExternalLink, ChevronLeft, ChevronRight } from 'lucide-react';
-import { format, subDays, addDays } from 'date-fns';
-import DatePicker from 'react-datepicker';
-import 'react-datepicker/dist/react-datepicker.css';
+import { Calendar, EyeOff, Table, Check, X, Clock, Search, ExternalLink } from 'lucide-react';
+import { format } from 'date-fns';
 import { AttendanceTable, type ColumnDef } from '../../components/AttendanceTable';
 import { normalizeAttendanceStatus, calculateTime } from '../../utils/attendanceUtils';
 import { ATTENDANCE_STATUS, DEFAULT_ATTENDANCE_COLORS, REQUEST_STATUS, ATTENDANCE_BASE_MAP } from '../../constants';
@@ -25,7 +23,7 @@ const AdminDashboard: React.FC = () => {
   const [recentPunchingFilter, setRecentPunchingFilter] = useState<'All' | 'Present' | 'Absent' | 'Leave'>('All');
   const [leaveReportFilter, setLeaveReportFilter] = useState<string>('All');
   const [missedPunchFilter, setMissedPunchFilter] = useState<string>('All');
-  const [currentDate, setCurrentDate] = useState<Date>(new Date());
+  const [currentDate] = useState<Date>(new Date());
 
   useEffect(() => {
     const loadData = async () => {

@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { useAppData } from '../../context/AppContext';
-import { format, getDaysInMonth, addMonths, subMonths, isAfter, startOfDay, startOfMonth } from 'date-fns';
-import { ChevronLeft, ChevronRight, Search, X, ExternalLink, Loader2, FileSpreadsheet, FileText, Calendar } from 'lucide-react';
+import { format, getDaysInMonth, isAfter, startOfDay, startOfMonth } from 'date-fns';
+import { Search, X, ExternalLink, Loader2, FileSpreadsheet, FileText } from 'lucide-react';
 import DatePicker from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
 import toast from 'react-hot-toast';
@@ -110,13 +110,9 @@ const AttendanceDetails: React.FC = () => {
     currentPage * itemsPerPage
   );
 
-  const handlePrevMonth = () => setCurrentDate(prev => subMonths(prev, 1));
-  const handleNextMonth = () => setCurrentDate(prev => addMonths(prev, 1));
-
   const daysInMonth = getDaysInMonth(currentDate);
   const days = Array.from({ length: daysInMonth }, (_, i) => i + 1);
   const today = startOfDay(new Date());
-  const isCurrentMonth = currentDate.getMonth() === today.getMonth() && currentDate.getFullYear() === today.getFullYear();
 
   const handleExport = async (formatType: 'excel' | 'csv' | 'pdf') => {
     if (filteredEmployees.length === 0) {
@@ -206,7 +202,7 @@ const AttendanceDetails: React.FC = () => {
               <div className="relative z-50">
                 <DatePicker
                   selected={currentDate}
-                  onChange={(date) => { if (date) setCurrentDate(date); }}
+                  onChange={(date: Date | null) => { if (date) setCurrentDate(date); }}
                   maxDate={new Date()}
                   dateFormat="MMMM yyyy"
                   showMonthYearPicker
@@ -284,7 +280,7 @@ const AttendanceDetails: React.FC = () => {
           <div className="relative z-50">
             <DatePicker
               selected={currentDate}
-              onChange={(date) => { if (date) setCurrentDate(date); }}
+              onChange={(date: Date | null) => { if (date) setCurrentDate(date); }}
               maxDate={new Date()}
               dateFormat="MMMM yyyy"
               showMonthYearPicker

@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
-import { format, startOfMonth, getDaysInMonth, addMonths, subMonths, isSameMonth } from 'date-fns';
+import { format, startOfMonth, getDaysInMonth, isSameMonth } from 'date-fns';
 import { useNavigate } from 'react-router-dom';
 import { fetchEmployeePunchData, fetchEmployeePolicies, fetchDeptMgrCutoff, fetchManagerCutoff, fetchWorkerCutoff } from '../../api';
 import { ATTENDANCE_STATUS, ATTENDANCE_STATUS_MAP, DEFAULT_ATTENDANCE_COLORS, DEFAULT_IN_TIME, DEFAULT_OUT_TIME } from '../../constants';
 import { useAppData } from '../../context/AppContext';
-import { ChevronLeft, ChevronRight, X } from 'lucide-react';
+import { X } from 'lucide-react';
 import DatePicker from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
 import Loader from '../../components/Loader';
@@ -28,7 +28,6 @@ const MyAttendance: React.FC = () => {
   });
 
   const [cachedPolicy, setCachedPolicy] = useState<any>(null);
-  const [isRuleModalOpen, setIsRuleModalOpen] = useState(false);
 
   const fetchData = async () => {
     if (!user) return;
@@ -208,7 +207,7 @@ const MyAttendance: React.FC = () => {
             <div className="relative z-50">
               <DatePicker
                 selected={currentDate}
-                onChange={(date) => { if (date) setCurrentDate(date); }}
+                onChange={(date: Date | null) => { if (date) setCurrentDate(date); }}
                 maxDate={new Date()}
                 dateFormat="MMMM yyyy"
                 showMonthYearPicker

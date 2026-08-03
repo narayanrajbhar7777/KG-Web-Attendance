@@ -500,7 +500,7 @@ export const fetchEmployeeDetails = async (empId: string = '', silent = false) =
   const comp = empId ? empId.substring(0, 2) : '';
   const code = empId ? empId.substring(2) : '';
 
-  const res = await fetchWithAuth(`${KG_WEB_APP_API_URL}/powerbi/GetEmpDet?p_E_COMP=${comp}&p_E_CODE=${code}`, {
+  const res = await fetch(`${KG_WEB_APP_API_URL}/powerbi/GetEmpDet?p_E_COMP=${comp}&p_E_CODE=${code}`, {
     headers: silent ? { 'X-Silent-Fetch': 'true' } : {}
   });
   return res.json();
@@ -509,7 +509,7 @@ export const fetchEmployeeDetails = async (empId: string = '', silent = false) =
 export const fetchEmployeePunchData = async (empId: string, frDate: string, toDate: string, silent = false) => {
   let punchDet = null;
   try {
-    const punchDetRes = await fetchWithAuth(`${KG_WEB_APP_API_URL}/powerbi/GetEmpPunchDet?p_Frdate=${frDate}&p_Todate=${toDate}&P_EMP_ID=${empId}`, {
+    const punchDetRes = await fetch(`${KG_WEB_APP_API_URL}/powerbi/GetEmpPunchDet?p_Frdate=${frDate}&p_Todate=${toDate}&P_EMP_ID=${empId}`, {
       headers: silent ? { 'X-Silent-Fetch': 'true' } : {}
     });
     punchDet = await punchDetRes.json();

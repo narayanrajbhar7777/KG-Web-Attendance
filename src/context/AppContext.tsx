@@ -176,7 +176,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
       if (targetUserId) {
         try {
-          const email = user.employee_list?.find((emp: any) => emp.id === targetUserId)?.e_email;
+          const email = user?.employee_list?.find((emp: any) => emp.id === targetUserId)?.e_email;
           if (email) {
             await sendEmailNotification(email, "New Notification from KG Workforce Portal", message);
           }

@@ -18,8 +18,8 @@ export default defineConfig({
         changeOrigin: true,
       },
       '/api/kg_web_app': {
-        target: 'http://172.16.34.22:8080',
-        rewrite: (path) => path.replace(/^\/api\/kg_web_app/, '/kg_web_app/KGAPI'),
+        target: 'http://192.168.100.22:8080',
+        rewrite: (path) => path.replace(/^\/api\/kg_web_app/, '/KG_WEB_APP0/KGAPI'),
         changeOrigin: true,
       }
     }

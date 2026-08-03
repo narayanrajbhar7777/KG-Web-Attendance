@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { useAppData } from '../../context/AppContext';
-import { Users, UserX, CalendarOff, ChevronLeft, ChevronRight, Clock } from 'lucide-react';
-import { addDays, format, subDays } from 'date-fns';
+import { Users, UserX, CalendarOff, Clock } from 'lucide-react';
+import { format } from 'date-fns';
 import DatePicker from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
 import Loader from '../../components/Loader';
@@ -229,7 +229,7 @@ const AttendanceSummary: React.FC = () => {
                   <div className="relative z-50">
                     <DatePicker
                       selected={currentDate}
-                      onChange={(date) => { if (date) setCurrentDate(date); }}
+                      onChange={(date: Date | null) => { if (date) setCurrentDate(date); }}
                       maxDate={new Date()}
                       dateFormat="dd MMM yyyy"
                       className="px-3 h-[36px] bg-slate-100 hover:bg-slate-200 dark:bg-[#0b1120] border border-slate-200 dark:border-slate-700 rounded-lg text-[13px] font-semibold focus:ring-2 focus:ring-blue-500 outline-none dark:text-white dark:[color-scheme:dark] w-[130px] text-slate-700 cursor-pointer text-center transition-colors"
