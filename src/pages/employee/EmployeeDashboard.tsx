@@ -5,7 +5,7 @@ import { useAuth } from '../../context/AuthContext';
 import { useAppData } from '../../context/AppContext';
 import Loader from '../../components/Loader';
 import { format, startOfMonth, getDay, getDaysInMonth, isAfter, startOfDay } from 'date-fns';
-import { Calendar as CalendarIcon, ExternalLink, Send, List } from 'lucide-react';
+import { Calendar as CalendarIcon, ExternalLink, Send } from 'lucide-react';
 import DatePicker from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
 import { ATTENDANCE_BASE_MAP, ATTENDANCE_STATUS, ATTENDANCE_STATUS_MAP, DAYS } from '../../constants';
