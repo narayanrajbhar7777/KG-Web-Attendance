@@ -5,12 +5,13 @@ import { useAuth } from '../../context/AuthContext';
 import { useAppData } from '../../context/AppContext';
 import Loader from '../../components/Loader';
 import { format, startOfMonth, getDay, getDaysInMonth, isAfter, startOfDay } from 'date-fns';
-import { Calendar as CalendarIcon, ExternalLink, Send } from 'lucide-react';
+import { Calendar as CalendarIcon, ExternalLink, Send, List } from 'lucide-react';
 import DatePicker from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
 import { ATTENDANCE_BASE_MAP, ATTENDANCE_STATUS, ATTENDANCE_STATUS_MAP, DAYS } from '../../constants';
+import { AttendanceTable, type ColumnDef } from '../../components/AttendanceTable';
 import { fetchEmployeePunchData, fetchLeaveTypes } from '../../api';
-import { normalizeAttendanceStatus, calculateTimeNum, getAttendanceFieldStyle } from '../../utils/attendanceUtils';
+import { normalizeAttendanceStatus, calculateTimeNum, getAttendanceFieldStyle, calculateTime, isRecordLate } from '../../utils/attendanceUtils';
 
 const EmployeeDashboard: React.FC = () => {
   const { user, login } = useAuth();
@@ -21,7 +22,7 @@ const EmployeeDashboard: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [currentDate, setCurrentDate] = useState(new Date());
   const [empDetState, setEmpDetState] = useState<any>(null);
-
+  const [viewMode, setViewMode] = useState<'calendar' | 'list'>('calendar');
 
   const [requestType, setRequestType] = useState<'Leave' | 'Missed Punch'>('Leave');
   const [date, setDate] = useState('');
@@ -209,6 +210,157 @@ const EmployeeDashboard: React.FC = () => {
   });
   const avgHrs = presentDaysCount > 0 ? (totalHours / presentDaysCount).toFixed(1) : '0';
 
+  const listData = days.map(day => {
+    const dateStr = format(new Date(currentDate.getFullYear(), currentDate.getMonth(), day), 'yyyy-MM-dd');
+    const currentIterDate = new Date(currentDate.getFullYear(), currentDate.getMonth(), day);
+    const isFuture = isAfter(currentIterDate, today);
+
+    let status = '-';
+    let checkIn = '-';
+    let checkOut = '-';
+    if (!isFuture) {
+      const record = myAttendance.find((r: any) => r.date === dateStr);
+      status = record?.status || '-';
+      checkIn = record?.checkIn || '-';
+      checkOut = record?.checkOut || '-';
+
+      if (!record?.checkIn && !record?.checkOut) {
+        if (currentIterDate.getDay() === 0) {
+          status = 'WO';
+        } else {
+          status = 'A';
+        }
+      }
+
+      const approvedMispunch = empRequests.find((r: any) => r.type === ATTENDANCE_BASE_MAP.MISSPUNCH.label && r.date === dateStr && r.status === 'Approved');
+      if (approvedMispunch) {
+        status = 'P/MP';
+      }
+    }
+
+    return {
+      date: dateStr,
+      day: format(currentIterDate, 'EEEE'),
+      checkIn,
+      checkOut,
+      status: isFuture ? '-' : status
+    };
+  });
+
+  const columns: ColumnDef<any>[] = [
+    {
+      key: 'date',
+      label: 'DATE',
+      render: (item) => {
+        const badgeStyle = getAttendanceFieldStyle(item.status, customColors, false);
+        return (
+          <div className="flex items-center gap-2">
+            <span className="text-[13px] text-slate-700 dark:text-slate-300 font-medium whitespace-nowrap">
+              {format(new Date(item.date), 'MMM dd, EEE')}
+            </span>
+            {item.status !== '-' && !['P', 'P/MP'].includes(item.status) && (
+              <span
+                className="px-1.5 py-0.5 rounded text-[10px] font-bold whitespace-nowrap border"
+                style={{
+                  backgroundColor: badgeStyle.backgroundColor,
+                  color: badgeStyle.color,
+                  borderColor: badgeStyle.borderColor
+                }}
+              >
+                {ATTENDANCE_STATUS_MAP[item.status] || item.status}
+              </span>
+            )}
+          </div>
+        );
+      }
+    },
+    {
+      key: 'visual',
+      label: 'ATTENDANCE VISUAL',
+      render: (item) => {
+        const isPresent = ['P', 'P/MP', 'IN', 'HD'].includes(item.status);
+        const { totalMins } = calculateTimeNum(item.checkIn, item.checkOut);
+
+        let percentage = Math.min(100, Math.max(0, Math.round((totalMins / 540) * 100)));
+        if (totalMins === 0 && isPresent) {
+          percentage = item.status === 'HD' ? 50 : 100;
+        }
+
+        const isCheckedOut = item.checkOut !== '-';
+        const statusStyle = getAttendanceFieldStyle(item.status, customColors, true);
+
+        return (
+          <div className="flex items-center gap-1 w-32">
+            <div
+              className="flex-1 h-2 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden flex border"
+              style={{ borderColor: item.status !== '-' ? statusStyle.backgroundColor : '#cbd5e1' }}
+            >
+              {percentage > 0 && (
+                <div
+                  className={`h-full ${item.status === 'HD' ? 'bg-blue-300' : 'bg-blue-400'}`}
+                  style={{ width: `${percentage}%` }}
+                ></div>
+              )}
+              {isCheckedOut && percentage < 100 && percentage > 0 && (
+                <div
+                  className="h-full bg-red-400 dark:bg-red-500"
+                  style={{ width: `${100 - percentage}%` }}
+                ></div>
+              )}
+            </div>
+          </div>
+        );
+      }
+    },
+    {
+      key: 'effective',
+      label: 'EFFECTIVE HOURS',
+      render: (item) => {
+        const { total } = calculateTime(item.checkIn, item.checkOut);
+        const hasTime = total !== '00:00' && item.checkIn !== '-';
+        return (
+          <div className="flex items-center gap-2">
+            <div className={`w-2.5 h-2.5 rounded-full ${hasTime ? 'bg-blue-400' : 'bg-slate-300 dark:bg-slate-700'}`}></div>
+            <span className="text-[13px] text-slate-600 dark:text-slate-300 whitespace-nowrap font-medium">{hasTime ? `${total} hrs` : '-'}</span>
+          </div>
+        );
+      }
+    },
+    {
+      key: 'gross',
+      label: 'GROSS HOURS',
+      render: (item) => {
+        const { total } = calculateTime(item.checkIn, item.checkOut);
+        const hasTime = total !== '00:00' && item.checkIn !== '-';
+        return <span className="text-[13px] text-slate-600 dark:text-slate-300 whitespace-nowrap font-medium">{hasTime ? `${total} hrs` : '-'}</span>;
+      }
+    },
+    {
+      key: 'arrival',
+      label: 'ARRIVAL',
+      render: (item) => {
+        const late = isRecordLate(item.checkIn);
+        const arrivalText = item.checkIn === '-' ? '-' : (late ? 'Late' : 'On Time');
+        return <span className={`text-[13px] font-medium whitespace-nowrap ${arrivalText === 'Late' ? 'text-amber-600 dark:text-amber-500' : 'text-slate-600 dark:text-slate-300'}`}>{arrivalText}</span>;
+      }
+    },
+    {
+      key: 'log',
+      label: 'LOG',
+      render: (item) => (
+        <div className="flex items-center gap-3 text-[11.5px] text-slate-500 dark:text-slate-400 font-mono whitespace-nowrap bg-slate-50 dark:bg-[#182333] px-2 py-1 rounded border border-slate-100 dark:border-slate-800">
+          <div className="flex items-center gap-1">
+            <span className="text-green-500">↙</span>
+            <span className="font-medium">{item.checkIn !== '-' ? item.checkIn : '--:--'}</span>
+          </div>
+          <div className="flex items-center gap-1">
+            <span className="text-rose-500">↗</span>
+            <span className="font-medium">{item.checkOut !== '-' ? item.checkOut : '--:--'}</span>
+          </div>
+        </div>
+      )
+    },
+  ];
 
   return (
     <div className="space-y-4 animate-fade-in-up h-full flex flex-col relative">
@@ -245,10 +397,16 @@ const EmployeeDashboard: React.FC = () => {
         <div className="lg:col-span-2 xl:col-span-3 flex flex-col min-h-0 h-full">
           <div className="bg-white dark:bg-[#1e293b] rounded-xl shadow-sm border border-slate-200 dark:border-slate-700/60 overflow-hidden transition-colors duration-300 h-full flex flex-col">
             <div className="p-4 border-b border-slate-200 dark:border-slate-700/60 bg-slate-50 dark:bg-[#182333]/50 flex items-center justify-between transition-colors shrink-0">
-              <h3 className="font-semibold text-slate-800 dark:text-white flex items-center gap-2">
-                <CalendarIcon className="w-5 h-5 text-blue-500 dark:text-blue-400" />
-                My Attendance
-              </h3>
+              <div className="flex items-center gap-4">
+                <h3 className="font-semibold text-slate-800 dark:text-white flex items-center gap-2">
+                  <CalendarIcon className="w-5 h-5 text-blue-500 dark:text-blue-400" />
+                  My Attendance
+                </h3>
+                <div className="flex bg-slate-200 dark:bg-[#0b1120] rounded-lg p-1 border border-slate-300 dark:border-slate-700">
+                  <button onClick={() => setViewMode('calendar')} className={`flex items-center gap-1 px-3 py-1.5 text-xs font-semibold rounded-md transition-colors ${viewMode === 'calendar' ? 'bg-white dark:bg-[#1e293b] shadow text-blue-600 dark:text-blue-400' : 'text-slate-600 dark:text-slate-400'}`}> Cal</button>
+                  <button onClick={() => setViewMode('list')} className={`flex items-center gap-1 px-3 py-1.5 text-xs font-semibold rounded-md transition-colors ${viewMode === 'list' ? 'bg-white dark:bg-[#1e293b] shadow text-blue-600 dark:text-blue-400' : 'text-slate-600 dark:text-slate-400'}`}>List</button>
+                </div>
+              </div>
               <div className="flex gap-3 items-center">
                 <button onClick={() => navigate('/employee/attendance')} title="Show Report" className="p-1.5 hover:bg-blue-100 dark:hover:bg-blue-500/20 text-blue-600 dark:text-blue-400 rounded transition-colors flex items-center justify-center">
                   <ExternalLink className="w-5 h-5" />
@@ -265,68 +423,79 @@ const EmployeeDashboard: React.FC = () => {
                 </div>
               </div>
             </div>
-            <div className="p-4 sm:p-6 flex-1 flex flex-col min-h-0 overflow-y-auto custom-scrollbar">
-              <div className="grid grid-cols-7 gap-2 shrink-0 mb-2">
-                {Object.values(DAYS).map(d => (
-                  <div key={d.label} className="text-center text-xs font-semibold text-slate-400 uppercase tracking-wider">
-                    {d.label}
-                  </div>
-                ))}
-              </div>
-              <div className="grid grid-cols-7 gap-2 flex-1 auto-rows-[minmax(4rem,1fr)]">
+            {viewMode === 'calendar' ? (
+              <div className="p-4 sm:p-6 flex-1 flex flex-col min-h-0 overflow-y-auto custom-scrollbar">
+                <div className="grid grid-cols-7 gap-2 shrink-0 mb-2">
+                  {Object.values(DAYS).map(d => (
+                    <div key={d.label} className="text-center text-xs font-semibold text-slate-400 uppercase tracking-wider">
+                      {d.label}
+                    </div>
+                  ))}
+                </div>
+                <div className="grid grid-cols-7 gap-2 flex-1 auto-rows-[minmax(4rem,1fr)]">
 
-                {/* Offset for first day of month */}
-                {emptyCells.map((_, i) => <div key={`empty-${i}`} />)}
+                  {/* Offset for first day of month */}
+                  {emptyCells.map((_, i) => <div key={`empty-${i}`} />)}
 
-                {days.map(day => {
-                  const dateStr = format(new Date(currentDate.getFullYear(), currentDate.getMonth(), day), 'yyyy-MM-dd');
-                  const currentIterDate = new Date(currentDate.getFullYear(), currentDate.getMonth(), day);
+                  {days.map(day => {
+                    const dateStr = format(new Date(currentDate.getFullYear(), currentDate.getMonth(), day), 'yyyy-MM-dd');
+                    const currentIterDate = new Date(currentDate.getFullYear(), currentDate.getMonth(), day);
 
-                  const isFuture = isAfter(currentIterDate, today);
+                    const isFuture = isAfter(currentIterDate, today);
 
-                  let status = '-';
-                  if (!isFuture) {
-                    const record = myAttendance.find((r: any) => r.date === dateStr);
-                    status = record?.status || '-';
+                    let status = '-';
+                    if (!isFuture) {
+                      const record = myAttendance.find((r: any) => r.date === dateStr);
+                      status = record?.status || '-';
 
-                    if (!record?.checkIn && !record?.checkOut) {
-                      if (currentIterDate.getDay() === 0) {
-                        status = 'WO';
-                      } else {
-                        status = 'A';
+                      if (!record?.checkIn && !record?.checkOut) {
+                        if (currentIterDate.getDay() === 0) {
+                          status = 'WO';
+                        } else {
+                          status = 'A';
+                        }
+                      }
+
+                      const approvedMispunch = empRequests.find((r: any) => r.type === ATTENDANCE_BASE_MAP.MISSPUNCH.label && r.date === dateStr && r.status === 'Approved');
+                      if (approvedMispunch) {
+                        status = 'P/MP';
                       }
                     }
 
-                    const approvedMispunch = empRequests.find((r: any) => r.type === ATTENDANCE_BASE_MAP.MISSPUNCH.label && r.date === dateStr && r.status === 'Approved');
-                    if (approvedMispunch) {
-                      status = 'P/MP';
+                    let bgColor = 'font-bold shadow-sm';
+                    if (isFuture || status === '-') {
+                      bgColor += ' bg-slate-50 dark:bg-slate-800/50 text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-slate-700/60';
                     }
-                  }
 
-                  let bgColor = 'font-bold shadow-sm';
-                  if (isFuture || status === '-') {
-                    bgColor += ' bg-slate-50 dark:bg-slate-800/50 text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-slate-700/60';
-                  }
+                    let customStyle: React.CSSProperties = isFuture || status === '-'
+                      ? {}
+                      : getAttendanceFieldStyle(status, customColors, true);
 
-                  let customStyle: React.CSSProperties = isFuture || status === '-'
-                    ? {}
-                    : getAttendanceFieldStyle(status, customColors, true);
+                    const displayStatus = isFuture ? '' : status;
+                    const tooltip = !isFuture && displayStatus !== '-' ? `${day} ${displayStatus}: ${ATTENDANCE_STATUS_MAP[displayStatus] || displayStatus}` : '';
 
-                  const displayStatus = isFuture ? '' : status;
-                  const tooltip = !isFuture && displayStatus !== '-' ? `${day} ${displayStatus}: ${ATTENDANCE_STATUS_MAP[displayStatus] || displayStatus}` : '';
-
-                  return (
-                    <div key={day} title={tooltip} style={customStyle} className={`relative group rounded-lg flex flex-col items-center justify-center p-1 transition-colors h-full ${bgColor}`}>
-                      <div className="absolute opacity-0 group-hover:opacity-100 transition-opacity bg-slate-900 text-white text-[10px] py-1 px-2 rounded -top-8 left-1/2 -translate-x-1/2 whitespace-nowrap z-10 pointer-events-none">
-                        {ATTENDANCE_STATUS_MAP[status] || status}
+                    return (
+                      <div key={day} title={tooltip} style={customStyle} className={`relative group rounded-lg flex flex-col items-center justify-center p-1 transition-colors h-full ${bgColor}`}>
+                        <div className="absolute opacity-0 group-hover:opacity-100 transition-opacity bg-slate-900 text-white text-[10px] py-1 px-2 rounded -top-8 left-1/2 -translate-x-1/2 whitespace-nowrap z-10 pointer-events-none">
+                          {ATTENDANCE_STATUS_MAP[status] || status}
+                        </div>
+                        <span className="text-xs opacity-80 mb-1">{day}</span>
+                        <span className="text-sm">{displayStatus}</span>
                       </div>
-                      <span className="text-xs opacity-80 mb-1">{day}</span>
-                      <span className="text-sm">{displayStatus}</span>
-                    </div>
-                  );
-                })}
+                    );
+                  })}
+                </div>
               </div>
-            </div>
+            ) : (
+              <div className="flex-1 min-h-0 bg-white dark:bg-[#1e293b] overflow-hidden flex flex-col">
+                <AttendanceTable
+                  className="border-0 shadow-none rounded-none flex-1 overflow-y-auto"
+                  data={listData}
+                  columns={columns}
+                  searchable={false}
+                />
+              </div>
+            )}
           </div>
         </div>
 
