@@ -759,7 +759,7 @@ export const insertWorkerCutoff = async (cutoffData: any) => {
     const res = await fetchWithAuth(`${KG_WEB_APP0_API_URL}/RptComProd/EMPInsertMgrWkrExtend`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ MgrWkrExtendList: [cutoffData] })
+      body: JSON.stringify({ MgrWkrExtendList: Array.isArray(cutoffData) ? cutoffData : [cutoffData] })
     });
     return await res.json();
   } catch (err) {
@@ -773,7 +773,7 @@ export const updateWorkerCutoff = async (cutoffData: any) => {
     const res = await fetchWithAuth(`${KG_WEB_APP0_API_URL}/RptComProd/EMPUpdateMgrWkrExtend`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ MgrWkrExtendList: [cutoffData] })
+      body: JSON.stringify({ MgrWkrExtendList: Array.isArray(cutoffData) ? cutoffData : [cutoffData] })
     });
     return await res.json();
   } catch (err) {
@@ -787,7 +787,7 @@ export const deleteWorkerCutoff = async (cutoffData: any) => {
     const res = await fetchWithAuth(`${KG_WEB_APP0_API_URL}/RptComProd/EMPDeleteMgrWkrExtend`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ MgrWkrExtendList: [cutoffData] })
+      body: JSON.stringify({ MgrWkrExtendList: Array.isArray(cutoffData) ? cutoffData : [cutoffData] })
     });
     return await res.json();
   } catch (err) {

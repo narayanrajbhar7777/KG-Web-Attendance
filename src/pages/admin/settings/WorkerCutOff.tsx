@@ -141,6 +141,9 @@ const WorkerCutOff: React.FC = () => {
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
+  const [selectedWorkers, setSelectedWorkers] = useState<string[]>([]);
+  const [isBulkDeleteModalOpen, setIsBulkDeleteModalOpen] = useState(false);
+
   useEffect(() => { loadData(); }, []);
 
   const loadData = async () => {
@@ -233,12 +236,92 @@ const WorkerCutOff: React.FC = () => {
     }
   };
 
+  const confirmBulkDelete = async () => {
+    if (selectedWorkers.length === 0) return;
+    try {
+      setDeleting(true);
+      const payloads = selectedWorkers.map(code => {
+        const emp = filteredData.find(d => d.worker_code === code);
+        return {
+          e_comp: emp?.e_comp || user?.code || '',
+          brname: emp?.brname || '',
+          manager_code: emp?.manager_code || user?.code || '',
+          worker_code: code
+        };
+      });
+      const response = await deleteWorkerCutoff(payloads);
+      if (response && (response.status === 'success' || response.MgrWkrExtendList)) {
+        toast.success('Worker cutoffs deleted successfully');
+        setIsBulkDeleteModalOpen(false);
+        setIsModalOpen(false);
+        setSelectedWorkers([]);
+        await loadData();
+      } else {
+        toast.error('Unable to delete worker cutoffs');
+      }
+    } catch (err) {
+      toast.error('Unable to delete worker cutoffs');
+    } finally {
+      setDeleting(false);
+    }
+  };
+
+  const handleSelectAll = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.checked) {
+      setSelectedWorkers(filteredData.map(d => d.worker_code));
+    } else {
+      setSelectedWorkers([]);
+    }
+  };
+
+  const handleSelectWorker = (code: string) => {
+    setSelectedWorkers(prev =>
+      prev.includes(code) ? prev.filter(c => c !== code) : [...prev, code]
+    );
+  };
+
+  const handleOpenBulkAdd = () => {
+    if (selectedWorkers.length === 0) return;
+
+    // If only one is selected, try to pre-fill
+    if (selectedWorkers.length === 1) {
+      const code = selectedWorkers[0];
+      const record = filteredData.find(d => d.worker_code === code);
+      if (record) {
+        setSelectedCutoff({ ...record });
+        setIsModalOpen(true);
+        return;
+      }
+    }
+
+    // Multiple selected or single not found
+    setSelectedCutoff({
+      e_comp: user?.code || '',
+      brname: '',
+      manager_code: user?.code || '',
+      mgrname: '',
+      worker_code: 'MULTIPLE',
+      worker_name: 'Multiple Employees Selected',
+      designation: '',
+      day_start_time: '',
+      day_close_time: '',
+      extend_for: '',
+      _isNew: true
+    });
+    setIsModalOpen(true);
+  };
+
   const handleAddSave = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedCutoff) return;
 
-    if (!selectedCutoff.e_comp || !selectedCutoff.brname || !selectedCutoff.manager_code || !selectedCutoff.worker_code || !selectedCutoff.day_start_time || !selectedCutoff.day_close_time || !selectedCutoff.extend_for) {
+    if ((!selectedCutoff.e_comp || !selectedCutoff.brname || !selectedCutoff.manager_code || !selectedCutoff.worker_code || !selectedCutoff.day_start_time || !selectedCutoff.day_close_time || !selectedCutoff.extend_for) && selectedCutoff.worker_code !== 'MULTIPLE') {
       toast.error('All fields are required.');
+      return;
+    }
+
+    if (selectedCutoff.worker_code === 'MULTIPLE' && (!selectedCutoff.day_start_time || !selectedCutoff.day_close_time || !selectedCutoff.extend_for)) {
+      toast.error('All time fields are required.');
       return;
     }
 
@@ -258,20 +341,38 @@ const WorkerCutOff: React.FC = () => {
 
     try {
       setSaving(true);
-      const payload = {
-        e_comp: selectedCutoff.e_comp,
-        brname: selectedCutoff.brname,
-        manager_code: selectedCutoff.manager_code,
-        worker_code: selectedCutoff.worker_code,
-        day_start_time: selectedCutoff.day_start_time,
-        day_close_time: selectedCutoff.day_close_time,
-        extend_for: selectedCutoff.extend_for
-      };
+      let payloads: any[] = [];
 
-      const response = await insertWorkerCutoff(payload);
+      if (selectedWorkers.length > 1 && selectedCutoff.worker_code === 'MULTIPLE') {
+        payloads = selectedWorkers.map(code => {
+          const emp = filteredData.find(d => d.worker_code === code);
+          return {
+            e_comp: emp?.e_comp || user?.code || '',
+            brname: emp?.brname || '',
+            manager_code: emp?.manager_code || user?.code || '',
+            worker_code: code,
+            day_start_time: selectedCutoff.day_start_time,
+            day_close_time: selectedCutoff.day_close_time,
+            extend_for: selectedCutoff.extend_for || '-'
+          };
+        });
+      } else {
+        payloads = [{
+          e_comp: selectedCutoff.e_comp,
+          brname: selectedCutoff.brname,
+          manager_code: selectedCutoff.manager_code,
+          worker_code: selectedCutoff.worker_code,
+          day_start_time: selectedCutoff.day_start_time,
+          day_close_time: selectedCutoff.day_close_time,
+          extend_for: selectedCutoff.extend_for || '-'
+        }];
+      }
+
+      const response = await insertWorkerCutoff(payloads);
       if (response && (response.status === 'success' || response.MgrWkrExtendList)) {
-        toast.success('Worker cutoff created successfully');
+        toast.success('Worker cutoff saved successfully');
         setIsModalOpen(false);
+        setSelectedWorkers([]);
         await loadData();
       } else {
         toast.error('Unable to save worker cutoff');
@@ -310,7 +411,7 @@ const WorkerCutOff: React.FC = () => {
         worker_code: editForm.worker_code,
         day_start_time: editForm.day_start_time,
         day_close_time: editForm.day_close_time,
-        extend_for: editForm.extend_for
+        extend_for: editForm.extend_for || '-'
       };
 
       const response = editForm._isNew ? await insertWorkerCutoff(payload) : await updateWorkerCutoff(payload);
@@ -337,6 +438,7 @@ const WorkerCutOff: React.FC = () => {
     setFilterManager([]);
     setFilterWorker([]);
     setCurrentPage(1);
+    setSelectedWorkers([]);
   };
 
   const companies = useMemo(() => Array.from(new Set(cutoffList.map(c => c.e_comp).filter(Boolean))), [cutoffList]);
@@ -360,6 +462,7 @@ const WorkerCutOff: React.FC = () => {
 
   useEffect(() => {
     setCurrentPage(1);
+    setSelectedWorkers([]);
   }, [searchText, filterCompany, filterBranch, filterManager, filterWorker]);
 
   const totalPages = Math.ceil(filteredData.length / pageSize);
@@ -440,6 +543,13 @@ const WorkerCutOff: React.FC = () => {
             <RefreshCw className="w-4 h-4" />
             Clear
           </button>
+          <button
+            onClick={handleOpenBulkAdd}
+            disabled={selectedWorkers.length === 0}
+            className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white rounded-lg text-sm font-medium transition-colors whitespace-nowrap"
+          >
+            Add Cut Off
+          </button>
         </div>
       </div>
 
@@ -449,6 +559,14 @@ const WorkerCutOff: React.FC = () => {
           <table className="w-full text-left border-collapse min-w-[1000px]">
             <thead className="sticky top-0 z-20 bg-slate-50 dark:bg-[#182333] shadow-sm">
               <tr>
+                <th className="px-3 py-2 border-b border-slate-200 dark:border-slate-700/60 bg-slate-50 dark:bg-[#182333] w-10 text-center">
+                  <input
+                    type="checkbox"
+                    checked={filteredData.length > 0 && selectedWorkers.length === filteredData.length}
+                    onChange={handleSelectAll}
+                    className="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-600 dark:border-slate-600 dark:bg-slate-700 cursor-pointer"
+                  />
+                </th>
                 <th className="px-3 py-2 text-slate-500 dark:text-slate-400 text-[10px] font-bold uppercase tracking-widest border-b border-slate-200 dark:border-slate-700/60 whitespace-nowrap bg-slate-50 dark:bg-[#182333]">Emp Code</th>
                 <th className="px-3 py-2 text-slate-500 dark:text-slate-400 text-[10px] font-bold uppercase tracking-widest border-b border-slate-200 dark:border-slate-700/60 whitespace-nowrap bg-slate-50 dark:bg-[#182333]">Emp Name</th>
                 <th className="px-3 py-2 text-slate-500 dark:text-slate-400 text-[10px] font-bold uppercase tracking-widest border-b border-slate-200 dark:border-slate-700/60 text-center whitespace-nowrap bg-slate-50 dark:bg-[#182333]">Day Start</th>
@@ -465,6 +583,14 @@ const WorkerCutOff: React.FC = () => {
 
                   return (
                     <tr key={rowKey} className="hover:bg-slate-50/50 dark:hover:bg-[#2a374a]/30 transition-colors group">
+                      <td className="px-3 py-1.5 text-center">
+                        <input
+                          type="checkbox"
+                          checked={selectedWorkers.includes(item.worker_code)}
+                          onChange={() => handleSelectWorker(item.worker_code)}
+                          className="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-600 dark:border-slate-600 dark:bg-slate-700 cursor-pointer"
+                        />
+                      </td>
                       {isEditing && editForm ? (
                         <>
                           <td className="px-3 py-1.5 text-xs text-slate-600 dark:text-slate-300 whitespace-nowrap font-medium">
@@ -556,7 +682,7 @@ const WorkerCutOff: React.FC = () => {
                 })
               ) : (
                 <tr>
-                  <td colSpan={9} className="px-3 py-6 text-center text-slate-500 dark:text-slate-400">
+                  <td colSpan={10} className="px-3 py-6 text-center text-slate-500 dark:text-slate-400">
                     No records found
                   </td>
                 </tr>
@@ -628,10 +754,10 @@ const WorkerCutOff: React.FC = () => {
                     <input
                       type="text"
                       required
-                      value={selectedCutoff.worker_name || ''}
+                      value={selectedCutoff.worker_code === 'MULTIPLE' ? `${selectedWorkers.length} Employees Selected` : selectedCutoff.worker_name || ''}
                       onChange={(e) => setSelectedCutoff({ ...selectedCutoff, worker_name: e.target.value })}
-                      disabled={fetchingWorker}
-                      className={`w-full px-3 py-2 bg-slate-50 dark:bg-[#0b1120] border border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none dark:text-white transition-all ${fetchingWorker ? 'opacity-70 pr-8' : ''}`}
+                      disabled={fetchingWorker || selectedCutoff.worker_code === 'MULTIPLE'}
+                      className={`w-full px-3 py-2 bg-slate-50 dark:bg-[#0b1120] border border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none dark:text-white transition-all ${fetchingWorker || selectedCutoff.worker_code === 'MULTIPLE' ? 'opacity-70 pr-8' : ''}`}
                     />
                     {fetchingWorker && (
                       <div className="absolute right-3 top-1/2 -translate-y-1/2 text-blue-500">
@@ -684,9 +810,19 @@ const WorkerCutOff: React.FC = () => {
                 >
                   Cancel
                 </button>
+                {selectedCutoff.worker_code === 'MULTIPLE' && (
+                  <button
+                    type="button"
+                    onClick={() => setIsBulkDeleteModalOpen(true)}
+                    disabled={saving || deleting}
+                    className="flex-1 px-4 py-2.5 bg-red-600 hover:bg-red-700 disabled:opacity-50 text-white rounded-xl font-medium transition-all"
+                  >
+                    Delete
+                  </button>
+                )}
                 <button
                   type="submit"
-                  disabled={saving}
+                  disabled={saving || deleting}
                   className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white rounded-xl font-medium transition-all"
                 >
                   {saving ? (
@@ -698,6 +834,40 @@ const WorkerCutOff: React.FC = () => {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Bulk Delete Confirmation Modal */}
+      {isBulkDeleteModalOpen && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm animate-fadeIn">
+          <div className="bg-white dark:bg-[#1e293b] rounded-2xl shadow-xl w-full max-w-sm overflow-hidden animate-slideUp">
+            <div className="p-6 text-center">
+              <div className="w-12 h-12 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center mx-auto mb-4">
+                <Trash2 className="w-6 h-6 text-red-600 dark:text-red-400" />
+              </div>
+              <h3 className="font-bold text-slate-800 dark:text-white text-lg mb-2">Delete Multiple Cut Offs</h3>
+              <p className="text-sm text-slate-500 dark:text-slate-400 mb-6">
+                Are you sure you want to delete the worker cutoff extension for <b>{selectedWorkers.length}</b> selected workers?
+              </p>
+              <div className="flex gap-3">
+                <button
+                  type="button"
+                  onClick={() => setIsBulkDeleteModalOpen(false)}
+                  className="flex-1 px-4 py-2.5 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 rounded-xl font-medium hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={confirmBulkDelete}
+                  disabled={deleting}
+                  className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-red-600 hover:bg-red-700 disabled:opacity-50 text-white rounded-xl font-medium transition-all"
+                >
+                  {deleting ? 'Deleting...' : 'Delete'}
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}

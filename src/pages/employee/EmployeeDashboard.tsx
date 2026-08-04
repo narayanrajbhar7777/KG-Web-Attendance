@@ -321,7 +321,7 @@ const EmployeeDashboard: React.FC = () => {
         return (
           <div className="flex items-center gap-2">
             <div className={`w-2.5 h-2.5 rounded-full ${hasTime ? 'bg-blue-400' : 'bg-slate-300 dark:bg-slate-700'}`}></div>
-            <span className="text-[13px] text-slate-600 dark:text-slate-300 whitespace-nowrap font-medium">{hasTime ? `${total} hrs` : '-'}</span>
+            <span className="text-[13px] text-slate-600 dark:text-slate-300 whitespace-nowrap font-medium">{hasTime ? `${total}` : '-'}</span>
           </div>
         );
       }
@@ -332,7 +332,7 @@ const EmployeeDashboard: React.FC = () => {
       render: (item) => {
         const { total } = calculateTime(item.checkIn, item.checkOut);
         const hasTime = total !== '00:00' && item.checkIn !== '-';
-        return <span className="text-[13px] text-slate-600 dark:text-slate-300 whitespace-nowrap font-medium">{hasTime ? `${total} hrs` : '-'}</span>;
+        return <span className="text-[13px] text-slate-600 dark:text-slate-300 whitespace-nowrap font-medium">{hasTime ? `${total}` : '-'}</span>;
       }
     },
     {
@@ -411,7 +411,7 @@ const EmployeeDashboard: React.FC = () => {
                 <button onClick={() => navigate('/employee/attendance')} title="Show Report" className="p-1.5 hover:bg-blue-100 dark:hover:bg-blue-500/20 text-blue-600 dark:text-blue-400 rounded transition-colors flex items-center justify-center">
                   <ExternalLink className="w-5 h-5" />
                 </button>
-                <div className="relative z-50">
+                <div className="relative z-10">
                   <DatePicker
                     selected={currentDate}
                     onChange={(date: Date | null) => { if (date) setCurrentDate(date); }}
