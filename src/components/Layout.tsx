@@ -19,7 +19,9 @@ const Layout: React.FC = () => {
     isNotificationsEnabled,
     setIsNotificationsEnabled,
     isEmailNotificationsEnabled,
-    setIsEmailNotificationsEnabled
+    setIsEmailNotificationsEnabled,
+    attendanceGlobalRules,
+    setAttendanceGlobalRules
   } = useAppData();
   const navigate = useNavigate();
   const location = useLocation();
@@ -31,6 +33,8 @@ const Layout: React.FC = () => {
   const notifRef = useRef<HTMLDivElement>(null);
   const settingsRef = useRef<HTMLDivElement>(null);
   const adminMenuRef = useRef<HTMLDivElement>(null);
+  const ruleModalRef = useRef<HTMLDivElement>(null);
+  const [isRuleModalOpen, setIsRuleModalOpen] = useState(false);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -42,6 +46,9 @@ const Layout: React.FC = () => {
       }
       if (adminMenuRef.current && !adminMenuRef.current.contains(event.target as Node)) {
         setIsAdminMenuOpen(false);
+      }
+      if (ruleModalRef.current && !ruleModalRef.current.contains(event.target as Node)) {
+        setIsRuleModalOpen(false);
       }
     };
 
@@ -351,24 +358,6 @@ const Layout: React.FC = () => {
                       >
                         Manager Cut Off
                       </button>
-                      {/* <button
-                        onClick={() => {
-                          navigate('/admin/settings/manager-cut-off');
-                          setIsAdminMenuOpen(false);
-                        }}
-                        className="w-full text-left px-4 py-2.5 text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors border-b border-slate-100 dark:border-slate-700"
-                      >
-                        Cut Off Manager
-                      </button> */}
-                      {/* <button
-                        onClick={() => {
-                          navigate('/admin/settings/worker-cut-off');
-                          setIsAdminMenuOpen(false);
-                        }}
-                        className="w-full text-left px-4 py-2.5 text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors border-b border-slate-100 dark:border-slate-700"
-                      >
-                        Cut Off Worker
-                      </button> */}
                       <button
                         onClick={() => {
                           navigate('/admin/policy');
@@ -396,34 +385,13 @@ const Layout: React.FC = () => {
                       >
                         Leave Master
                       </button>
-                      {/* <button
-                        onClick={() => {
-                          navigate('/settings/email-configuration');
-                          setIsAdminMenuOpen(false);
-                        }}
-                        className="w-full text-left px-4 py-2.5 text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
-                      >
-                        Email Configuration
-                      </button> */}
                     </div>
                   </div>
                 )}
               </div>
             )}
 
-            {/* <div className="relative" ref={ruleModalRef}>
-              <button
-                title="Attendance Rule"
-                onClick={() => setIsRuleModalOpen(!isRuleModalOpen)}
-                className="w-9 h-9 flex items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800 transition-colors font-bold"
-              >
-                R
-              </button>
-              <AttendanceRuleModal
-                isOpen={isRuleModalOpen}
-                onClose={() => setIsRuleModalOpen(false)}
-              />
-            </div> */}
+
 
             <div className="relative" ref={settingsRef}>
               <button
@@ -468,6 +436,56 @@ const Layout: React.FC = () => {
                 </div>
               )}
             </div>
+
+            {user?.role === 'Admin' && (
+              <div className="relative" ref={ruleModalRef}>
+                <button
+                  title="Attendance Rule"
+                  onClick={() => setIsRuleModalOpen(!isRuleModalOpen)}
+                  className="w-9 h-9 flex items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800 transition-colors font-bold text-lg border border-slate-200 dark:border-slate-700/60 shadow-sm ml-1"
+                >
+                  R
+                </button>
+
+                {isRuleModalOpen && (
+                  <div className="absolute right-0 mt-2 w-64 bg-white dark:bg-[#1e293b] rounded-xl shadow-lg border border-slate-200 dark:border-slate-700/60 overflow-hidden z-50">
+                    <div className="p-4 border-b border-slate-100 dark:border-slate-700/50 bg-slate-50/50 dark:bg-[#182333]/50 flex justify-between items-center">
+                      <h3 className="font-bold text-slate-800 dark:text-white text-sm">Attendance Rule</h3>
+                      <button onClick={() => setIsRuleModalOpen(false)} className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200">&times;</button>
+                    </div>
+                    <div className="p-4 space-y-4">
+                      <label className="flex items-center gap-3">
+                        <input
+                          type="checkbox"
+                          className="w-4 h-4 text-blue-600 rounded border-slate-300 focus:ring-blue-500"
+                          checked={attendanceGlobalRules?.applyManagerCutOff !== false}
+                          onChange={(e) => setAttendanceGlobalRules({ ...(attendanceGlobalRules || {}), applyManagerCutOff: e.target.checked } as any)}
+                        />
+                        <span className="text-sm font-medium text-slate-700 dark:text-slate-300">Applied Manager Cut Off</span>
+                      </label>
+                      <label className="flex items-center gap-3">
+                        <input
+                          type="checkbox"
+                          className="w-4 h-4 text-blue-600 rounded border-slate-300 focus:ring-blue-500"
+                          checked={attendanceGlobalRules?.applyWorkerCutOff ?? true}
+                          onChange={(e) => setAttendanceGlobalRules({ ...(attendanceGlobalRules || {}), applyWorkerCutOff: e.target.checked } as any)}
+                        />
+                        <span className="text-sm font-medium text-slate-700 dark:text-slate-300">Worker Cut Off</span>
+                      </label>
+                      <label className="flex items-center gap-3">
+                        <input
+                          type="checkbox"
+                          className="w-4 h-4 text-blue-600 rounded border-slate-300 focus:ring-blue-500"
+                          checked={attendanceGlobalRules?.applyCutOffTime ?? true}
+                          onChange={(e) => setAttendanceGlobalRules({ ...(attendanceGlobalRules || {}), applyCutOffTime: e.target.checked } as any)}
+                        />
+                        <span className="text-sm font-medium text-slate-700 dark:text-slate-300">Cutoff Time</span>
+                      </label>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
 
             <div className="flex items-center gap-3 ml-2 pl-4 border-l border-slate-200 dark:border-slate-700 h-8">
               <div className="text-right hidden md:block">

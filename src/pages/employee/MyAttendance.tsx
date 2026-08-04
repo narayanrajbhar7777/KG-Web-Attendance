@@ -10,11 +10,11 @@ import DatePicker from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
 import Loader from '../../components/Loader';
 import { AttendanceTable } from '../../components/AttendanceTable';
-import { calculateTime, calculateTimeNum, normalizeAttendanceStatus } from '../../utils/attendanceUtils';
+import { calculateAdvancedAttendance } from '../../utils/attendanceUtils';
 
 const MyAttendance: React.FC = () => {
   const { user } = useAuth();
-  const { customColors, masterConfig, cutoffSettings } = useAppData();
+  const { customColors, masterConfig, cutoffSettings, attendanceGlobalRules } = useAppData();
   const navigate = useNavigate();
   const [records, setRecords] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -47,41 +47,31 @@ const MyAttendance: React.FC = () => {
         setCachedPolicy(myPolicy);
       }
 
-      let activeCutoff = undefined;
+      let workerCutoffData = undefined;
+      let managerCutoffData = undefined;
 
       const payload = { e_comp: user.code, manager_code: user.manager_code };
 
       try {
         if (cutoffSettings.cutoff_worker === 'Y') {
           const workerData = await fetchWorkerCutoff({ e_comp: user.code, worker_code: user.code });
-          if (workerData && workerData.length > 0) activeCutoff = workerData[0];
+          if (workerData && workerData.length > 0) workerCutoffData = workerData[0];
         }
-        if (!activeCutoff && (cutoffSettings.cutoff_worker === 'Y' || cutoffSettings.cutoff_manager === 'Y')) {
+        if (cutoffSettings.cutoff_manager === 'Y' || cutoffSettings.cutoff_worker === 'Y') {
           const mgrData = await fetchManagerCutoff(payload);
-          if (mgrData && mgrData.length > 0) activeCutoff = mgrData[0];
+          if (mgrData && mgrData.length > 0) managerCutoffData = mgrData[0];
         }
-        if (!activeCutoff && (cutoffSettings.cutoff_worker === 'Y' || cutoffSettings.cutoff_manager === 'Y' || cutoffSettings.cutoff_auto === 'Y')) {
+        if (!workerCutoffData && !managerCutoffData && (cutoffSettings.cutoff_auto === 'Y')) {
           const autoData = await fetchDeptMgrCutoff(payload);
-          if (autoData && autoData.length > 0) activeCutoff = autoData[0];
+          // Auto cutoff can fallback as managerCutoffData if needed, 
+          // but typically Auto goes to DeptMgr. We can map it as manager for now.
+          if (autoData && autoData.length > 0) managerCutoffData = autoData[0];
         }
       } catch (err) {
         console.error("Error fetching dynamic cutoff", err);
       }
 
-      let cutoffConfig = undefined;
-      if (activeCutoff) {
-        cutoffConfig = {
-          inTime: activeCutoff.in_time,
-          outTime: activeCutoff.out_time,
-          bufferTime: activeCutoff.buffer_time
-        };
-      } else if (cutoffSettings.cuttoff_defalut === 'Y' || Object.keys(cutoffSettings).length > 0) {
-        cutoffConfig = {
-          inTime: cutoffSettings.cuttoff_in || myPolicy.inTime,
-          outTime: cutoffSettings.cuttoff_out || myPolicy.outTime,
-          bufferTime: cutoffSettings.cuttoff_buffer || '15'
-        };
-      }
+
 
       const [pInH, pInM] = myPolicy.inTime.split(':').map(Number);
       const [pOutH, pOutM] = myPolicy.outTime.split(':').map(Number);
@@ -105,33 +95,35 @@ const MyAttendance: React.FC = () => {
           const checkIn = p.intime ? p.intime.split(' ')[1]?.substring(0, 5) : '';
           const checkOut = p.outtime ? p.outtime.split(' ')[1]?.substring(0, 5) : '';
 
-          const status = normalizeAttendanceStatus(p.status, checkIn, checkOut, date, cutoffConfig);
+          const advanced = calculateAdvancedAttendance(p.status, checkIn, checkOut, date, workerCutoffData, attendanceGlobalRules, managerCutoffData);
+          const status = advanced.attendanceStatus;
 
-          let targetHours = 9;
-          if (cutoffConfig) {
-            const [inH, inM] = cutoffConfig.inTime.split(':').map(Number);
-            const [outH, outM] = cutoffConfig.outTime.split(':').map(Number);
-            let reqMins = (outH * 60 + outM) - (inH * 60 + inM);
-            if (reqMins < 0) reqMins += 24 * 60;
-            targetHours = reqMins / 60;
-          }
-
-          const { total, overtime } = calculateTime(checkIn, checkOut, targetHours);
-
+          const totalHours = advanced.completedWorkingHours;
+          const overTime = '-'; // OT logic might need to be adjusted or kept simple
+          
           let diffMs = 0;
-          if (checkIn && checkOut && checkIn !== '-' && checkOut !== '-') {
-            const { totalMins } = calculateTimeNum(checkIn, checkOut, targetHours);
-            diffMs = totalMins * 60 * 1000;
-            totalOvertimeMs += Math.max(0, diffMs - targetHours * 60 * 60 * 1000);
+          if (advanced.workingMins) {
+            diffMs = advanced.workingMins * 60 * 1000;
+            // Overtime logic if working hours exceeded required
+            // const reqMins = parseInt(advanced.requiredWorkingHours) * 60; 
           }
-
-          const totalHours = total;
-          const overTime = overtime === '-' ? '0h 0m' : overtime;
 
           const dateObj = new Date(date);
           const dayOfWeek = isNaN(dateObj.getTime()) ? '' : dateObj.toLocaleDateString('en-US', { weekday: 'short' });
 
-          return { date, dayOfWeek, status, checkIn, checkOut, totalHours, overTime, diffMs };
+          return { 
+            date, 
+            dayOfWeek, 
+            status, 
+            checkIn, 
+            checkOut, 
+            totalHours, 
+            overTime, 
+            diffMs,
+            requiredWorkingHours: advanced.requiredWorkingHours,
+            completedWorkingHours: advanced.completedWorkingHours,
+            workingHoursStatus: advanced.workingHoursStatus
+          };
         }).map((r: any) => {
           let finalStatus = r.status;
 
@@ -233,7 +225,9 @@ const MyAttendance: React.FC = () => {
                 { key: 'day', label: masterConfig?.employeeAttendance?.columns?.dayOfWeek?.label || 'Day', render: (record) => <span className="text-sm font-medium text-slate-500 dark:text-slate-400">{record.dayOfWeek || '-'}</span> },
                 { key: 'checkIn', label: masterConfig?.employeeAttendance?.columns?.checkIn?.label || 'In', render: (record) => <span className="text-sm font-medium text-slate-600 dark:text-slate-400">{record.checkIn || '-'}</span> },
                 { key: 'checkOut', label: masterConfig?.employeeAttendance?.columns?.checkOut?.label || 'Out', render: (record) => <span className="text-sm font-medium text-slate-600 dark:text-slate-400">{record.checkOut || '-'}</span> },
+                { key: 'reqHours', label: 'Req. Hrs', render: (record) => <span className="text-sm font-bold text-slate-700 dark:text-slate-300">{record.requiredWorkingHours}</span> },
                 { key: 'totalHours', label: masterConfig?.employeeAttendance?.columns?.totalHours?.label || 'Working Hrs', render: (record) => <span className="text-sm font-bold text-slate-700 dark:text-slate-300">{record.totalHours}</span> },
+                { key: 'workStatus', label: 'Work Status', render: (record) => <span className={`text-sm font-bold ${record.workingHoursStatus === 'Completed' ? 'text-emerald-600 dark:text-emerald-400' : record.workingHoursStatus === 'Incomplete' ? 'text-rose-600 dark:text-rose-400' : 'text-slate-500'}`}>{record.workingHoursStatus}</span> },
                 { key: 'overTime', label: 'Over Time', render: (record) => <span className="text-sm font-bold text-emerald-600 dark:text-emerald-400">{record.overTime}</span> },
                 {
                   key: 'status', label: masterConfig?.employeeAttendance?.columns?.status?.label || 'Status', render: (record) => {

@@ -180,3 +180,240 @@ export const isRecordLate = (checkIn?: string) => {
   }
   return false;
 };
+
+export interface AttendanceCalculationResult {
+  actualIn: string;
+  actualOut: string;
+  adjustedIn: string;
+  adjustedOut: string;
+  appliedRule: 'Worker Rule' | 'Manager Rule' | 'Default Rule';
+  cutOffApplied: 'Yes' | 'No';
+  managerDayStart: string;
+  managerDayClose: string;
+  workerDayStart: string;
+  workerDayClose: string;
+  workingHours: string;
+  workingMins: number;
+  lateEarlyStatus: string;
+  attendanceStatus: string;
+  reason: string;
+  requiredWorkingHours: string;
+  completedWorkingHours: string;
+  workingHoursStatus: string;
+}
+
+export const calculateAdvancedAttendance = (
+  rawStatus: string,
+  checkIn: string,
+  checkOut: string,
+  recordDate: string,
+  workerCutoff?: { 
+    day_start_time?: string, 
+    day_close_time?: string, 
+    in_time?: string,
+    out_time?: string,
+    day_start?: string,
+    day_close?: string,
+    buffer_time?: string,
+    buffer?: string,
+    apply_worker_rule?: boolean, 
+    apply_cut_off_time?: boolean 
+  },
+  globalRules?: {
+    applyManagerCutOff: boolean;
+    applyWorkerCutOff: boolean;
+    applyCutOffTime: boolean;
+  },
+  managerCutoff?: {
+    day_start_time?: string;
+    day_close_time?: string;
+    in_time?: string;
+    out_time?: string;
+    day_start?: string;
+    day_close?: string;
+    buffer_time?: string;
+    buffer?: string;
+  }
+): AttendanceCalculationResult => {
+  const defaultTargetHours = 9;
+
+  let appliedRule: 'Worker Rule' | 'Manager Rule' | 'Default Rule' = 'Default Rule';
+  let cutOffApplied: 'Yes' | 'No' = 'No';
+  let workerDayStart = '-';
+  let workerDayClose = '-';
+  let managerDayStart = '-';
+  let managerDayClose = '-';
+  
+  let activeStart = '09:00';
+  let activeClose = '18:00';
+  let targetHours = defaultTargetHours;
+  
+  const useWorkerRule = globalRules?.applyWorkerCutOff ?? true;
+  const useManagerRule = globalRules?.applyManagerCutOff !== false; // defaults to true in Layout.tsx
+  const useCutoffTimeGlobal = globalRules?.applyCutOffTime ?? true;
+  
+  const parseTime = (t: string) => {
+    if (!t || t === '-') return 0;
+    const [h, m] = t.split(':').map(Number);
+    return h * 60 + m;
+  };
+
+  const calculateTarget = (start: string, close: string) => {
+    let diff = parseTime(close) - parseTime(start);
+    if (diff < 0) diff += 24 * 60;
+    return diff / 60;
+  };
+  
+  const workerStart = workerCutoff?.day_start_time || workerCutoff?.day_start || workerCutoff?.in_time;
+  const workerClose = workerCutoff?.day_close_time || workerCutoff?.day_close || workerCutoff?.out_time;
+  const managerStart = managerCutoff?.day_start_time || managerCutoff?.day_start || managerCutoff?.in_time;
+  const managerClose = managerCutoff?.day_close_time || managerCutoff?.day_close || managerCutoff?.out_time;
+
+  let activeBuffer = 15;
+
+  if (useWorkerRule && workerCutoff && workerStart && workerClose) {
+    appliedRule = 'Worker Rule';
+    workerDayStart = workerStart;
+    workerDayClose = workerClose;
+    activeStart = workerStart;
+    activeClose = workerClose;
+    targetHours = calculateTarget(workerStart, workerClose);
+    activeBuffer = parseInt(workerCutoff.buffer_time || '') || parseInt(workerCutoff.buffer || '') || 15;
+  } else if (useManagerRule && managerCutoff && managerStart && managerClose) {
+    appliedRule = 'Manager Rule';
+    managerDayStart = managerStart;
+    managerDayClose = managerClose;
+    activeStart = managerStart;
+    activeClose = managerClose;
+    targetHours = calculateTarget(managerStart, managerClose);
+    activeBuffer = parseInt(managerCutoff.buffer_time || '') || parseInt(managerCutoff.buffer || '') || 15;
+  } else {
+    appliedRule = 'Default Rule';
+    activeStart = '09:00';
+    activeClose = '18:00';
+    targetHours = 9;
+  }
+
+  if (useCutoffTimeGlobal) {
+    cutOffApplied = 'Yes';
+  }
+
+  let cIn = !checkIn || checkIn === '-' ? '' : checkIn;
+  let cOut = !checkOut || checkOut === '-' ? '' : checkOut;
+  
+  let adjIn = cIn;
+  let adjOut = cOut;
+
+  const formatTime = (mins: number) => {
+    const h = Math.floor(mins / 60);
+    const m = mins % 60;
+    return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
+  };
+
+  if (cutOffApplied === 'Yes' && cIn && cOut) {
+    const actInMins = parseTime(cIn);
+    const actOutMins = parseTime(cOut);
+    const startMins = parseTime(activeStart);
+    const closeMins = parseTime(activeClose);
+    
+    if (actInMins < startMins) {
+      adjIn = formatTime(startMins);
+    }
+    if (actOutMins > closeMins) {
+      adjOut = formatTime(closeMins);
+    }
+  }
+  
+  let totalMins = 0;
+  if (adjIn && adjOut) {
+    let diff = parseTime(adjOut) - parseTime(adjIn);
+    if (diff < 0) diff += 24 * 60;
+    totalMins = diff;
+  }
+  
+  const workingHoursFormatted = totalMins > 0 ? formatDur(totalMins) : '-';
+  
+  let lateEarlyStatus = '-';
+  if (adjIn) {
+    const inMins = parseTime(adjIn);
+    const startMins = parseTime(activeStart);
+    if (inMins > startMins + activeBuffer) lateEarlyStatus = 'Late In';
+    else if (inMins > startMins && inMins <= startMins + activeBuffer) lateEarlyStatus = 'On Time';
+    else if (inMins < startMins) lateEarlyStatus = 'Early In';
+    else lateEarlyStatus = 'On Time';
+  }
+
+  let reason = '';
+  let status = rawStatus || '-';
+  if (status === 'PRESENT') status = ATTENDANCE_STATUS.PRESENT;
+  else if (status === 'ABSENT') status = ATTENDANCE_STATUS.ABSENT;
+  else if (status === 'MISPUNCH') status = ATTENDANCE_STATUS.MISSPUNCH;
+  else if (status === 'WEEK OFF' || status === 'WEEKOFF') status = ATTENDANCE_STATUS.WEEK_OFF;
+  else if (status === 'HOLIDAY') status = ATTENDANCE_STATUS.HOLIDAY;
+  else if (status === 'LEAVE') status = ATTENDANCE_STATUS.LEAVE;
+  else if (status === 'HALF DAY') status = ATTENDANCE_STATUS.HALF_DAY;
+  
+  const currDate = format(new Date(), 'yyyy-MM-dd');
+  const pDate = recordDate ? recordDate.split(' ')[0] : currDate;
+  const dateObj = new Date(pDate);
+  const dayOfWeek = isNaN(dateObj.getTime()) ? '' : dateObj.toLocaleDateString('en-US', { weekday: 'long' });
+  const isCurrentDate = pDate === currDate;
+
+  if (!cIn && !cOut && status !== ATTENDANCE_STATUS.WEEK_OFF) {
+    if (dayOfWeek === DAYS.SD.name) {
+      status = ATTENDANCE_STATUS.WEEK_OFF;
+    } else {
+      status = ATTENDANCE_STATUS.ABSENT;
+    }
+  } else if (cIn && !cOut && status !== ATTENDANCE_STATUS.WEEK_OFF) {
+    if (isCurrentDate) {
+      status = ATTENDANCE_STATUS.IN;
+    } else {
+      status = ATTENDANCE_STATUS.MISSPUNCH;
+    }
+  } else if (dayOfWeek === DAYS.SD.name && status === ATTENDANCE_STATUS.PRESENT) {
+    status = ATTENDANCE_STATUS.PRESENT_ON_HOLIDAY;
+  }
+
+  const reqMins = targetHours * 60;
+  let workingHoursStatus = '-';
+
+  if (adjIn && adjOut && status !== ATTENDANCE_STATUS.WEEK_OFF && status !== ATTENDANCE_STATUS.HOLIDAY) {
+    if (totalMins >= reqMins) {
+      status = ATTENDANCE_STATUS.PRESENT;
+      workingHoursStatus = 'Completed';
+      reason = `Completed ${targetHours} working hours`;
+    } else {
+      status = ATTENDANCE_STATUS.MISSPUNCH;
+      workingHoursStatus = 'Incomplete';
+      reason = `Working hours less than ${targetHours} hours`;
+    }
+  }
+
+  const formatHoursStr = (hours: number) => {
+    const h = Math.floor(hours);
+    const m = Math.round((hours - h) * 60);
+    return m > 0 ? `${h}h ${m}m` : `${h} hrs`;
+  };
+
+  return {
+    actualIn: cIn || '-',
+    actualOut: cOut || '-',
+    adjustedIn: adjIn || '-',
+    adjustedOut: adjOut || '-',
+    appliedRule: appliedRule,
+    cutOffApplied: cutOffApplied,
+    managerDayStart: managerDayStart,
+    managerDayClose: managerDayClose,
+    workerDayStart: workerDayStart,
+    workerDayClose: workerDayClose,
+    workingHours: workingHoursFormatted,
+    workingMins: totalMins,
+    lateEarlyStatus: lateEarlyStatus,
+    attendanceStatus: status,
+    reason: reason,
+    requiredWorkingHours: formatHoursStr(targetHours),
+    completedWorkingHours: workingHoursFormatted,
+    workingHoursStatus: workingHoursStatus
+  };
+};

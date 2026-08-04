@@ -8,6 +8,12 @@ import { FETCH_API_INTERVAL } from '../constants';
 
 type Theme = 'dark' | 'light';
 
+export interface AttendanceGlobalRules {
+  applyManagerCutOff: boolean;
+  applyWorkerCutOff: boolean;
+  applyCutOffTime: boolean;
+}
+
 interface AppContextType {
   notifications: AppNotification[];
   addNotification: (message: string, targetUserId?: string) => void;
@@ -26,6 +32,8 @@ interface AppContextType {
   updateCutoffSettings: (settings: Record<string, string>) => void;
   applyRequest: (req: Omit<AppRequest, 'id' | 'status'>) => Promise<void>;
   updateRequestStatus: (id: string, status: AppRequest['status'], reason: string, req?: AppRequest, approverNotes?: string) => Promise<void>;
+  attendanceGlobalRules: AttendanceGlobalRules;
+  setAttendanceGlobalRules: (rules: AttendanceGlobalRules) => void;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -41,6 +49,24 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return localStorage.getItem('email_notifications_enabled') !== 'false';
   });
   const [masterConfig, setMasterConfigState] = useState<any>(null);
+  const [attendanceGlobalRules, setAttendanceGlobalRulesState] = useState<AttendanceGlobalRules>(() => {
+    const saved = localStorage.getItem('attendance_global_rules');
+    if (saved) {
+      try {
+        return JSON.parse(saved);
+      } catch (e) {}
+    }
+    return {
+      applyManagerCutOff: true,
+      applyWorkerCutOff: true,
+      applyCutOffTime: true
+    };
+  });
+
+  const setAttendanceGlobalRules = (rules: AttendanceGlobalRules) => {
+    setAttendanceGlobalRulesState(rules);
+    localStorage.setItem('attendance_global_rules', JSON.stringify(rules));
+  };
 
   const setIsNotificationsEnabled = (enabled: boolean) => {
     setIsNotificationsEnabledState(enabled);
@@ -258,7 +284,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       isEmailNotificationsEnabled, setIsEmailNotificationsEnabled,
       customColors, updateCustomColor, theme, toggleTheme,
       applyRequest, updateRequestStatus, masterConfig, setMasterConfig,
-      cutoffSettings: customColors, updateCutoffSettings
+      cutoffSettings: customColors, updateCutoffSettings,
+      attendanceGlobalRules,
+      setAttendanceGlobalRules
     }}>
       {children}
     </AppContext.Provider>

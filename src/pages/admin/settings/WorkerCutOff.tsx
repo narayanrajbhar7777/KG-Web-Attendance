@@ -306,6 +306,8 @@ const WorkerCutOff: React.FC = () => {
       day_start_time: '',
       day_close_time: '',
       extend_for: '',
+      apply_worker_rule: true,
+      apply_cut_off_time: true,
       _isNew: true
     });
     setIsModalOpen(true);
@@ -339,6 +341,8 @@ const WorkerCutOff: React.FC = () => {
       return;
     }
 
+
+
     try {
       setSaving(true);
       let payloads: any[] = [];
@@ -353,7 +357,9 @@ const WorkerCutOff: React.FC = () => {
             worker_code: code,
             day_start_time: selectedCutoff.day_start_time,
             day_close_time: selectedCutoff.day_close_time,
-            extend_for: selectedCutoff.extend_for || '-'
+            extend_for: selectedCutoff.extend_for || '-',
+            apply_worker_rule: !!selectedCutoff.apply_worker_rule,
+            apply_cut_off_time: !!selectedCutoff.apply_cut_off_time
           };
         });
       } else {
@@ -364,7 +370,9 @@ const WorkerCutOff: React.FC = () => {
           worker_code: selectedCutoff.worker_code,
           day_start_time: selectedCutoff.day_start_time,
           day_close_time: selectedCutoff.day_close_time,
-          extend_for: selectedCutoff.extend_for || '-'
+          extend_for: selectedCutoff.extend_for || '-',
+          apply_worker_rule: !!selectedCutoff.apply_worker_rule,
+          apply_cut_off_time: !!selectedCutoff.apply_cut_off_time
         }];
       }
 
@@ -401,6 +409,8 @@ const WorkerCutOff: React.FC = () => {
       return;
     }
 
+
+
     try {
       setSaving(true);
       const payload = {
@@ -411,7 +421,9 @@ const WorkerCutOff: React.FC = () => {
         worker_code: editForm.worker_code,
         day_start_time: editForm.day_start_time,
         day_close_time: editForm.day_close_time,
-        extend_for: editForm.extend_for || '-'
+        extend_for: editForm.extend_for || '-',
+        apply_worker_rule: !!editForm.apply_worker_rule,
+        apply_cut_off_time: !!editForm.apply_cut_off_time
       };
 
       const response = editForm._isNew ? await insertWorkerCutoff(payload) : await updateWorkerCutoff(payload);
@@ -775,6 +787,29 @@ const WorkerCutOff: React.FC = () => {
                     onChange={(e) => setSelectedCutoff({ ...selectedCutoff, extend_for: e.target.value })}
                     className="w-full px-3 py-2 bg-slate-50 dark:bg-[#0b1120] border border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none dark:text-white transition-all"
                   />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4 mt-2">
+                <div className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    id="applyWorkerRule"
+                    checked={!!selectedCutoff.apply_worker_rule}
+                    onChange={(e) => setSelectedCutoff({ ...selectedCutoff, apply_worker_rule: e.target.checked })}
+                    className="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-600 dark:border-slate-600 dark:bg-slate-700 cursor-pointer"
+                  />
+                  <label htmlFor="applyWorkerRule" className="text-sm font-bold text-slate-700 dark:text-slate-300 cursor-pointer">Apply Worker Rule</label>
+                </div>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    id="applyCutOffTime"
+                    checked={!!selectedCutoff.apply_cut_off_time}
+                    onChange={(e) => setSelectedCutoff({ ...selectedCutoff, apply_cut_off_time: e.target.checked })}
+                    className="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-600 dark:border-slate-600 dark:bg-slate-700 cursor-pointer"
+                  />
+                  <label htmlFor="applyCutOffTime" className="text-sm font-bold text-slate-700 dark:text-slate-300 cursor-pointer">Apply Cut Off Time</label>
                 </div>
               </div>
 

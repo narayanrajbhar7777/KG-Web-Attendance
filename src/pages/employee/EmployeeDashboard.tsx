@@ -10,12 +10,12 @@ import DatePicker from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
 import { ATTENDANCE_BASE_MAP, ATTENDANCE_STATUS, ATTENDANCE_STATUS_MAP, DAYS } from '../../constants';
 import { AttendanceTable, type ColumnDef } from '../../components/AttendanceTable';
-import { fetchEmployeePunchData, fetchLeaveTypes } from '../../api';
-import { normalizeAttendanceStatus, calculateTimeNum, getAttendanceFieldStyle, calculateTime, isRecordLate } from '../../utils/attendanceUtils';
+import { fetchEmployeePunchData, fetchLeaveTypes, fetchWorkerCutoff, fetchManagerCutoff } from '../../api';
+import { calculateAdvancedAttendance, calculateTimeNum, getAttendanceFieldStyle, calculateTime, isRecordLate } from '../../utils/attendanceUtils';
 
 const EmployeeDashboard: React.FC = () => {
   const { user, login } = useAuth();
-  const { applyRequest, addNotification, customColors } = useAppData();
+  const { applyRequest, addNotification, customColors, attendanceGlobalRules } = useAppData();
   const navigate = useNavigate();
 
   const [dashboardData, setDashboardData] = useState<any>(null);
@@ -60,6 +60,18 @@ const EmployeeDashboard: React.FC = () => {
 
 
 
+      let activeCutoff = undefined;
+      let managerCutoffData = undefined;
+      try {
+        const workerData = await fetchWorkerCutoff({ e_comp: user.code, worker_code: user.code });
+        if (workerData && workerData.length > 0) activeCutoff = workerData[0];
+
+        const mgrData = await fetchManagerCutoff({ e_comp: user.code, manager_code: user.manager_code });
+        if (mgrData && mgrData.length > 0) managerCutoffData = mgrData[0];
+      } catch (err) {
+        console.error("Error fetching cutoffs in dashboard", err);
+      }
+
       const punchRes = await fetchEmployeePunchData(user.id, frDate, toDate);
 
       const empDet = currentEmpDet;
@@ -76,7 +88,8 @@ const EmployeeDashboard: React.FC = () => {
           const checkIn = p.intime ? p.intime.split(' ')[1]?.substring(0, 5) : '';
           const checkOut = p.outtime ? p.outtime.split(' ')[1]?.substring(0, 5) : '';
 
-          const status = normalizeAttendanceStatus(p.status, checkIn, checkOut, date);
+          const advanced = calculateAdvancedAttendance(p.status, checkIn, checkOut, date, activeCutoff, attendanceGlobalRules, managerCutoffData);
+          const status = advanced.attendanceStatus;
 
           return { date, status, checkIn, checkOut };
         });
@@ -101,7 +114,7 @@ const EmployeeDashboard: React.FC = () => {
 
   useEffect(() => {
     fetchDashboardData();
-  }, [user, currentDate]);
+  }, [user, currentDate, attendanceGlobalRules]);
 
   if (loading && !dashboardData) {
     return <div className="flex items-center justify-center min-h-[70vh]"><Loader /></div>;

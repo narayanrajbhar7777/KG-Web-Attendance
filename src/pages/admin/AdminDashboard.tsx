@@ -2,19 +2,19 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { useAppData } from '../../context/AppContext';
-import { fetchRequests, fetchEmployeePunchData } from '../../api';
+import { fetchRequests, fetchEmployeePunchData, fetchWorkerCutoff, fetchManagerCutoff } from '../../api';
 import type { AppRequest, User } from '../../types';
 import { Calendar, EyeOff, Table, Check, X, Clock, Search, ExternalLink } from 'lucide-react';
 import { format } from 'date-fns';
 import { AttendanceTable, type ColumnDef } from '../../components/AttendanceTable';
-import { calculateTime, normalizeAttendanceStatus, isRecordLate } from '../../utils/attendanceUtils';
+import { calculateTime, calculateAdvancedAttendance, isRecordLate } from '../../utils/attendanceUtils';
 import { ATTENDANCE_STATUS, DEFAULT_ATTENDANCE_COLORS, REQUEST_STATUS, ATTENDANCE_BASE_MAP } from '../../constants';
 import Loader from '../../components/Loader';
 
 const AdminDashboard: React.FC = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { updateRequestStatus: apiUpdateRequestStatus, addNotification, customColors } = useAppData();
+  const { updateRequestStatus: apiUpdateRequestStatus, addNotification, customColors, attendanceGlobalRules } = useAppData();
   const [requests, setRequests] = useState<AppRequest[]>([]);
   const [actionNotes, setActionNotes] = useState<{ [key: string]: string }>({});
   const [users, setUsers] = useState<User[]>([]);
@@ -25,9 +25,8 @@ const AdminDashboard: React.FC = () => {
   const [missedPunchFilter, setMissedPunchFilter] = useState<string>('All');
   const [currentDate] = useState<Date>(new Date());
 
-  useEffect(() => {
-    const loadData = async () => {
-      setLoading(true);
+  const loadData = async () => {
+    setLoading(true);
       try {
         const todayStr = format(currentDate, 'dd-MMM-yyyy');
 
@@ -44,72 +43,96 @@ const AdminDashboard: React.FC = () => {
           try { extData = await fetchEmployeePunchData(user.id, todayStr, todayStr, true); } catch (e) { console.error("Failed fetchEmployeePunchData:", e); }
         }
         const sortedReqs = (reqsData || []).sort((a: any, b: any) => {
-          const idA = typeof a.id === 'string' ? parseInt(a.id, 10) : (a.id || 0);
-          const idB = typeof b.id === 'string' ? parseInt(b.id, 10) : (b.id || 0);
-          return idB - idA;
-        });
-        setRequests(sortedReqs);
+        const idA = typeof a.id === 'string' ? parseInt(a.id, 10) : (a.id || 0);
+        const idB = typeof b.id === 'string' ? parseInt(b.id, 10) : (b.id || 0);
+        return idB - idA;
+      });
+      setRequests(sortedReqs);
 
-        if (extData) {
-          const punchData = extData?.EMP_PUNCH_DATA || [];
-          let allEmployees: User[] = (user?.employee_list || []).map((e: any) => ({
-            id: e.e_code,
-            name: e.e_name,
-            code: e.e_code,
-            designation: e.e_desg,
-            role: 'Employee'
-          }));
-
-          if (user && !allEmployees.some((e: any) => e.code === user.code)) {
-            allEmployees.unshift({
-              id: user.code,
-              name: user.name,
-              code: user.code,
-              designation: user.designation,
-              role: user.role || 'Employee'
-            });
-          }
-
-          setUsers(allEmployees as User[]);
-
-          const processed = allEmployees.map((emp: any) => {
-            const p = punchData.find((p: any) => String(p.emp_id) === String(emp.code));
-
-            const checkIn = p?.intime ? p.intime.split(' ')[1]?.substring(0, 5) : '-';
-            const checkOut = p?.outtime ? p.outtime.split(' ')[1]?.substring(0, 5) : '-';
-
-            const { total } = calculateTime(checkIn, checkOut);
-            const duration = total;
-
-            const currDate = format(currentDate, 'yyyy-MM-dd');
-            const pDate = p?.logindate ? p.logindate.split(' ')[0] : currDate;
-
-            const status = normalizeAttendanceStatus(p?.status, checkIn, checkOut, pDate);
-            return {
-              id: emp.code + '-' + Math.random(),
-              code: emp.code,
-              name: emp.name || 'Unknown',
-              date: p?.logindate ? p.logindate.split(' ')[0] : currDate,
-              checkIn,
-              checkOut,
-              duration,
-              status
-            };
+      let cutoffs: any[] = [];
+      let managerCutoffData: any = undefined;
+      if (user) {
+        try {
+          cutoffs = await fetchWorkerCutoff({
+            e_comp: user.company || 'FP',
+            brname: '',
+            manager_code: user.code
           });
-
-          processed.sort((a: any, b: any) => (a.name || '').localeCompare(b.name || ''));
-          setRecentPunchesData(processed);
-        }
-      } catch (error) {
-        console.error("Failed to load dashboard data", error);
-      } finally {
-        setLoading(false);
+        } catch (e) { console.error("Failed to fetch worker cutoffs:", e); }
+        try {
+          const mgrData = await fetchManagerCutoff({
+            e_comp: user.company || 'FP',
+            manager_code: user.code
+          });
+          if (mgrData && mgrData.length > 0) managerCutoffData = mgrData[0];
+        } catch (e) { console.error("Failed to fetch manager cutoff:", e); }
       }
-    };
+
+      if (extData) {
+        const punchData = extData?.EMP_PUNCH_DATA || [];
+        let allEmployees: User[] = (user?.employee_list || []).map((e: any) => ({
+          id: e.e_code,
+          name: e.e_name,
+          code: e.e_code,
+          designation: e.e_desg,
+          role: 'Employee'
+        }));
+
+        if (!allEmployees.some((e: User) => e.code === user?.code) && user) {
+          allEmployees.unshift({
+            id: user.code,
+            name: user.name,
+            code: user.code,
+            designation: user.designation,
+            role: user.role
+          });
+        }
+
+        setUsers(allEmployees as User[]);
+
+        const processed = allEmployees.map((emp: any) => {
+          const p = punchData.find((p: any) => String(p.emp_id) === String(emp.code));
+
+          const checkIn = p?.intime ? p.intime.split(' ')[1]?.substring(0, 5) : '-';
+          const checkOut = p?.outtime ? p.outtime.split(' ')[1]?.substring(0, 5) : '-';
+
+          const { total } = calculateTime(checkIn, checkOut);
+          const duration = total;
+
+          const currDate = format(currentDate, 'yyyy-MM-dd');
+          const pDate = p?.logindate ? p.logindate.split(' ')[0] : currDate;
+
+          const empCutoff = cutoffs.find((c: any) => c.worker_code === emp.code);
+          const advanced = calculateAdvancedAttendance(p?.status, checkIn, checkOut, pDate, empCutoff, attendanceGlobalRules, managerCutoffData);
+          const status = advanced.attendanceStatus;
+
+          return {
+            id: emp.code + '-' + Math.random(),
+            code: emp.code,
+            name: emp.name || 'Unknown',
+            date: p?.logindate ? p.logindate.split(' ')[0] : currDate,
+            checkIn,
+            checkOut,
+            duration,
+            status
+          };
+        });
+
+        processed.sort((a: any, b: any) => (a.name || '').localeCompare(b.name || ''));
+        setRecentPunchesData(processed);
+      }
+    } catch (error) {
+      console.error("Failed to load dashboard data", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
     if (user) {
       loadData();
     }
-  }, [user, currentDate]);
+  }, [user, currentDate, attendanceGlobalRules]);
 
   const updateRequestStatus = async (id: string, status: AppRequest['status'], reason: string, req?: AppRequest) => {
     await apiUpdateRequestStatus(id, status, reason, req, actionNotes[id]);

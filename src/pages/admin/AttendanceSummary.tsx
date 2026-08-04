@@ -6,13 +6,13 @@ import { format } from 'date-fns';
 import DatePicker from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
 import Loader from '../../components/Loader';
-import { fetchEmployeePunchData } from '../../api';
+import { fetchEmployeePunchData, fetchWorkerCutoff, fetchManagerCutoff } from '../../api';
 import { AttendanceTable, type ColumnDef } from '../../components/AttendanceTable';
-import { calculateTime, getFullStatus, normalizeAttendanceStatus, getAttendanceFieldStyle, isRecordLate } from '../../utils/attendanceUtils';
+import { getFullStatus, calculateAdvancedAttendance, getAttendanceFieldStyle, isRecordLate } from '../../utils/attendanceUtils';
 import { ATTENDANCE_STATUS, ATTENDANCE_STATUS_MAP, ATTENDANCE_SUMMARY_FILTERS, DEFAULT_ATTENDANCE_COLORS } from '../../constants';
 
 const AttendanceSummary: React.FC = () => {
-  const { customColors } = useAppData();
+  const { customColors, attendanceGlobalRules } = useAppData();
   const { user } = useAuth();
 
   const [summaryData, setSummaryData] = useState<any>(null);
@@ -53,15 +53,37 @@ const AttendanceSummary: React.FC = () => {
       const punchRes = await fetchEmployeePunchData(user.id, todayStr, todayStr);
       const punchData = punchRes?.EMP_PUNCH_DATA || [];
 
+      const cutoffRes = await fetchWorkerCutoff({
+        e_comp: user.company || 'FP',
+        brname: '',
+        manager_code: user.code
+      });
+
+      let managerCutoffData: any = undefined;
+      try {
+        const mgrData = await fetchManagerCutoff({
+          e_comp: user.company || 'FP',
+          manager_code: user.code
+        });
+        if (mgrData && mgrData.length > 0) managerCutoffData = mgrData[0];
+      } catch (e) { console.error("Failed to fetch manager cutoff", e); }
+
       const attendance = allEmployees.map((emp: any) => {
+        const empCutoff = cutoffRes.find((c: any) => c.worker_code === emp.code);
         const empRecords = punchData
           .filter((p: any) => p.emp_id === emp.code || String(p.emp_id) === String(emp.code))
           .map((p: any) => {
             const date = p.logindate ? p.logindate.split(' ')[0] : '';
             const checkIn = p.intime ? p.intime.split(' ')[1]?.substring(0, 5) : '';
             const checkOut = p.outtime ? p.outtime.split(' ')[1]?.substring(0, 5) : '';
-            const status = normalizeAttendanceStatus(p.status, checkIn, checkOut, date);
-            return { date, status, checkIn, checkOut };
+            const advanced = calculateAdvancedAttendance(p.status, checkIn, checkOut, date, empCutoff, attendanceGlobalRules, managerCutoffData);
+            return { 
+              date, 
+              status: advanced.attendanceStatus, 
+              checkIn, 
+              checkOut,
+              advanced 
+            };
           });
 
         return { employeeId: emp.id, records: empRecords };
@@ -81,7 +103,7 @@ const AttendanceSummary: React.FC = () => {
 
   useEffect(() => {
     fetchSummaryData();
-  }, [user, currentDate]);
+  }, [user, currentDate, attendanceGlobalRules]);
 
   if (loading) {
     return <div className="flex items-center justify-center min-h-[70vh]"><Loader /></div>;
@@ -121,8 +143,7 @@ const AttendanceSummary: React.FC = () => {
     { key: 'checkOut', label: 'Out', render: (item) => <span className="text-sm text-slate-600 dark:text-slate-300 font-mono">{item.record?.checkOut || <span className="text-slate-400 dark:text-slate-600">-</span>}</span> },
     {
       key: 'duration', label: 'Working Hr', render: (item) => {
-        const { total } = calculateTime(item.record?.checkIn, item.record?.checkOut);
-        return <span className="text-sm text-blue-600 dark:text-blue-400 font-medium">{total}</span>
+        return <span className="text-sm text-blue-600 dark:text-blue-400 font-medium">{item.record?.advanced?.completedWorkingHours || '-'}</span>
       }
     },
     {

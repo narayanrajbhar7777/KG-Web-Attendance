@@ -7,6 +7,7 @@ export interface User {
   role: Role;
   image?: string;
   designation?: string;
+  company?: string;
   employee_list?: any[];
   manager_code?: string | null;
   manager_name?: string | null;
@@ -92,5 +93,7 @@ export interface WorkerCutOffData {
   extend_for: string;
   day_start_time: string;
   day_close_time: string;
+  apply_worker_rule?: boolean;
+  apply_cut_off_time?: boolean;
   _isNew?: boolean;
 }
