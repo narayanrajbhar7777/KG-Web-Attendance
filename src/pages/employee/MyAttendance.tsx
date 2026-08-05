@@ -100,7 +100,7 @@ const MyAttendance: React.FC = () => {
 
           const totalHours = advanced.completedWorkingHours;
           const overTime = '-'; // OT logic might need to be adjusted or kept simple
-          
+
           let diffMs = 0;
           if (advanced.workingMins) {
             diffMs = advanced.workingMins * 60 * 1000;
@@ -111,14 +111,14 @@ const MyAttendance: React.FC = () => {
           const dateObj = new Date(date);
           const dayOfWeek = isNaN(dateObj.getTime()) ? '' : dateObj.toLocaleDateString('en-US', { weekday: 'short' });
 
-          return { 
-            date, 
-            dayOfWeek, 
-            status, 
-            checkIn, 
-            checkOut, 
-            totalHours, 
-            overTime, 
+          return {
+            date,
+            dayOfWeek,
+            status,
+            checkIn,
+            checkOut,
+            totalHours,
+            overTime,
             diffMs,
             requiredWorkingHours: advanced.requiredWorkingHours,
             completedWorkingHours: advanced.completedWorkingHours,
@@ -227,7 +227,7 @@ const MyAttendance: React.FC = () => {
                 { key: 'checkOut', label: masterConfig?.employeeAttendance?.columns?.checkOut?.label || 'Out', render: (record) => <span className="text-sm font-medium text-slate-600 dark:text-slate-400">{record.checkOut || '-'}</span> },
                 { key: 'reqHours', label: 'Req. Hrs', render: (record) => <span className="text-sm font-bold text-slate-700 dark:text-slate-300">{record.requiredWorkingHours}</span> },
                 { key: 'totalHours', label: masterConfig?.employeeAttendance?.columns?.totalHours?.label || 'Working Hrs', render: (record) => <span className="text-sm font-bold text-slate-700 dark:text-slate-300">{record.totalHours}</span> },
-                { key: 'workStatus', label: 'Work Status', render: (record) => <span className={`text-sm font-bold ${record.workingHoursStatus === 'Completed' ? 'text-emerald-600 dark:text-emerald-400' : record.workingHoursStatus === 'Incomplete' ? 'text-rose-600 dark:text-rose-400' : 'text-slate-500'}`}>{record.workingHoursStatus}</span> },
+                // { key: 'workStatus', label: 'Work Status', render: (record) => <span className={`text-sm font-bold ${record.workingHoursStatus === 'Completed' ? 'text-emerald-600 dark:text-emerald-400' : record.workingHoursStatus === 'Incomplete' ? 'text-rose-600 dark:text-rose-400' : 'text-slate-500'}`}>{record.workingHoursStatus}</span> },
                 { key: 'overTime', label: 'Over Time', render: (record) => <span className="text-sm font-bold text-emerald-600 dark:text-emerald-400">{record.overTime}</span> },
                 {
                   key: 'status', label: masterConfig?.employeeAttendance?.columns?.status?.label || 'Status', render: (record) => {
