@@ -82,36 +82,44 @@ export const normalizeAttendanceStatus = (
 
   const cIn = !checkIn || checkIn === '-' ? '' : checkIn;
   const cOut = !checkOut || checkOut === '-' ? '' : checkOut;
-  if (!cIn && !cOut && status !== ATTENDANCE_STATUS.WEEK_OFF) {
-    if (dayOfWeek === DAYS.SD.name) {
-      status = ATTENDANCE_STATUS.WEEK_OFF;
-    } else {
-      status = ATTENDANCE_STATUS.ABSENT;
+  if (cIn && cOut) {
+    if (dayOfWeek === DAYS.SD.name && status === ATTENDANCE_STATUS.PRESENT) {
+      status = ATTENDANCE_STATUS.PRESENT_ON_HOLIDAY;
+    } else if (status === ATTENDANCE_STATUS.MISSPUNCH) {
+      status = ATTENDANCE_STATUS.PRESENT;
     }
-  } else if (cIn && !cOut && status !== ATTENDANCE_STATUS.WEEK_OFF) {
-    if (isCurrentDate) {
+    // Apply custom cutoff rule if provided and it's a regular workday with check-in and check-out
+    if (cutoff && status !== ATTENDANCE_STATUS.WEEK_OFF && status !== ATTENDANCE_STATUS.HOLIDAY) {
+      const { totalMins } = calculateTimeNum(cIn, cOut);
+
+      // Calculate required minutes
+      const [reqInH, reqInM] = cutoff.inTime.split(':').map(Number);
+      const [reqOutH, reqOutM] = cutoff.outTime.split(':').map(Number);
+      let reqMins = (reqOutH * 60 + reqOutM) - (reqInH * 60 + reqInM);
+      if (reqMins < 0) reqMins += 24 * 60;
+
+      if (totalMins >= reqMins) {
+        status = ATTENDANCE_STATUS.PRESENT;
+      } else {
+        // Keep status as PRESENT, LATE, etc. instead of MISSPUNCH when working hours are insufficient
+        if (status === ATTENDANCE_STATUS.MISSPUNCH) {
+          status = ATTENDANCE_STATUS.PRESENT;
+        }
+      }
+    }
+  } else if ((cIn && !cOut) || (!cIn && cOut)) {
+    if (cIn && !cOut && isCurrentDate) {
       status = ATTENDANCE_STATUS.IN;
     } else {
       status = ATTENDANCE_STATUS.MISSPUNCH;
     }
-  } else if (dayOfWeek === DAYS.SD.name && status === ATTENDANCE_STATUS.PRESENT) {
-    status = ATTENDANCE_STATUS.PRESENT_ON_HOLIDAY;
-  }
-
-  // Apply custom cutoff rule if provided and it's a regular workday with check-in and check-out
-  if (cutoff && cIn && cOut && status !== ATTENDANCE_STATUS.WEEK_OFF && status !== ATTENDANCE_STATUS.HOLIDAY) {
-    const { totalMins } = calculateTimeNum(cIn, cOut);
-
-    // Calculate required minutes
-    const [reqInH, reqInM] = cutoff.inTime.split(':').map(Number);
-    const [reqOutH, reqOutM] = cutoff.outTime.split(':').map(Number);
-    let reqMins = (reqOutH * 60 + reqOutM) - (reqInH * 60 + reqInM);
-    if (reqMins < 0) reqMins += 24 * 60;
-
-    if (totalMins >= reqMins) {
-      status = ATTENDANCE_STATUS.PRESENT;
-    } else {
-      status = ATTENDANCE_STATUS.MISSPUNCH;
+  } else {
+    if (status !== ATTENDANCE_STATUS.WEEK_OFF && status !== ATTENDANCE_STATUS.HOLIDAY && status !== ATTENDANCE_STATUS.LEAVE) {
+      if (dayOfWeek === DAYS.SD.name) {
+        status = ATTENDANCE_STATUS.WEEK_OFF;
+      } else {
+        status = ATTENDANCE_STATUS.ABSENT;
+      }
     }
   }
 
@@ -359,20 +367,26 @@ export const calculateAdvancedAttendance = (
   const dayOfWeek = isNaN(dateObj.getTime()) ? '' : dateObj.toLocaleDateString('en-US', { weekday: 'long' });
   const isCurrentDate = pDate === currDate;
 
-  if (!cIn && !cOut && status !== ATTENDANCE_STATUS.WEEK_OFF) {
-    if (dayOfWeek === DAYS.SD.name) {
-      status = ATTENDANCE_STATUS.WEEK_OFF;
-    } else {
-      status = ATTENDANCE_STATUS.ABSENT;
+  if (cIn && cOut) {
+    if (dayOfWeek === DAYS.SD.name && status === ATTENDANCE_STATUS.PRESENT) {
+      status = ATTENDANCE_STATUS.PRESENT_ON_HOLIDAY;
+    } else if (status === ATTENDANCE_STATUS.MISSPUNCH) {
+      status = ATTENDANCE_STATUS.PRESENT;
     }
-  } else if (cIn && !cOut && status !== ATTENDANCE_STATUS.WEEK_OFF) {
-    if (isCurrentDate) {
+  } else if ((cIn && !cOut) || (!cIn && cOut)) {
+    if (cIn && !cOut && isCurrentDate) {
       status = ATTENDANCE_STATUS.IN;
     } else {
       status = ATTENDANCE_STATUS.MISSPUNCH;
     }
-  } else if (dayOfWeek === DAYS.SD.name && status === ATTENDANCE_STATUS.PRESENT) {
-    status = ATTENDANCE_STATUS.PRESENT_ON_HOLIDAY;
+  } else {
+    if (status !== ATTENDANCE_STATUS.WEEK_OFF && status !== ATTENDANCE_STATUS.HOLIDAY && status !== ATTENDANCE_STATUS.LEAVE) {
+      if (dayOfWeek === DAYS.SD.name) {
+        status = ATTENDANCE_STATUS.WEEK_OFF;
+      } else {
+        status = ATTENDANCE_STATUS.ABSENT;
+      }
+    }
   }
 
   const reqMins = targetHours * 60;
@@ -384,7 +398,9 @@ export const calculateAdvancedAttendance = (
       workingHoursStatus = 'Completed';
       reason = `Completed ${targetHours} working hours`;
     } else {
-      status = ATTENDANCE_STATUS.MISSPUNCH;
+      if (status === ATTENDANCE_STATUS.MISSPUNCH) {
+        status = ATTENDANCE_STATUS.PRESENT;
+      }
       workingHoursStatus = 'Incomplete';
       reason = `Working hours less than ${targetHours} hours`;
     }

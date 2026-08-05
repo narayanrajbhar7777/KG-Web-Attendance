@@ -86,10 +86,10 @@ const AttendanceDetails: React.FC = () => {
             const advanced = calculateAdvancedAttendance(p.status, checkIn, checkOut, date, empCutoff, attendanceGlobalRules, managerCutoffData);
             const status = advanced.attendanceStatus;
 
-            return { 
-              date, 
-              status, 
-              checkIn, 
+            return {
+              date,
+              status,
+              checkIn,
               checkOut,
               requiredWorkingHours: advanced.requiredWorkingHours,
               completedWorkingHours: advanced.completedWorkingHours,
@@ -263,7 +263,7 @@ const AttendanceDetails: React.FC = () => {
                       return <span className="font-medium text-slate-800 dark:text-slate-200 text-[13px]">{item.record?.completedWorkingHours || '-'}</span>
                     }
                   },
-                  { key: 'workStatus', label: 'Work Status', render: (item) => <span className={`font-bold text-[13px] ${item.record?.workingHoursStatus === 'Completed' ? 'text-emerald-600 dark:text-emerald-400' : item.record?.workingHoursStatus === 'Incomplete' ? 'text-rose-600 dark:text-rose-400' : 'text-slate-500'}`}>{item.record?.workingHoursStatus || '-'}</span> },
+                  // { key: 'workStatus', label: 'Work Status', render: (item) => <span className={`font-bold text-[13px] ${item.record?.workingHoursStatus === 'Completed' ? 'text-emerald-600 dark:text-emerald-400' : item.record?.workingHoursStatus === 'Incomplete' ? 'text-rose-600 dark:text-rose-400' : 'text-slate-500'}`}>{item.record?.workingHoursStatus || '-'}</span> },
                   {
                     key: 'overtime', label: ' Over Time', render: (item) => {
                       const { overtime } = calculateTime(item.record?.checkIn, item.record?.checkOut);
