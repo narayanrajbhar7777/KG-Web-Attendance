@@ -66,13 +66,14 @@ export const normalizeAttendanceStatus = (
   cutoff?: { inTime: string, outTime: string, bufferTime: string }
 ) => {
   let status = rawStatus || '-';
-  if (status === 'PRESENT') status = ATTENDANCE_STATUS.PRESENT;
-  else if (status === 'ABSENT') status = ATTENDANCE_STATUS.ABSENT;
-  else if (status === 'MISPUNCH') status = ATTENDANCE_STATUS.MISSPUNCH;
-  else if (status === 'WEEK OFF' || status === 'WEEKOFF') status = ATTENDANCE_STATUS.WEEK_OFF;
-  else if (status === 'HOLIDAY') status = ATTENDANCE_STATUS.HOLIDAY;
-  else if (status === 'LEAVE') status = ATTENDANCE_STATUS.LEAVE;
-  else if (status === 'HALF DAY') status = ATTENDANCE_STATUS.HALF_DAY;
+  const cleanStatus = (rawStatus || '').toUpperCase().trim();
+  if (cleanStatus === 'PRESENT' || cleanStatus === 'P') status = ATTENDANCE_STATUS.PRESENT;
+  else if (cleanStatus === 'ABSENT' || cleanStatus === 'A') status = ATTENDANCE_STATUS.ABSENT;
+  else if (cleanStatus === 'MISPUNCH' || cleanStatus === 'MISSPUNCH' || cleanStatus === 'M') status = ATTENDANCE_STATUS.MISSPUNCH;
+  else if (cleanStatus === 'WEEK OFF' || cleanStatus === 'WEEKOFF' || cleanStatus === 'WO') status = ATTENDANCE_STATUS.WEEK_OFF;
+  else if (cleanStatus === 'HOLIDAY' || cleanStatus === 'H') status = ATTENDANCE_STATUS.HOLIDAY;
+  else if (cleanStatus === 'LEAVE' || cleanStatus === 'L') status = ATTENDANCE_STATUS.LEAVE;
+  else if (cleanStatus === 'HALF DAY' || cleanStatus === 'HD') status = ATTENDANCE_STATUS.HALF_DAY;
 
   const currDate = format(new Date(), 'yyyy-MM-dd');
   const pDate = recordDate ? recordDate.split(' ')[0] : currDate;
@@ -114,12 +115,10 @@ export const normalizeAttendanceStatus = (
       status = ATTENDANCE_STATUS.MISSPUNCH;
     }
   } else {
-    if (status !== ATTENDANCE_STATUS.WEEK_OFF && status !== ATTENDANCE_STATUS.HOLIDAY && status !== ATTENDANCE_STATUS.LEAVE) {
-      if (dayOfWeek === DAYS.SD.name) {
-        status = ATTENDANCE_STATUS.WEEK_OFF;
-      } else {
-        status = ATTENDANCE_STATUS.ABSENT;
-      }
+    if (dayOfWeek === DAYS.SD.name) {
+      status = ATTENDANCE_STATUS.WEEK_OFF;
+    } else if (status !== ATTENDANCE_STATUS.WEEK_OFF && status !== ATTENDANCE_STATUS.HOLIDAY && status !== ATTENDANCE_STATUS.LEAVE) {
+      status = ATTENDANCE_STATUS.ABSENT;
     }
   }
 
@@ -353,13 +352,14 @@ export const calculateAdvancedAttendance = (
 
   let reason = '';
   let status = rawStatus || '-';
-  if (status === 'PRESENT') status = ATTENDANCE_STATUS.PRESENT;
-  else if (status === 'ABSENT') status = ATTENDANCE_STATUS.ABSENT;
-  else if (status === 'MISPUNCH') status = ATTENDANCE_STATUS.MISSPUNCH;
-  else if (status === 'WEEK OFF' || status === 'WEEKOFF') status = ATTENDANCE_STATUS.WEEK_OFF;
-  else if (status === 'HOLIDAY') status = ATTENDANCE_STATUS.HOLIDAY;
-  else if (status === 'LEAVE') status = ATTENDANCE_STATUS.LEAVE;
-  else if (status === 'HALF DAY') status = ATTENDANCE_STATUS.HALF_DAY;
+  const cleanStatus = (rawStatus || '').toUpperCase().trim();
+  if (cleanStatus === 'PRESENT' || cleanStatus === 'P') status = ATTENDANCE_STATUS.PRESENT;
+  else if (cleanStatus === 'ABSENT' || cleanStatus === 'A') status = ATTENDANCE_STATUS.ABSENT;
+  else if (cleanStatus === 'MISPUNCH' || cleanStatus === 'MISSPUNCH' || cleanStatus === 'M') status = ATTENDANCE_STATUS.MISSPUNCH;
+  else if (cleanStatus === 'WEEK OFF' || cleanStatus === 'WEEKOFF' || cleanStatus === 'WO') status = ATTENDANCE_STATUS.WEEK_OFF;
+  else if (cleanStatus === 'HOLIDAY' || cleanStatus === 'H') status = ATTENDANCE_STATUS.HOLIDAY;
+  else if (cleanStatus === 'LEAVE' || cleanStatus === 'L') status = ATTENDANCE_STATUS.LEAVE;
+  else if (cleanStatus === 'HALF DAY' || cleanStatus === 'HD') status = ATTENDANCE_STATUS.HALF_DAY;
   
   const currDate = format(new Date(), 'yyyy-MM-dd');
   const pDate = recordDate ? recordDate.split(' ')[0] : currDate;
@@ -380,12 +380,10 @@ export const calculateAdvancedAttendance = (
       status = ATTENDANCE_STATUS.MISSPUNCH;
     }
   } else {
-    if (status !== ATTENDANCE_STATUS.WEEK_OFF && status !== ATTENDANCE_STATUS.HOLIDAY && status !== ATTENDANCE_STATUS.LEAVE) {
-      if (dayOfWeek === DAYS.SD.name) {
-        status = ATTENDANCE_STATUS.WEEK_OFF;
-      } else {
-        status = ATTENDANCE_STATUS.ABSENT;
-      }
+    if (dayOfWeek === DAYS.SD.name) {
+      status = ATTENDANCE_STATUS.WEEK_OFF;
+    } else if (status !== ATTENDANCE_STATUS.WEEK_OFF && status !== ATTENDANCE_STATUS.HOLIDAY && status !== ATTENDANCE_STATUS.LEAVE) {
+      status = ATTENDANCE_STATUS.ABSENT;
     }
   }
 
