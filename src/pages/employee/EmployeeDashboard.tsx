@@ -109,7 +109,7 @@ const EmployeeDashboard: React.FC = () => {
     return <div className="flex items-center justify-center min-h-[70vh]"><Loader /></div>;
   }
 
-  const { attendance: empAttendance, requests: empRequests = [], managers = [] } = dashboardData || {};
+  const { attendance: empAttendance, managers = [] } = dashboardData || {};
   const myAttendance = empAttendance?.records || [];
 
   const monthStart = startOfMonth(currentDate);

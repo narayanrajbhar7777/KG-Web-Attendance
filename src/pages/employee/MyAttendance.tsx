@@ -10,7 +10,7 @@ import DatePicker from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
 import Loader from '../../components/Loader';
 import { AttendanceTable } from '../../components/AttendanceTable';
-import { calculateAdvancedAttendance, processAttendanceRecord, getAttendanceFieldStyle, isRecordLate } from '../../utils/attendanceUtils';
+import { processAttendanceRecord, getAttendanceFieldStyle, isRecordLate } from '../../utils/attendanceUtils';
 
 const MyAttendance: React.FC = () => {
   const { user } = useAuth();

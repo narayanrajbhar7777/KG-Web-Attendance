@@ -110,8 +110,6 @@ export const normalizeAttendanceStatus = (
 
   // Apply custom cutoff rule if provided and it's a regular workday with check-in and check-out
   if (cutoff && status === ATTENDANCE_STATUS.PRESENT) {
-    const { totalMins } = calculateTimeNum(cIn, cOut);
-
     // Calculate required minutes
     const [reqInH, reqInM] = cutoff.inTime.split(':').map(Number);
     const [reqOutH, reqOutM] = cutoff.outTime.split(':').map(Number);
@@ -404,7 +402,7 @@ export const calculateAdvancedAttendance = (
       const typeStr = (r.type || '').toUpperCase().replace(/\s+/g, '');
       return (typeStr === 'MISPUNCH' || typeStr === 'MISSPUNCH' || typeStr === 'MISSEDPUNCH') && rDateStr === formattedPDate && r.status === 'Approved';
     });
-    
+
     if (approvedLeave) {
       status = ATTENDANCE_STATUS.LEAVE;
     } else if (approvedMispunch) {
@@ -486,10 +484,10 @@ export const processAttendanceRecord = (
 ): ProcessedAttendanceRecord => {
   const currDateStr = currentDate ? format(currentDate, 'yyyy-MM-dd') : format(new Date(), 'yyyy-MM-dd');
   const date = p?.logindate ? p.logindate.split(' ')[0] : currDateStr;
-  
+
   const checkIn = p?.intime && p.intime !== '-' ? p.intime.split(' ')[1]?.substring(0, 5) : '';
   const checkOut = p?.outtime && p.outtime !== '-' ? p.outtime.split(' ')[1]?.substring(0, 5) : '';
-  
+
   const advanced = calculateAdvancedAttendance(
     p?.status,
     checkIn,
@@ -500,11 +498,11 @@ export const processAttendanceRecord = (
     managerCutoffData,
     empRequests
   );
-  
+
   const status = advanced.attendanceStatus;
   const totalHours = advanced.completedWorkingHours;
   const overTime = advanced.overtime || '-';
-  
+
   let diffMs = 0;
   if (advanced.workingMins) {
     diffMs = advanced.workingMins * 60 * 1000;
@@ -513,12 +511,12 @@ export const processAttendanceRecord = (
   if (advanced.overtimeMins) {
     otMs = advanced.overtimeMins * 60 * 1000;
   }
-  
+
   const dateObj = new Date(date);
   const dayOfWeek = isNaN(dateObj.getTime()) ? '' : dateObj.toLocaleDateString('en-US', { weekday: 'short' });
-  
+
   const { total: duration } = calculateTime(checkIn || '-', checkOut || '-');
-  
+
   return {
     date,
     dayOfWeek,

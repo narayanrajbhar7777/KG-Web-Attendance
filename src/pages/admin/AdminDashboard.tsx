@@ -7,7 +7,7 @@ import type { AppRequest, User } from '../../types';
 import { Calendar, EyeOff, Table, Check, X, Clock, Search, ExternalLink } from 'lucide-react';
 import { format } from 'date-fns';
 import { AttendanceTable, type ColumnDef } from '../../components/AttendanceTable';
-import { calculateTime, calculateAdvancedAttendance, isRecordLate, processAttendanceRecord } from '../../utils/attendanceUtils';
+import { isRecordLate, processAttendanceRecord } from '../../utils/attendanceUtils';
 import { ATTENDANCE_STATUS, DEFAULT_ATTENDANCE_COLORS, REQUEST_STATUS, ATTENDANCE_BASE_MAP } from '../../constants';
 import Loader from '../../components/Loader';
 
@@ -27,22 +27,22 @@ const AdminDashboard: React.FC = () => {
 
   const loadData = async () => {
     setLoading(true);
+    try {
+      const todayStr = format(currentDate, 'dd-MMM-yyyy');
+
+      let reqsData = [];
       try {
-        const todayStr = format(currentDate, 'dd-MMM-yyyy');
-
-        let reqsData = [];
-        try {
-          if (user) {
-            const managerId = user.code ? user.code.replace('FP', '') : '';
-            reqsData = await fetchRequests(managerId);
-          }
-        } catch (e) { console.error("Failed fetchRequests:", e); }
-
-        let extData;
         if (user) {
-          try { extData = await fetchEmployeePunchData(user.id, todayStr, todayStr, true); } catch (e) { console.error("Failed fetchEmployeePunchData:", e); }
+          const managerId = user.code ? user.code.replace('FP', '') : '';
+          reqsData = await fetchRequests(managerId);
         }
-        const sortedReqs = (reqsData || []).sort((a: any, b: any) => {
+      } catch (e) { console.error("Failed fetchRequests:", e); }
+
+      let extData;
+      if (user) {
+        try { extData = await fetchEmployeePunchData(user.id, todayStr, todayStr, true); } catch (e) { console.error("Failed fetchEmployeePunchData:", e); }
+      }
+      const sortedReqs = (reqsData || []).sort((a: any, b: any) => {
         const idA = typeof a.id === 'string' ? parseInt(a.id, 10) : (a.id || 0);
         const idB = typeof b.id === 'string' ? parseInt(b.id, 10) : (b.id || 0);
         return idB - idA;
@@ -94,8 +94,8 @@ const AdminDashboard: React.FC = () => {
           const p = punchData.find((p: any) => String(p.emp_id) === String(emp.code));
 
           const empCutoff = cutoffs.find((c: any) => c.worker_code === emp.code);
-          const empRequests = reqsData.filter((r: any) => 
-            String(r.userId) === String(emp.code) || 
+          const empRequests = reqsData.filter((r: any) =>
+            String(r.userId) === String(emp.code) ||
             String(r.userId) === String(emp.id) ||
             String(r.userId) === String(emp.code).replace('FP', '')
           );
