@@ -6,7 +6,7 @@ import { format } from 'date-fns';
 import DatePicker from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
 import Loader from '../../components/Loader';
-import { fetchEmployeePunchData, fetchWorkerCutoff, fetchManagerCutoff } from '../../api';
+import { fetchEmployeePunchData, fetchWorkerCutoff, fetchManagerCutoff, fetchRequests } from '../../api';
 import { AttendanceTable, type ColumnDef } from '../../components/AttendanceTable';
 import { getFullStatus, calculateAdvancedAttendance, getAttendanceFieldStyle, isRecordLate } from '../../utils/attendanceUtils';
 import { ATTENDANCE_STATUS, ATTENDANCE_STATUS_MAP, ATTENDANCE_SUMMARY_FILTERS, DEFAULT_ATTENDANCE_COLORS } from '../../constants';
@@ -68,18 +68,29 @@ const AttendanceSummary: React.FC = () => {
         if (mgrData && mgrData.length > 0) managerCutoffData = mgrData[0];
       } catch (e) { console.error("Failed to fetch manager cutoff", e); }
 
+      let allRequests: any[] = [];
+      try {
+        allRequests = await fetchRequests(user?.code);
+      } catch (e) {
+        console.error("Failed to fetch requests", e);
+      }
+
       const attendance = allEmployees.map((emp: any) => {
         const empCutoff = cutoffRes.find((c: any) => c.worker_code === emp.code);
+        const empRequests = allRequests.filter(r => r.userId === emp.id);
+
         const empRecords = punchData
           .filter((p: any) => p.emp_id === emp.code || String(p.emp_id) === String(emp.code))
           .map((p: any) => {
             const date = p.logindate ? p.logindate.split(' ')[0] : '';
             const checkIn = p.intime ? p.intime.split(' ')[1]?.substring(0, 5) : '';
             const checkOut = p.outtime ? p.outtime.split(' ')[1]?.substring(0, 5) : '';
-            const advanced = calculateAdvancedAttendance(p.status, checkIn, checkOut, date, empCutoff, attendanceGlobalRules, managerCutoffData);
+            const advanced = calculateAdvancedAttendance(p.status, checkIn, checkOut, date, empCutoff, attendanceGlobalRules, managerCutoffData, empRequests);
+            let status = advanced.attendanceStatus;
+
             return { 
               date, 
-              status: advanced.attendanceStatus, 
+              status: status, 
               checkIn, 
               checkOut,
               advanced 

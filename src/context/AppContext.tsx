@@ -189,7 +189,28 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const addNotification = async (message: string, targetUserId?: string) => {
     try {
       await createNotification(message, targetUserId);
-      if (user && ((targetUserId && targetUserId === user.id) || (!targetUserId && user.role === 'Admin'))) {
+      // Fallback: Also create notification for the alternative ID format (with/without prefix)
+      // because the backend might expect either one depending on the module.
+      if (targetUserId) {
+        try {
+          if (!isNaN(Number(targetUserId))) {
+            // It's a raw number. Try inserting for 'FP' prefix since manager might need it.
+            await createNotification(message, 'FP' + targetUserId);
+          } else {
+            // It has a prefix (e.g. FP16867). Also insert the raw number just in case.
+            const numericOnly = targetUserId.replace(/[^0-9]/g, '');
+            if (numericOnly && numericOnly !== targetUserId) {
+              await createNotification(message, numericOnly);
+            }
+          }
+        } catch (e) {
+          console.error("Failed fallback notification", e);
+        }
+      }
+      
+      const isTargetMatch = targetUserId === user?.id || targetUserId === user?.code || (user?.code && targetUserId === user.code.replace('FP', ''));
+      
+      if (user && ((targetUserId && isTargetMatch) || (!targetUserId && user.role === 'Admin'))) {
         const newNotif: AppNotification = {
           id: Date.now().toString(),
           message,
@@ -202,7 +223,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
       if (targetUserId) {
         try {
-          const email = user?.employee_list?.find((emp: any) => emp.id === targetUserId)?.e_email;
+          let email = user?.employee_list?.find((emp: any) => emp.id === targetUserId || emp.e_code === targetUserId || emp.id === targetUserId.replace('FP', '') || emp.e_code === targetUserId.replace('FP', ''))?.e_email;
+          
+          if (!email && targetUserId) {
+            const empDetails = await import('../api').then(m => m.fetchEmployeeDetails(targetUserId));
+            const empDataArr = empDetails?.EMP_DATA || [];
+            email = empDataArr.find((emp: any) => emp.e_code === targetUserId || emp.e_code === targetUserId.replace('FP', ''))?.e_email;
+          }
+
           if (email) {
             await sendEmailNotification(email, "New Notification from KG Workforce Portal", message);
           }

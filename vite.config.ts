@@ -21,6 +21,11 @@ export default defineConfig({
         target: 'http://192.168.100.22:8080',
         rewrite: (path) => path.replace(/^\/api\/kg_web_app/, '/KG_WEB_APP0/KGAPI'),
         changeOrigin: true,
+      },
+      '/api/email_service': {
+        target: 'http://172.16.37.219',
+        rewrite: (path) => path.replace(/^\/api\/email_service/, '/api'),
+        changeOrigin: true,
       }
     }
   },

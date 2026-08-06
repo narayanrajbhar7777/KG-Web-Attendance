@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { format, startOfMonth, getDaysInMonth, isSameMonth } from 'date-fns';
 import { useNavigate } from 'react-router-dom';
-import { fetchEmployeePunchData, fetchEmployeePolicies, fetchDeptMgrCutoff, fetchManagerCutoff, fetchWorkerCutoff } from '../../api';
+import { fetchEmployeePunchData, fetchEmployeePolicies, fetchDeptMgrCutoff, fetchManagerCutoff, fetchWorkerCutoff, fetchRequests } from '../../api';
 import { ATTENDANCE_STATUS, ATTENDANCE_STATUS_MAP, DEFAULT_ATTENDANCE_COLORS, DEFAULT_IN_TIME, DEFAULT_OUT_TIME } from '../../constants';
 import { useAppData } from '../../context/AppContext';
 import { X } from 'lucide-react';
@@ -50,27 +50,6 @@ const MyAttendance: React.FC = () => {
       let workerCutoffData = undefined;
       let managerCutoffData = undefined;
 
-      const payload = { e_comp: user.code, manager_code: user.manager_code };
-
-      try {
-        if (cutoffSettings.cutoff_worker === 'Y') {
-          const workerData = await fetchWorkerCutoff({ e_comp: user.code, worker_code: user.code });
-          if (workerData && workerData.length > 0) workerCutoffData = workerData[0];
-        }
-        if (cutoffSettings.cutoff_manager === 'Y' || cutoffSettings.cutoff_worker === 'Y') {
-          const mgrData = await fetchManagerCutoff(payload);
-          if (mgrData && mgrData.length > 0) managerCutoffData = mgrData[0];
-        }
-        if (!workerCutoffData && !managerCutoffData && (cutoffSettings.cutoff_auto === 'Y')) {
-          const autoData = await fetchDeptMgrCutoff(payload);
-          // Auto cutoff can fallback as managerCutoffData if needed, 
-          // but typically Auto goes to DeptMgr. We can map it as manager for now.
-          if (autoData && autoData.length > 0) managerCutoffData = autoData[0];
-        }
-      } catch (err) {
-        console.error("Error fetching dynamic cutoff", err);
-      }
-
 
 
       const [pInH, pInM] = myPolicy.inTime.split(':').map(Number);
@@ -82,6 +61,14 @@ const MyAttendance: React.FC = () => {
       let totalOvertimeMs = 0;
       let totalAbsents = 0;
       let totalWeekOffs = 0;
+
+      let empRequests: any[] = [];
+      try {
+        const allReqs = await fetchRequests();
+        empRequests = allReqs.filter((r: any) => r.userId === user.id || r.userId === user.code);
+      } catch (err) {
+        console.error("Error fetching emp requests", err);
+      }
 
       const parsedRecords = punchData
         .filter((p: any) => {
@@ -95,7 +82,7 @@ const MyAttendance: React.FC = () => {
           const checkIn = p.intime ? p.intime.split(' ')[1]?.substring(0, 5) : '';
           const checkOut = p.outtime ? p.outtime.split(' ')[1]?.substring(0, 5) : '';
 
-          const advanced = calculateAdvancedAttendance(p.status, checkIn, checkOut, date, workerCutoffData, attendanceGlobalRules, managerCutoffData);
+          const advanced = calculateAdvancedAttendance(p.status, checkIn, checkOut, date, workerCutoffData, attendanceGlobalRules, managerCutoffData, empRequests);
           const status = advanced.attendanceStatus;
 
           const totalHours = advanced.completedWorkingHours;
@@ -225,7 +212,7 @@ const MyAttendance: React.FC = () => {
                 { key: 'day', label: masterConfig?.employeeAttendance?.columns?.dayOfWeek?.label || 'Day', render: (record) => <span className="text-sm font-medium text-slate-500 dark:text-slate-400">{record.dayOfWeek || '-'}</span> },
                 { key: 'checkIn', label: masterConfig?.employeeAttendance?.columns?.checkIn?.label || 'In', render: (record) => <span className="text-sm font-medium text-slate-600 dark:text-slate-400">{record.checkIn || '-'}</span> },
                 { key: 'checkOut', label: masterConfig?.employeeAttendance?.columns?.checkOut?.label || 'Out', render: (record) => <span className="text-sm font-medium text-slate-600 dark:text-slate-400">{record.checkOut || '-'}</span> },
-                { key: 'reqHours', label: 'Req. Hrs', render: (record) => <span className="text-sm font-bold text-slate-700 dark:text-slate-300">{record.requiredWorkingHours}</span> },
+                // { key: 'reqHours', label: 'Req. Hrs', render: (record) => <span className="text-sm font-bold text-slate-700 dark:text-slate-300">{record.requiredWorkingHours}</span> },
                 { key: 'totalHours', label: masterConfig?.employeeAttendance?.columns?.totalHours?.label || 'Working Hrs', render: (record) => <span className="text-sm font-bold text-slate-700 dark:text-slate-300">{record.totalHours}</span> },
                 // { key: 'workStatus', label: 'Work Status', render: (record) => <span className={`text-sm font-bold ${record.workingHoursStatus === 'Completed' ? 'text-emerald-600 dark:text-emerald-400' : record.workingHoursStatus === 'Incomplete' ? 'text-rose-600 dark:text-rose-400' : 'text-slate-500'}`}>{record.workingHoursStatus}</span> },
                 { key: 'overTime', label: 'Over Time', render: (record) => <span className="text-sm font-bold text-emerald-600 dark:text-emerald-400">{record.overTime}</span> },

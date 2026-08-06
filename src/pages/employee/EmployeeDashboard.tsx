@@ -10,7 +10,7 @@ import DatePicker from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
 import { ATTENDANCE_BASE_MAP, ATTENDANCE_STATUS, ATTENDANCE_STATUS_MAP, DAYS } from '../../constants';
 import { AttendanceTable, type ColumnDef } from '../../components/AttendanceTable';
-import { fetchEmployeePunchData, fetchLeaveTypes, fetchWorkerCutoff, fetchManagerCutoff } from '../../api';
+import { fetchEmployeePunchData, fetchLeaveTypes, fetchRequests } from '../../api';
 import { calculateAdvancedAttendance, calculateTimeNum, getAttendanceFieldStyle, calculateTime, isRecordLate } from '../../utils/attendanceUtils';
 
 const EmployeeDashboard: React.FC = () => {
@@ -62,15 +62,6 @@ const EmployeeDashboard: React.FC = () => {
 
       let activeCutoff = undefined;
       let managerCutoffData = undefined;
-      try {
-        const workerData = await fetchWorkerCutoff({ e_comp: user.code, worker_code: user.code });
-        if (workerData && workerData.length > 0) activeCutoff = workerData[0];
-
-        const mgrData = await fetchManagerCutoff({ e_comp: user.code, manager_code: user.manager_code });
-        if (mgrData && mgrData.length > 0) managerCutoffData = mgrData[0];
-      } catch (err) {
-        console.error("Error fetching cutoffs in dashboard", err);
-      }
 
       const punchRes = await fetchEmployeePunchData(user.id, frDate, toDate);
 
@@ -81,6 +72,14 @@ const EmployeeDashboard: React.FC = () => {
         login({ ...user, designation: user?.designation });
       }
 
+      let empRequests: any[] = [];
+      try {
+        const reqs = await fetchRequests(user.code); // Maybe just fetch all? fetchRequests()
+        // Wait, for employee, we can fetch all and filter by user.id
+        const allReqs = await fetchRequests();
+        empRequests = allReqs.filter((r: any) => r.userId === user.id || r.userId === user.code);
+      } catch (e) { console.error("Error fetching emp requests", e); }
+
       const records = punchData
         .filter((p: any) => p.emp_id === user.code || String(p.emp_id) === String(user.code))
         .map((p: any) => {
@@ -88,7 +87,7 @@ const EmployeeDashboard: React.FC = () => {
           const checkIn = p.intime ? p.intime.split(' ')[1]?.substring(0, 5) : '';
           const checkOut = p.outtime ? p.outtime.split(' ')[1]?.substring(0, 5) : '';
 
-          const advanced = calculateAdvancedAttendance(p.status, checkIn, checkOut, date, activeCutoff, attendanceGlobalRules, managerCutoffData);
+          const advanced = calculateAdvancedAttendance(p.status, checkIn, checkOut, date, activeCutoff, attendanceGlobalRules, managerCutoffData, empRequests);
           const status = advanced.attendanceStatus;
 
           return { date, status, checkIn, checkOut };
@@ -102,7 +101,7 @@ const EmployeeDashboard: React.FC = () => {
 
       setDashboardData({
         attendance: { records },
-        requests: [],
+        requests: empRequests,
         managers
       });
     } catch (err) {
@@ -194,14 +193,7 @@ const EmployeeDashboard: React.FC = () => {
       return !isAfter(startOfDay(d), today);
     })
     .map((r: any) => {
-      const approvedMispunch = empRequests.find((req: any) => req.type === ATTENDANCE_BASE_MAP.MISSPUNCH.label && req.date === r.date && req.status === 'Approved');
-      const approvedLeave = empRequests.find((req: any) => req.type === 'Leave' && req.date === r.date && req.status === 'Approved');
-
-      let finalStatus = r.status;
-      if (approvedMispunch) finalStatus = 'P/MP';
-      else if (approvedLeave) finalStatus = 'L';
-
-      return { ...r, status: finalStatus };
+      return { ...r };
     });
 
   const presentDays = pastAndPresentRecords.filter((r: any) => r.status === ATTENDANCE_STATUS.PRESENT || r.status === ATTENDANCE_STATUS.IN || r.status === ATTENDANCE_STATUS.PRESENT_ON_HOLIDAY || r.status === ATTENDANCE_STATUS.PRESENT_MISSPUNCH).length;
@@ -231,24 +223,12 @@ const EmployeeDashboard: React.FC = () => {
     let status = '-';
     let checkIn = '-';
     let checkOut = '-';
-    if (!isFuture) {
+
+    if (!isFuture && !loading) {
       const record = myAttendance.find((r: any) => r.date === dateStr);
       status = record?.status || '-';
       checkIn = record?.checkIn || '-';
       checkOut = record?.checkOut || '-';
-
-      if (!record?.checkIn && !record?.checkOut) {
-        if (currentIterDate.getDay() === 0) {
-          status = 'WO';
-        } else {
-          status = 'A';
-        }
-      }
-
-      const approvedMispunch = empRequests.find((r: any) => r.type === ATTENDANCE_BASE_MAP.MISSPUNCH.label && r.date === dateStr && r.status === 'Approved');
-      if (approvedMispunch) {
-        status = 'P/MP';
-      }
     }
 
     return {
@@ -256,7 +236,7 @@ const EmployeeDashboard: React.FC = () => {
       day: format(currentIterDate, 'EEEE'),
       checkIn,
       checkOut,
-      status: isFuture ? '-' : status
+      status: isFuture || loading ? '-' : status
     };
   });
 
@@ -457,35 +437,22 @@ const EmployeeDashboard: React.FC = () => {
                     const isFuture = isAfter(currentIterDate, today);
 
                     let status = '-';
-                    if (!isFuture) {
+                    if (!isFuture && !loading) {
                       const record = myAttendance.find((r: any) => r.date === dateStr);
                       status = record?.status || '-';
-
-                      if (!record?.checkIn && !record?.checkOut) {
-                        if (currentIterDate.getDay() === 0) {
-                          status = 'WO';
-                        } else {
-                          status = 'A';
-                        }
-                      }
-
-                      const approvedMispunch = empRequests.find((r: any) => r.type === ATTENDANCE_BASE_MAP.MISSPUNCH.label && r.date === dateStr && r.status === 'Approved');
-                      if (approvedMispunch) {
-                        status = 'P/MP';
-                      }
                     }
 
                     let bgColor = 'font-bold shadow-sm';
-                    if (isFuture || status === '-') {
+                    if (isFuture || loading || status === '-') {
                       bgColor += ' bg-slate-50 dark:bg-slate-800/50 text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-slate-700/60';
                     }
 
-                    let customStyle: React.CSSProperties = isFuture || status === '-'
+                    let customStyle: React.CSSProperties = isFuture || loading || status === '-'
                       ? {}
                       : getAttendanceFieldStyle(status, customColors, true);
 
-                    const displayStatus = isFuture ? '' : status;
-                    const tooltip = !isFuture && displayStatus !== '-' ? `${day} ${displayStatus}: ${ATTENDANCE_STATUS_MAP[displayStatus] || displayStatus}` : '';
+                    const displayStatus = isFuture || loading ? '' : status;
+                    const tooltip = !isFuture && !loading && displayStatus !== '-' ? `${day} ${displayStatus}: ${ATTENDANCE_STATUS_MAP[displayStatus] || displayStatus}` : '';
 
                     return (
                       <div key={day} title={tooltip} style={customStyle} className={`relative group rounded-lg flex flex-col items-center justify-center p-1 transition-colors h-full ${bgColor}`}>

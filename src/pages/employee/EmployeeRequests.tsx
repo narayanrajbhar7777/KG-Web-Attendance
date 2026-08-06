@@ -134,8 +134,9 @@ const EmployeeRequests: React.FC = () => {
       await deleteRequestAPI(id);
       toast.success('Request deleted successfully!');
       if (req && user) {
-        if (req.managerId) {
-          addNotification(`A ${req.type} request was deleted by ${user.name}`, req.managerId);
+        const targetManager = req.managerId || user.manager_code;
+        if (targetManager) {
+          addNotification(`A ${req.type} request was deleted by ${user.name}`, targetManager.toString());
         }
         addNotification(`A ${req.type} request was deleted by ${user.name}`); // for Admin
       }
@@ -197,8 +198,9 @@ const EmployeeRequests: React.FC = () => {
     await updateRequestAPI(req.id, payload);
 
     if (user) {
-      if (currentRequestData.managerId) {
-        addNotification(`A ${currentRequestData.type} request was updated by ${user.name}`, currentRequestData.managerId);
+      const targetManager = currentRequestData.managerId || user.manager_code;
+      if (targetManager) {
+        addNotification(`A ${currentRequestData.type} request was updated by ${user.name}`, targetManager.toString());
       }
       addNotification(`A ${currentRequestData.type} request was updated by ${user.name}`); // for Admin
     }

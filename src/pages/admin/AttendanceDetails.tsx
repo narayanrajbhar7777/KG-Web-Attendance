@@ -8,7 +8,7 @@ import 'react-datepicker/dist/react-datepicker.css';
 import toast from 'react-hot-toast';
 import { transformAttendanceRowsForExport, exportAttendanceToExcel, exportAttendanceToCsv, exportAttendanceToPdf } from '../../utils/exportUtils';
 import Loader from '../../components/Loader';
-import { fetchEmployeePunchData, fetchWorkerCutoff, fetchManagerCutoff } from '../../api';
+import { fetchEmployeePunchData, fetchWorkerCutoff, fetchManagerCutoff, fetchRequests } from '../../api';
 import { AttendanceTable } from '../../components/AttendanceTable';
 import { calculateTime, calculateTimeNum, formatDur, getFullStatus, getStatusColor, calculateAdvancedAttendance, generateShortName } from '../../utils/attendanceUtils';
 import { ATTENDANCE_STATUS, DEFAULT_ATTENDANCE_COLORS } from '../../constants';
@@ -75,16 +75,25 @@ const AttendanceDetails: React.FC = () => {
         if (mgrData && mgrData.length > 0) managerCutoffData = mgrData[0];
       } catch (e) { console.error("Failed to fetch manager cutoff", e); }
 
+      let allRequests: any[] = [];
+      try {
+        allRequests = await fetchRequests(user?.code);
+      } catch (e) {
+        console.error("Failed to fetch requests", e);
+      }
+
       const attendance = allEmployees.map((emp: any) => {
         const empCutoff = cutoffRes.find((c: any) => c.worker_code === emp.code);
+        const empRequests = allRequests.filter(r => r.userId === emp.id);
+
         const empRecords = punchData
           .filter((p: any) => p.emp_id === emp.code || String(p.emp_id) === String(emp.code))
           .map((p: any) => {
             const date = p.logindate ? p.logindate.split(' ')[0] : '';
             const checkIn = p.intime ? p.intime.split(' ')[1]?.substring(0, 5) : '';
             const checkOut = p.outtime ? p.outtime.split(' ')[1]?.substring(0, 5) : '';
-            const advanced = calculateAdvancedAttendance(p.status, checkIn, checkOut, date, empCutoff, attendanceGlobalRules, managerCutoffData);
-            const status = advanced.attendanceStatus;
+            const advanced = calculateAdvancedAttendance(p.status, checkIn, checkOut, date, empCutoff, attendanceGlobalRules, managerCutoffData, empRequests);
+            let status = advanced.attendanceStatus;
 
             return {
               date,
@@ -257,7 +266,7 @@ const AttendanceDetails: React.FC = () => {
                   { key: 'day', label: 'Day', render: (item) => <span className="text-slate-500 dark:text-slate-400 text-[13px]">{format(item.dateObj, 'EEE')}</span> },
                   { key: 'in', label: 'In', render: (item) => <span className="font-mono text-slate-600 dark:text-slate-300 text-[13px]">{item.record?.checkIn || '-'}</span> },
                   { key: 'out', label: 'Out', render: (item) => <span className="font-mono text-slate-600 dark:text-slate-300 text-[13px]">{item.record?.checkOut || '-'}</span> },
-                  { key: 'reqHours', label: 'Req. Hrs', render: (item) => <span className="font-medium text-slate-800 dark:text-slate-200 text-[13px]">{item.record?.requiredWorkingHours || '-'}</span> },
+                  // { key: 'reqHours', label: 'Req. Hrs', render: (item) => <span className="font-medium text-slate-800 dark:text-slate-200 text-[13px]">{item.record?.requiredWorkingHours || '-'}</span> },
                   {
                     key: 'workingHr', label: 'Working Hr', render: (item) => {
                       return <span className="font-medium text-slate-800 dark:text-slate-200 text-[13px]">{item.record?.completedWorkingHours || '-'}</span>

@@ -103,8 +103,9 @@ const AdminDashboard: React.FC = () => {
           const pDate = p?.logindate ? p.logindate.split(' ')[0] : currDate;
 
           const empCutoff = cutoffs.find((c: any) => c.worker_code === emp.code);
-          const advanced = calculateAdvancedAttendance(p?.status, checkIn, checkOut, pDate, empCutoff, attendanceGlobalRules, managerCutoffData);
-          const status = advanced.attendanceStatus;
+          const empRequests = reqsData.filter((r: any) => r.userId === emp.code || r.userId === emp.id);
+          const advanced = calculateAdvancedAttendance(p?.status, checkIn, checkOut, pDate, empCutoff, attendanceGlobalRules, managerCutoffData, empRequests);
+          let status = advanced.attendanceStatus;
 
           return {
             id: emp.code + '-' + Math.random(),

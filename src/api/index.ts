@@ -43,6 +43,7 @@ export const fetchRequests = async (managerId?: string, silent = false) => {
     const mappedRequests = (data.DATA || []).map((req: any) => ({
       id: req.id,
       userId: req.user_id,
+      managerId: req.manager_id,
       type: req.request_type,
       date: req.request_date,
       toDate: req.to_date,
