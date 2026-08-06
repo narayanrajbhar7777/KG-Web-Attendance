@@ -207,6 +207,8 @@ export interface AttendanceCalculationResult {
   requiredWorkingHours: string;
   completedWorkingHours: string;
   workingHoursStatus: string;
+  overtime: string;
+  overtimeMins: number;
 }
 
 export const calculateAdvancedAttendance = (
@@ -391,8 +393,17 @@ export const calculateAdvancedAttendance = (
   }
 
   if (empRequests && empRequests.length > 0) {
-    const approvedLeave = empRequests.find((r: any) => (r.type === 'Leave' || r.type === 'LEAVE') && r.date === pDate && r.status === 'Approved');
-    const approvedMispunch = empRequests.find((r: any) => (r.type === 'MisPunch' || r.type === 'MISSPUNCH' || r.type === 'Miss Punch' || r.type === 'Missed Punch') && r.date === pDate && r.status === 'Approved');
+    const formattedPDate = format(new Date(pDate), 'yyyy-MM-dd');
+    const approvedLeave = empRequests.find((r: any) => {
+      const rDateStr = r.date ? format(new Date(r.date), 'yyyy-MM-dd') : '';
+      const typeStr = (r.type || '').toUpperCase().replace(/\s+/g, '');
+      return typeStr === 'LEAVE' && rDateStr === formattedPDate && r.status === 'Approved';
+    });
+    const approvedMispunch = empRequests.find((r: any) => {
+      const rDateStr = r.date ? format(new Date(r.date), 'yyyy-MM-dd') : '';
+      const typeStr = (r.type || '').toUpperCase().replace(/\s+/g, '');
+      return (typeStr === 'MISPUNCH' || typeStr === 'MISSPUNCH' || typeStr === 'MISSEDPUNCH') && rDateStr === formattedPDate && r.status === 'Approved';
+    });
     
     if (approvedLeave) {
       status = ATTENDANCE_STATUS.LEAVE;
@@ -403,11 +414,13 @@ export const calculateAdvancedAttendance = (
 
   const reqMins = targetHours * 60;
   let workingHoursStatus = '-';
+  let otMins = 0;
 
   if (adjIn && adjOut && status !== ATTENDANCE_STATUS.WEEK_OFF && status !== ATTENDANCE_STATUS.HOLIDAY && status !== ATTENDANCE_STATUS.PRESENT_ON_HOLIDAY) {
     if (totalMins >= reqMins) {
       workingHoursStatus = 'Completed';
       reason = `Completed ${targetHours} working hours`;
+      otMins = totalMins - reqMins;
     } else {
       workingHoursStatus = 'Incomplete';
       reason = `Working hours less than ${targetHours} hours`;
@@ -419,6 +432,8 @@ export const calculateAdvancedAttendance = (
     const m = Math.round((hours - h) * 60);
     return m > 0 ? `${h}h ${m}m` : `${h} hrs`;
   };
+
+  const overtimeFormatted = otMins > 0 ? formatDur(otMins) : '-';
 
   return {
     actualIn: cIn || '-',
@@ -438,6 +453,86 @@ export const calculateAdvancedAttendance = (
     reason: reason,
     requiredWorkingHours: formatHoursStr(targetHours),
     completedWorkingHours: workingHoursFormatted,
-    workingHoursStatus: workingHoursStatus
+    workingHoursStatus: workingHoursStatus,
+    overtime: overtimeFormatted,
+    overtimeMins: otMins
+  };
+};
+
+export interface ProcessedAttendanceRecord {
+  date: string;
+  dayOfWeek: string;
+  checkIn: string;
+  checkOut: string;
+  status: string;
+  duration: string;
+  totalHours: string;
+  overTime: string;
+  diffMs: number;
+  otMs: number;
+  requiredWorkingHours: string;
+  completedWorkingHours: string;
+  workingHoursStatus: string;
+  advanced: AttendanceCalculationResult;
+}
+
+export const processAttendanceRecord = (
+  p: any,
+  empCutoff?: any,
+  attendanceGlobalRules?: any,
+  managerCutoffData?: any,
+  empRequests?: any[],
+  currentDate?: Date
+): ProcessedAttendanceRecord => {
+  const currDateStr = currentDate ? format(currentDate, 'yyyy-MM-dd') : format(new Date(), 'yyyy-MM-dd');
+  const date = p?.logindate ? p.logindate.split(' ')[0] : currDateStr;
+  
+  const checkIn = p?.intime && p.intime !== '-' ? p.intime.split(' ')[1]?.substring(0, 5) : '';
+  const checkOut = p?.outtime && p.outtime !== '-' ? p.outtime.split(' ')[1]?.substring(0, 5) : '';
+  
+  const advanced = calculateAdvancedAttendance(
+    p?.status,
+    checkIn,
+    checkOut,
+    date,
+    empCutoff,
+    attendanceGlobalRules,
+    managerCutoffData,
+    empRequests
+  );
+  
+  const status = advanced.attendanceStatus;
+  const totalHours = advanced.completedWorkingHours;
+  const overTime = advanced.overtime || '-';
+  
+  let diffMs = 0;
+  if (advanced.workingMins) {
+    diffMs = advanced.workingMins * 60 * 1000;
+  }
+  let otMs = 0;
+  if (advanced.overtimeMins) {
+    otMs = advanced.overtimeMins * 60 * 1000;
+  }
+  
+  const dateObj = new Date(date);
+  const dayOfWeek = isNaN(dateObj.getTime()) ? '' : dateObj.toLocaleDateString('en-US', { weekday: 'short' });
+  
+  const { total: duration } = calculateTime(checkIn || '-', checkOut || '-');
+  
+  return {
+    date,
+    dayOfWeek,
+    checkIn: checkIn || '-',
+    checkOut: checkOut || '-',
+    status,
+    duration,
+    totalHours,
+    overTime,
+    diffMs,
+    otMs,
+    requiredWorkingHours: advanced.requiredWorkingHours,
+    completedWorkingHours: advanced.completedWorkingHours,
+    workingHoursStatus: advanced.workingHoursStatus,
+    advanced
   };
 };

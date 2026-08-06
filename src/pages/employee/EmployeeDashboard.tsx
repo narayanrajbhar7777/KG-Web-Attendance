@@ -11,7 +11,7 @@ import 'react-datepicker/dist/react-datepicker.css';
 import { ATTENDANCE_BASE_MAP, ATTENDANCE_STATUS, ATTENDANCE_STATUS_MAP, DAYS } from '../../constants';
 import { AttendanceTable, type ColumnDef } from '../../components/AttendanceTable';
 import { fetchEmployeePunchData, fetchLeaveTypes, fetchRequests } from '../../api';
-import { calculateAdvancedAttendance, calculateTimeNum, getAttendanceFieldStyle, calculateTime, isRecordLate } from '../../utils/attendanceUtils';
+import { calculateTimeNum, getAttendanceFieldStyle, calculateTime, isRecordLate, processAttendanceRecord } from '../../utils/attendanceUtils';
 
 const EmployeeDashboard: React.FC = () => {
   const { user, login } = useAuth();
@@ -74,23 +74,13 @@ const EmployeeDashboard: React.FC = () => {
 
       let empRequests: any[] = [];
       try {
-        const reqs = await fetchRequests(user.code); // Maybe just fetch all? fetchRequests()
-        // Wait, for employee, we can fetch all and filter by user.id
-        const allReqs = await fetchRequests();
-        empRequests = allReqs.filter((r: any) => r.userId === user.id || r.userId === user.code);
+        empRequests = await fetchRequests(user.code)
       } catch (e) { console.error("Error fetching emp requests", e); }
 
       const records = punchData
         .filter((p: any) => p.emp_id === user.code || String(p.emp_id) === String(user.code))
         .map((p: any) => {
-          const date = p.logindate ? p.logindate.split(' ')[0] : '';
-          const checkIn = p.intime ? p.intime.split(' ')[1]?.substring(0, 5) : '';
-          const checkOut = p.outtime ? p.outtime.split(' ')[1]?.substring(0, 5) : '';
-
-          const advanced = calculateAdvancedAttendance(p.status, checkIn, checkOut, date, activeCutoff, attendanceGlobalRules, managerCutoffData, empRequests);
-          const status = advanced.attendanceStatus;
-
-          return { date, status, checkIn, checkOut };
+          return processAttendanceRecord(p, activeCutoff, attendanceGlobalRules, managerCutoffData, empRequests);
         });
 
       const managers = user.manager_code ? [{ id: user.manager_code.toString(), name: user.manager_name }] : [];

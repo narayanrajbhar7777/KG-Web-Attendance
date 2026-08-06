@@ -112,7 +112,6 @@ export function AttendanceTable<T>({
             {customTopLeft}
           </div>
           <div className="flex items-center gap-4">
-            {customTopRight}
             {searchable && (
               <div className="relative">
                 <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
@@ -128,6 +127,7 @@ export function AttendanceTable<T>({
                 />
               </div>
             )}
+            {customTopRight}
           </div>
         </div>
       )}

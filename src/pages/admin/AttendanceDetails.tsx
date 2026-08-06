@@ -10,7 +10,7 @@ import { transformAttendanceRowsForExport, exportAttendanceToExcel, exportAttend
 import Loader from '../../components/Loader';
 import { fetchEmployeePunchData, fetchWorkerCutoff, fetchManagerCutoff, fetchRequests } from '../../api';
 import { AttendanceTable } from '../../components/AttendanceTable';
-import { calculateTime, calculateTimeNum, formatDur, getFullStatus, getStatusColor, calculateAdvancedAttendance, generateShortName } from '../../utils/attendanceUtils';
+import { calculateTime, calculateTimeNum, formatDur, getFullStatus, getStatusColor, calculateAdvancedAttendance, generateShortName, getAttendanceFieldStyle, isRecordLate } from '../../utils/attendanceUtils';
 import { ATTENDANCE_STATUS, DEFAULT_ATTENDANCE_COLORS } from '../../constants';
 
 const AttendanceDetails: React.FC = () => {
@@ -25,6 +25,7 @@ const AttendanceDetails: React.FC = () => {
   const [selectedEmployee, setSelectedEmployee] = useState<any>(null);
   const [employeesList, setEmployeesList] = useState<any[]>([]);
   const [exportingFormat, setExportingFormat] = useState<null | 'excel' | 'csv' | 'pdf'>(null);
+  const [attendanceFilter, setAttendanceFilter] = useState<string>('All');
 
   const fetchDetailsData = async () => {
     if (!user) return;
@@ -176,23 +177,24 @@ const AttendanceDetails: React.FC = () => {
   };
 
   if (selectedEmployee) {
-    let totalPresent = 0;
-    let totalWorkingMins = 0;
-    let totalOtMins = 0;
-    let totalAbsent = 0;
-    let totalWeekOff = 0;
+    let totalPresent = 0, totalAbsent = 0, totalWeekOff = 0, totalWorkingMins = 0, totalOtMins = 0, totalMissedPunch = 0, totalPresentOnHoliday = 0, totalLate = 0, totalLeave = 0;
 
     const empAttendance = attendance.find((a: any) => a.userId === selectedEmployee.id)?.records || [];
     const pastDays = days.filter(day => !isAfter(new Date(currentDate.getFullYear(), currentDate.getMonth(), day), today));
 
     pastDays.forEach(day => {
-      const dateStr = format(new Date(currentDate.getFullYear(), currentDate.getMonth(), day), 'yyyy-MM-dd');
+      const dateObj = new Date(currentDate.getFullYear(), currentDate.getMonth(), day);
+      const dateStr = format(dateObj, 'yyyy-MM-dd');
       const record = empAttendance.find((r: any) => r.date === dateStr);
       let status = record?.status || '-';
 
-      if (['P', 'L', 'EO', 'HD', 'P/MP', 'PH', 'In'].includes(status)) totalPresent++;
+      if (['P', 'EO', 'HD', 'In'].includes(status)) totalPresent++;
       if (status === 'A') totalAbsent++;
       if (status === 'WO') totalWeekOff++;
+      if (['M', 'P/MP'].includes(status)) totalMissedPunch++;
+      if (status === 'PH') totalPresentOnHoliday++;
+      if (['L', 'EL', 'HDL'].includes(status)) totalLeave++;
+      if (isRecordLate(record?.checkIn)) totalLate++;
       const { totalMins, otMins } = calculateTimeNum(record?.checkIn, record?.checkOut);
       totalWorkingMins += totalMins;
       totalOtMins += otMins;
@@ -206,47 +208,99 @@ const AttendanceDetails: React.FC = () => {
           </div>
         )}
         <div className="bg-white dark:bg-[#1e293b] rounded-2xl shadow-sm border border-slate-200 dark:border-slate-800 flex flex-col h-full overflow-hidden">
-          <div className="bg-white dark:bg-[#1e293b] p-6 border-b border-slate-200 dark:border-slate-800 flex flex-col md:flex-row md:items-center justify-between gap-4 flex-shrink-0">
-            <div className="flex flex-col gap-3">
-              <div className="flex items-center gap-3">
+          <div className="bg-white dark:bg-[#1e293b] p-6 border-b border-slate-200 dark:border-slate-800 flex flex-col gap-4 flex-shrink-0">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+              <div className="flex items-center gap-4 flex-wrap">
                 <h3 className="font-bold text-slate-800 dark:text-white text-lg">
                   {selectedEmployee.name} - {selectedEmployee.code}
                 </h3>
+                <div className="flex gap-4">
+                  <span className="text-sm font-semibold text-blue-600 dark:text-blue-400">Working Hrs: {formatDur(totalWorkingMins)}</span>
+                  <span className="text-sm font-semibold text-emerald-600 dark:text-emerald-400">Over Time: {formatDur(totalOtMins)}</span>
+                </div>
               </div>
-              <div className="flex flex-wrap gap-4 text-xs font-medium text-slate-600 dark:text-slate-300">
-                <div className="min-w-[150px] text-center bg-slate-100 dark:bg-slate-800/50 px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700">
-                  Present Day: <span className="font-bold text-blue-600 dark:text-blue-400">{totalPresent}</span>
+              <div className="flex items-center gap-4">
+                <div className="relative z-50">
+                  <DatePicker
+                    selected={currentDate}
+                    onChange={(date: Date | null) => { if (date) setCurrentDate(date); }}
+                    maxDate={new Date()}
+                    dateFormat="MMMM yyyy"
+                    showMonthYearPicker
+                    className="px-3 h-[36px] bg-slate-100 hover:bg-slate-200 dark:bg-[#0b1120] border border-slate-200 dark:border-slate-700 rounded-lg text-[13px] font-semibold focus:ring-2 focus:ring-blue-500 outline-none dark:text-white dark:[color-scheme:dark] w-[150px] text-slate-700 cursor-pointer text-center transition-colors"
+                  />
                 </div>
-                <div className="min-w-[150px] text-center bg-slate-100 dark:bg-slate-800/50 px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700">
-                  Absent Day: <span className="font-bold text-rose-600 dark:text-rose-400">{totalAbsent}</span>
-                </div>
-                <div className="min-w-[150px] text-center bg-slate-100 dark:bg-slate-800/50 px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700">
-                  Working Hr: <span className="font-bold text-blue-600 dark:text-blue-400">{formatDur(totalWorkingMins)}</span>
-                </div>
-                <div className="min-w-[150px] text-center bg-slate-100 dark:bg-slate-800/50 px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700">
-                  Over Time: <span className="font-bold text-emerald-600 dark:text-emerald-400">{formatDur(totalOtMins)}</span>
-                </div>
-                <div className="min-w-[150px] text-center bg-slate-100 dark:bg-slate-800/50 px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700">
-                  Week Off: <span className="font-bold text-amber-600 dark:text-amber-400">{totalWeekOff}</span>
-                </div>
+                <button
+                  onClick={() => setSelectedEmployee(null)}
+                  className="ml-2 p-1.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 rounded-lg text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-white transition-colors" title="Close Report"
+                >
+                  <X className="w-5 h-5" />
+                </button>
               </div>
             </div>
-            <div className="flex items-center gap-4">
-              <div className="relative z-50">
-                <DatePicker
-                  selected={currentDate}
-                  onChange={(date: Date | null) => { if (date) setCurrentDate(date); }}
-                  maxDate={new Date()}
-                  dateFormat="MMMM yyyy"
-                  showMonthYearPicker
-                  className="px-3 h-[36px] bg-slate-100 hover:bg-slate-200 dark:bg-[#0b1120] border border-slate-200 dark:border-slate-700 rounded-lg text-[13px] font-semibold focus:ring-2 focus:ring-blue-500 outline-none dark:text-white dark:[color-scheme:dark] w-[150px] text-slate-700 cursor-pointer text-center transition-colors"
-                />
-              </div>
-              <button
-                onClick={() => setSelectedEmployee(null)}
-                className="ml-2 p-1.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 rounded-lg text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-white transition-colors" title="Close Report"
+            <div className="flex flex-wrap gap-4 text-xs font-medium text-slate-600 dark:text-slate-300">
+              {/* <button
+                onClick={() => setAttendanceFilter('All')}
+                className="min-w-[100px] text-center px-3 py-1.5 rounded-lg border transition-colors cursor-pointer hover:opacity-80"
+                style={getAttendanceFieldStyle('ALL', { ALL: '#6366f1' }, attendanceFilter === 'All')}
               >
-                <X className="w-5 h-5" />
+                <span className="font-bold">All</span>
+              </button> */}
+              <button
+                onClick={() => setAttendanceFilter('All')}
+                className="min-w-[150px] text-center px-3 py-1.5 rounded-lg border transition-colors cursor-pointer hover:opacity-80"
+                style={getAttendanceFieldStyle('TOTAL', { TOTAL: '#8b5cf6' }, attendanceFilter === 'All')}
+              >
+                Total Days: <span className="font-bold">{pastDays.length}</span>
+              </button>
+              <button
+                onClick={() => setAttendanceFilter(prev => prev === ATTENDANCE_STATUS.PRESENT ? 'All' : ATTENDANCE_STATUS.PRESENT)}
+                className="min-w-[150px] text-center px-3 py-1.5 rounded-lg border transition-colors cursor-pointer hover:opacity-80"
+                style={getAttendanceFieldStyle(ATTENDANCE_STATUS.PRESENT, customColors, attendanceFilter === ATTENDANCE_STATUS.PRESENT)}
+              >
+                Present Day: <span className="font-bold">{totalPresent}</span>
+              </button>
+              <button
+                onClick={() => setAttendanceFilter(prev => prev === ATTENDANCE_STATUS.ABSENT ? 'All' : ATTENDANCE_STATUS.ABSENT)}
+                className="min-w-[150px] text-center px-3 py-1.5 rounded-lg border transition-colors cursor-pointer hover:opacity-80"
+                style={getAttendanceFieldStyle(ATTENDANCE_STATUS.ABSENT, customColors, attendanceFilter === ATTENDANCE_STATUS.ABSENT)}
+              >
+                Absent Day: <span className="font-bold">{totalAbsent}</span>
+              </button>
+              <button
+                onClick={() => setAttendanceFilter(prev => prev === ATTENDANCE_STATUS.WEEK_OFF ? 'All' : ATTENDANCE_STATUS.WEEK_OFF)}
+                className="min-w-[150px] text-center px-3 py-1.5 rounded-lg border transition-colors cursor-pointer hover:opacity-80"
+                style={getAttendanceFieldStyle(ATTENDANCE_STATUS.WEEK_OFF, customColors, attendanceFilter === ATTENDANCE_STATUS.WEEK_OFF)}
+              >
+                Week Off: <span className="font-bold">{totalWeekOff}</span>
+              </button>
+              <button
+                onClick={() => setAttendanceFilter(prev => prev === ATTENDANCE_STATUS.MISSPUNCH ? 'All' : ATTENDANCE_STATUS.MISSPUNCH)}
+                className="min-w-[150px] text-center px-3 py-1.5 rounded-lg border transition-colors cursor-pointer hover:opacity-80"
+                style={getAttendanceFieldStyle(ATTENDANCE_STATUS.MISSPUNCH, customColors, attendanceFilter === ATTENDANCE_STATUS.MISSPUNCH)}
+              >
+                Missed Punch: <span className="font-bold">{totalMissedPunch}</span>
+              </button>
+              <button
+                onClick={() => setAttendanceFilter(prev => prev === ATTENDANCE_STATUS.PRESENT_ON_HOLIDAY ? 'All' : ATTENDANCE_STATUS.PRESENT_ON_HOLIDAY)}
+                className="min-w-[150px] text-center px-3 py-1.5 rounded-lg border transition-colors cursor-pointer hover:opacity-80"
+                style={getAttendanceFieldStyle(ATTENDANCE_STATUS.PRESENT_ON_HOLIDAY, customColors, attendanceFilter === ATTENDANCE_STATUS.PRESENT_ON_HOLIDAY)}
+              >
+                POH: <span className="font-bold">{totalPresentOnHoliday}</span>
+              </button>
+              <button
+                onClick={() => setAttendanceFilter(prev => prev === ATTENDANCE_STATUS.LATE ? 'All' : ATTENDANCE_STATUS.LATE)}
+                className="min-w-[150px] text-center px-3 py-1.5 rounded-lg border transition-colors cursor-pointer hover:opacity-80"
+                style={getAttendanceFieldStyle(ATTENDANCE_STATUS.LATE, customColors, attendanceFilter === ATTENDANCE_STATUS.LATE)}
+              >
+                Late: <span className="font-bold">{totalLate}</span>
+              </button>
+              <button
+                onClick={() => setAttendanceFilter(prev => prev === ATTENDANCE_STATUS.LEAVE ? 'All' : ATTENDANCE_STATUS.LEAVE)}
+                className="min-w-[150px] text-center px-3 py-1.5 rounded-lg border transition-colors cursor-pointer hover:opacity-80"
+                style={getAttendanceFieldStyle(ATTENDANCE_STATUS.LEAVE, customColors, attendanceFilter === ATTENDANCE_STATUS.LEAVE)}
+              >
+                Leave: <span className="font-bold">{totalLeave}</span>
               </button>
             </div>
           </div>
@@ -260,6 +314,19 @@ const AttendanceDetails: React.FC = () => {
                   const record = empAttendance.find((r: any) => r.date === dateStr);
                   let status = record?.status || '-';
                   return { day, dateObj, record, status };
+                }).filter((item: any) => {
+                  const status = item.status;
+                  if (attendanceFilter === 'All') return true;
+                  if (attendanceFilter === ATTENDANCE_STATUS.PRESENT) return [ATTENDANCE_STATUS.PRESENT, ATTENDANCE_STATUS.HALF_DAY, ATTENDANCE_STATUS.PRESENT_ON_HOLIDAY, ATTENDANCE_STATUS.IN, ATTENDANCE_STATUS.PRESENT_MISSPUNCH].includes(status);
+                  if (attendanceFilter === ATTENDANCE_STATUS.ABSENT) return status === ATTENDANCE_STATUS.ABSENT;
+                  if (attendanceFilter === ATTENDANCE_STATUS.LEAVE) return [ATTENDANCE_STATUS.LEAVE, ATTENDANCE_STATUS.EARNED_LEAVE, ATTENDANCE_STATUS.HALF_DAY_EARNED_LEAVE].includes(status);
+                  if (attendanceFilter === ATTENDANCE_STATUS.LATE) return isRecordLate(item.record?.checkIn);
+                  if (attendanceFilter === ATTENDANCE_STATUS.MISSPUNCH) return status === ATTENDANCE_STATUS.MISSPUNCH;
+                  if (attendanceFilter === ATTENDANCE_STATUS.PRESENT_ON_HOLIDAY) return status === ATTENDANCE_STATUS.PRESENT_ON_HOLIDAY;
+                  if (attendanceFilter === ATTENDANCE_STATUS.WEEK_OFF) return status === ATTENDANCE_STATUS.WEEK_OFF;
+                  if (attendanceFilter === ATTENDANCE_STATUS.PRESENT_MISSPUNCH) return status === ATTENDANCE_STATUS.PRESENT_MISSPUNCH;
+                  if (attendanceFilter === ATTENDANCE_STATUS.HALF_DAY) return status === ATTENDANCE_STATUS.HALF_DAY;
+                  return true;
                 })}
                 columns={[
                   { key: 'date', label: 'Date', render: (item) => <span className="font-medium text-slate-700 dark:text-slate-300 text-[13px]">{format(item.dateObj, 'dd MMM yyyy')}</span> },
@@ -311,16 +378,7 @@ const AttendanceDetails: React.FC = () => {
       )}
       <div className="bg-white dark:bg-slate-800 shadow-sm rounded-xl border border-slate-200 dark:border-slate-700/60 flex flex-col h-[calc(100vh-112px)] overflow-hidden transition-colors duration-200">
         <div className="p-4 bg-white dark:bg-slate-800 border-b border-slate-100 dark:border-slate-700 flex flex-col xl:flex-row xl:items-center justify-between gap-4 shrink-0 transition-colors">
-          <div className="relative z-50">
-            <DatePicker
-              selected={currentDate}
-              onChange={(date: Date | null) => { if (date) setCurrentDate(date); }}
-              maxDate={new Date()}
-              dateFormat="MMMM yyyy"
-              showMonthYearPicker
-              className="px-3 h-[36px] bg-slate-100 hover:bg-slate-200 dark:bg-[#0b1120] border border-slate-200 dark:border-slate-700 rounded-lg text-[13px] font-semibold focus:ring-2 focus:ring-blue-500 outline-none dark:text-white dark:[color-scheme:dark] w-[150px] text-slate-700 cursor-pointer text-center transition-colors"
-            />
-          </div>
+          <div className="relative z-50"> <h2 className="text-xl font-bold text-slate-800 dark:text-white hidden md:block">Tracker</h2></div>
           <div className="flex flex-wrap items-center gap-3">
             <div className="flex items-center gap-2 mr-2">
               <button
@@ -362,6 +420,16 @@ const AttendanceDetails: React.FC = () => {
                   setCurrentPage(1);
                 }}
                 className="pl-9 pr-4 py-1.5 bg-slate-50 dark:bg-[#0b1120] border border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none dark:text-white transition-all placeholder:text-slate-400"
+              />
+            </div>
+            <div className="relative z-50">
+              <DatePicker
+                selected={currentDate}
+                onChange={(date: Date | null) => { if (date) setCurrentDate(date); }}
+                maxDate={new Date()}
+                dateFormat="MMMM yyyy"
+                showMonthYearPicker
+                className="px-3 h-[36px] bg-slate-100 hover:bg-slate-200 dark:bg-[#0b1120] border border-slate-200 dark:border-slate-700 rounded-lg text-[13px] font-semibold focus:ring-2 focus:ring-blue-500 outline-none dark:text-white dark:[color-scheme:dark] w-[150px] text-slate-700 cursor-pointer text-center transition-colors"
               />
             </div>
           </div>

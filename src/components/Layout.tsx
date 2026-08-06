@@ -3,7 +3,7 @@ import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useAppData } from '../context/AppContext';
 import { ATTENDANCE_STATUSES } from '../constants';
-import { LogOut, LayoutDashboard, CalendarCheck, FileText, Bell, HelpCircle, Building2, Moon, Sun, Clock, Settings } from 'lucide-react';
+import { LogOut, LayoutDashboard, CalendarCheck, FileText, Bell, HelpCircle, Building2, Moon, Sun, Clock, Settings, RepeatOff } from 'lucide-react';
 import { formatDistanceToNow, format } from 'date-fns';
 import { ToggleLeft, ToggleRight, ArrowRightLeft, Mail } from 'lucide-react';
 
@@ -442,9 +442,9 @@ const Layout: React.FC = () => {
                 <button
                   title="Attendance Rule"
                   onClick={() => setIsRuleModalOpen(!isRuleModalOpen)}
-                  className="w-9 h-9 flex items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800 transition-colors font-bold text-lg border border-slate-200 dark:border-slate-700/60 shadow-sm ml-1"
+                  className="w-9 h-9 flex items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800 transition-colors"
                 >
-                  R
+                  <RepeatOff className="w-5 h-5" />
                 </button>
 
                 {isRuleModalOpen && (

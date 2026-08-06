@@ -8,7 +8,7 @@ import 'react-datepicker/dist/react-datepicker.css';
 import Loader from '../../components/Loader';
 import { fetchEmployeePunchData, fetchWorkerCutoff, fetchManagerCutoff, fetchRequests } from '../../api';
 import { AttendanceTable, type ColumnDef } from '../../components/AttendanceTable';
-import { getFullStatus, calculateAdvancedAttendance, getAttendanceFieldStyle, isRecordLate } from '../../utils/attendanceUtils';
+import { getFullStatus, getAttendanceFieldStyle, isRecordLate, processAttendanceRecord } from '../../utils/attendanceUtils';
 import { ATTENDANCE_STATUS, ATTENDANCE_STATUS_MAP, ATTENDANCE_SUMMARY_FILTERS, DEFAULT_ATTENDANCE_COLORS } from '../../constants';
 
 const AttendanceSummary: React.FC = () => {
@@ -70,31 +70,24 @@ const AttendanceSummary: React.FC = () => {
 
       let allRequests: any[] = [];
       try {
-        allRequests = await fetchRequests(user?.code);
+        const managerId = user?.code ? user.code.replace('FP', '') : '';
+        allRequests = await fetchRequests(managerId);
       } catch (e) {
         console.error("Failed to fetch requests", e);
       }
 
       const attendance = allEmployees.map((emp: any) => {
         const empCutoff = cutoffRes.find((c: any) => c.worker_code === emp.code);
-        const empRequests = allRequests.filter(r => r.userId === emp.id);
+        const empRequests = allRequests.filter(r =>
+          String(r.userId) === String(emp.code) ||
+          String(r.userId) === String(emp.id) ||
+          String(r.userId) === String(emp.code).replace('FP', '')
+        );
 
         const empRecords = punchData
           .filter((p: any) => p.emp_id === emp.code || String(p.emp_id) === String(emp.code))
           .map((p: any) => {
-            const date = p.logindate ? p.logindate.split(' ')[0] : '';
-            const checkIn = p.intime ? p.intime.split(' ')[1]?.substring(0, 5) : '';
-            const checkOut = p.outtime ? p.outtime.split(' ')[1]?.substring(0, 5) : '';
-            const advanced = calculateAdvancedAttendance(p.status, checkIn, checkOut, date, empCutoff, attendanceGlobalRules, managerCutoffData, empRequests);
-            let status = advanced.attendanceStatus;
-
-            return { 
-              date, 
-              status: status, 
-              checkIn, 
-              checkOut,
-              advanced 
-            };
+            return processAttendanceRecord(p, empCutoff, attendanceGlobalRules, managerCutoffData, empRequests);
           });
 
         return { employeeId: emp.id, records: empRecords };
@@ -225,11 +218,11 @@ const AttendanceSummary: React.FC = () => {
             data={todayRecords.filter((item: any) => {
               const status = item.record?.status || '-';
               if (attendanceFilter === (ATTENDANCE_STATUS_MAP[ATTENDANCE_STATUS.ALL])) return true;
+              if (attendanceFilter === (ATTENDANCE_STATUS_MAP[ATTENDANCE_STATUS.IN])) return status === ATTENDANCE_STATUS.IN;
+              if (attendanceFilter === (ATTENDANCE_STATUS_MAP[ATTENDANCE_STATUS.OUT])) return item.record?.checkOut && item.record?.checkOut !== '-';
               if (attendanceFilter === (ATTENDANCE_STATUS_MAP[ATTENDANCE_STATUS.PRESENT])) return [ATTENDANCE_STATUS.PRESENT, ATTENDANCE_STATUS.HALF_DAY, ATTENDANCE_STATUS.PRESENT_ON_HOLIDAY, ATTENDANCE_STATUS.IN, ATTENDANCE_STATUS.PRESENT_MISSPUNCH].includes(status);
               if (attendanceFilter === (ATTENDANCE_STATUS_MAP[ATTENDANCE_STATUS.ABSENT])) return status === ATTENDANCE_STATUS.ABSENT;
               if (attendanceFilter === (ATTENDANCE_STATUS_MAP[ATTENDANCE_STATUS.LEAVE])) return [ATTENDANCE_STATUS.LEAVE, ATTENDANCE_STATUS.EARNED_LEAVE, ATTENDANCE_STATUS.HALF_DAY_EARNED_LEAVE].includes(status);
-              if (attendanceFilter === (ATTENDANCE_STATUS_MAP[ATTENDANCE_STATUS.IN])) return status === ATTENDANCE_STATUS.IN;
-              if (attendanceFilter === (ATTENDANCE_STATUS_MAP[ATTENDANCE_STATUS.OUT])) return item.record?.checkOut && item.record?.checkOut !== '-';
               if (attendanceFilter === (ATTENDANCE_STATUS_MAP[ATTENDANCE_STATUS.LATE])) return isRecordLate(item.record?.checkIn);
               if (attendanceFilter === (ATTENDANCE_STATUS_MAP[ATTENDANCE_STATUS.MISSPUNCH])) return status === ATTENDANCE_STATUS.MISSPUNCH;
               if (attendanceFilter === (ATTENDANCE_STATUS_MAP[ATTENDANCE_STATUS.PRESENT_ON_HOLIDAY])) return status === ATTENDANCE_STATUS.PRESENT_ON_HOLIDAY;
@@ -245,15 +238,6 @@ const AttendanceSummary: React.FC = () => {
               <div className="flex items-center gap-6">
                 <div className="flex items-center gap-4">
                   <h3 className="text-[17px] font-bold text-slate-800 dark:text-white">Employee Logins Details</h3>
-                  <div className="relative z-50">
-                    <DatePicker
-                      selected={currentDate}
-                      onChange={(date: Date | null) => { if (date) setCurrentDate(date); }}
-                      maxDate={new Date()}
-                      dateFormat="dd MMM yyyy"
-                      className="px-3 h-[36px] bg-slate-100 hover:bg-slate-200 dark:bg-[#0b1120] border border-slate-200 dark:border-slate-700 rounded-lg text-[13px] font-semibold focus:ring-2 focus:ring-blue-500 outline-none dark:text-white dark:[color-scheme:dark] w-[130px] text-slate-700 cursor-pointer text-center transition-colors"
-                    />
-                  </div>
                 </div>
                 <div className="hidden sm:flex items-center gap-1 text-[11px] font-bold overflow-x-auto custom-scrollbar pb-1 max-w-[800px]">
                   {ATTENDANCE_SUMMARY_FILTERS.map(tab => {
@@ -262,12 +246,12 @@ const AttendanceSummary: React.FC = () => {
                     const count = todayRecords.filter((item: any) => {
                       const status = item.record?.status || '-';
                       if (tab.id === (ATTENDANCE_STATUS_MAP[ATTENDANCE_STATUS.ALL])) return true;
+                      if (tab.id === (ATTENDANCE_STATUS_MAP[ATTENDANCE_STATUS.IN])) return status === ATTENDANCE_STATUS.IN;
+                      if (tab.id === (ATTENDANCE_STATUS_MAP[ATTENDANCE_STATUS.OUT])) return item.record?.checkOut && item.record?.checkOut !== '-';
                       if (tab.id === (ATTENDANCE_STATUS_MAP[ATTENDANCE_STATUS.PRESENT])) return [ATTENDANCE_STATUS.PRESENT, ATTENDANCE_STATUS.HALF_DAY, ATTENDANCE_STATUS.PRESENT_ON_HOLIDAY, ATTENDANCE_STATUS.IN, ATTENDANCE_STATUS.PRESENT_MISSPUNCH].includes(status);
                       if (tab.id === (ATTENDANCE_STATUS_MAP[ATTENDANCE_STATUS.PRESENT])) return [ATTENDANCE_STATUS.PRESENT, ATTENDANCE_STATUS.HALF_DAY, ATTENDANCE_STATUS.PRESENT_ON_HOLIDAY, ATTENDANCE_STATUS.IN, ATTENDANCE_STATUS.PRESENT_MISSPUNCH].includes(status);
                       if (tab.id === (ATTENDANCE_STATUS_MAP[ATTENDANCE_STATUS.ABSENT])) return status === ATTENDANCE_STATUS.ABSENT;
                       if (tab.id === (ATTENDANCE_STATUS_MAP[ATTENDANCE_STATUS.LEAVE])) return [ATTENDANCE_STATUS.LEAVE, ATTENDANCE_STATUS.EARNED_LEAVE, ATTENDANCE_STATUS.HALF_DAY_EARNED_LEAVE].includes(status);
-                      if (tab.id === (ATTENDANCE_STATUS_MAP[ATTENDANCE_STATUS.IN])) return status === ATTENDANCE_STATUS.IN;
-                      if (tab.id === (ATTENDANCE_STATUS_MAP[ATTENDANCE_STATUS.OUT])) return item.record?.checkOut && item.record?.checkOut !== '-';
                       if (tab.id === (ATTENDANCE_STATUS_MAP[ATTENDANCE_STATUS.LATE])) return isRecordLate(item.record?.checkIn);
                       if (tab.id === (ATTENDANCE_STATUS_MAP[ATTENDANCE_STATUS.MISSPUNCH])) return status === ATTENDANCE_STATUS.MISSPUNCH;
                       if (tab.id === (ATTENDANCE_STATUS_MAP[ATTENDANCE_STATUS.PRESENT_ON_HOLIDAY])) return status === ATTENDANCE_STATUS.PRESENT_ON_HOLIDAY;
@@ -290,6 +274,17 @@ const AttendanceSummary: React.FC = () => {
                     )
                   })}
                 </div>
+              </div>
+            }
+            customTopRight={
+              <div className="relative z-50">
+                <DatePicker
+                  selected={currentDate}
+                  onChange={(date: Date | null) => { if (date) setCurrentDate(date); }}
+                  maxDate={new Date()}
+                  dateFormat="dd MMM yyyy"
+                  className="px-3 h-[36px] bg-slate-100 hover:bg-slate-200 dark:bg-[#0b1120] border border-slate-200 dark:border-slate-700 rounded-lg text-[13px] font-semibold focus:ring-2 focus:ring-blue-500 outline-none dark:text-white dark:[color-scheme:dark] w-[130px] text-slate-700 cursor-pointer text-center transition-colors"
+                />
               </div>
             }
             searchFn={(item, query) =>

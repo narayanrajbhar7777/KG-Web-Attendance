@@ -7,7 +7,7 @@ import type { AppRequest, User } from '../../types';
 import { Calendar, EyeOff, Table, Check, X, Clock, Search, ExternalLink } from 'lucide-react';
 import { format } from 'date-fns';
 import { AttendanceTable, type ColumnDef } from '../../components/AttendanceTable';
-import { calculateTime, calculateAdvancedAttendance, isRecordLate } from '../../utils/attendanceUtils';
+import { calculateTime, calculateAdvancedAttendance, isRecordLate, processAttendanceRecord } from '../../utils/attendanceUtils';
 import { ATTENDANCE_STATUS, DEFAULT_ATTENDANCE_COLORS, REQUEST_STATUS, ATTENDANCE_BASE_MAP } from '../../constants';
 import Loader from '../../components/Loader';
 
@@ -93,29 +93,23 @@ const AdminDashboard: React.FC = () => {
         const processed = allEmployees.map((emp: any) => {
           const p = punchData.find((p: any) => String(p.emp_id) === String(emp.code));
 
-          const checkIn = p?.intime ? p.intime.split(' ')[1]?.substring(0, 5) : '-';
-          const checkOut = p?.outtime ? p.outtime.split(' ')[1]?.substring(0, 5) : '-';
-
-          const { total } = calculateTime(checkIn, checkOut);
-          const duration = total;
-
-          const currDate = format(currentDate, 'yyyy-MM-dd');
-          const pDate = p?.logindate ? p.logindate.split(' ')[0] : currDate;
-
           const empCutoff = cutoffs.find((c: any) => c.worker_code === emp.code);
-          const empRequests = reqsData.filter((r: any) => r.userId === emp.code || r.userId === emp.id);
-          const advanced = calculateAdvancedAttendance(p?.status, checkIn, checkOut, pDate, empCutoff, attendanceGlobalRules, managerCutoffData, empRequests);
-          let status = advanced.attendanceStatus;
+          const empRequests = reqsData.filter((r: any) => 
+            String(r.userId) === String(emp.code) || 
+            String(r.userId) === String(emp.id) ||
+            String(r.userId) === String(emp.code).replace('FP', '')
+          );
+          const processedRecord = processAttendanceRecord(p, empCutoff, attendanceGlobalRules, managerCutoffData, empRequests, currentDate);
 
           return {
             id: emp.code + '-' + Math.random(),
             code: emp.code,
             name: emp.name || 'Unknown',
-            date: p?.logindate ? p.logindate.split(' ')[0] : currDate,
-            checkIn,
-            checkOut,
-            duration,
-            status
+            date: processedRecord.date,
+            checkIn: processedRecord.checkIn,
+            checkOut: processedRecord.checkOut,
+            duration: processedRecord.duration,
+            status: processedRecord.status
           };
         });
 
