@@ -1,5 +1,5 @@
 import React from 'react';
-import { format } from 'date-fns';
+import { format, isAfter, startOfDay } from 'date-fns';
 import { ATTENDANCE_BASE_MAP, ATTENDANCE_STATUS, ATTENDANCE_STATUS_MAP, DAYS, DEFAULT_ATTENDANCE_COLORS } from '../constants';
 
 export const getAttendanceFieldStyle = (
@@ -392,19 +392,38 @@ export const calculateAdvancedAttendance = (
 
   if (empRequests && empRequests.length > 0) {
     const formattedPDate = format(new Date(pDate), 'yyyy-MM-dd');
-    const approvedLeave = empRequests.find((r: any) => {
-      const rDateStr = r.date ? format(new Date(r.date), 'yyyy-MM-dd') : '';
-      const typeStr = (r.type || '').toUpperCase().replace(/\s+/g, '');
-      return typeStr === 'LEAVE' && rDateStr === formattedPDate && r.status === 'Approved';
-    });
-    const approvedMispunch = empRequests.find((r: any) => {
-      const rDateStr = r.date ? format(new Date(r.date), 'yyyy-MM-dd') : '';
-      const typeStr = (r.type || '').toUpperCase().replace(/\s+/g, '');
-      return (typeStr === 'MISPUNCH' || typeStr === 'MISSPUNCH' || typeStr === 'MISSEDPUNCH') && rDateStr === formattedPDate && r.status === 'Approved';
+
+    const isDateInRange = (r: any, targetDate: string) => {
+      const fromDate = r.date ? format(new Date(r.date), 'yyyy-MM-dd') : '';
+      const toDate = r.toDate ? format(new Date(r.toDate), 'yyyy-MM-dd') : fromDate;
+      if (!fromDate) return false;
+      return targetDate >= fromDate && targetDate <= toDate;
+    };
+
+    const pendingRequest = empRequests.find((r: any) => {
+      return isDateInRange(r, formattedPDate) && r.status === 'Pending';
     });
 
-    if (approvedLeave) {
-      status = ATTENDANCE_STATUS.LEAVE;
+    const approvedLeave = empRequests.find((r: any) => {
+      const typeStr = (r.type || '').toUpperCase().replace(/\s+/g, '');
+      return typeStr === 'LEAVE' && isDateInRange(r, formattedPDate) && r.status === 'Approved';
+    });
+
+    const approvedMispunch = empRequests.find((r: any) => {
+      const typeStr = (r.type || '').toUpperCase().replace(/\s+/g, '');
+      return (typeStr === 'MISPUNCH' || typeStr === 'MISSPUNCH' || typeStr === 'MISSEDPUNCH') && isDateInRange(r, formattedPDate) && r.status === 'Approved';
+    });
+
+    if (pendingRequest) {
+      if (status !== ATTENDANCE_STATUS.WEEK_OFF && status !== ATTENDANCE_STATUS.HOLIDAY) {
+        status = 'Pending';
+      }
+    } else if (approvedLeave) {
+      if (status !== ATTENDANCE_STATUS.WEEK_OFF && status !== ATTENDANCE_STATUS.HOLIDAY) {
+        if (!cIn && !cOut) {
+          status = ATTENDANCE_STATUS.LEAVE;
+        }
+      }
     } else if (approvedMispunch) {
       status = 'P/MP';
     }
@@ -533,4 +552,60 @@ export const processAttendanceRecord = (
     workingHoursStatus: advanced.workingHoursStatus,
     advanced
   };
+};
+
+export const canApplyLeave = (dateStr: string, status: string, existingRequest?: any): { allowed: boolean; message: string } => {
+  if (!dateStr) return { allowed: false, message: 'Please select a date first.' };
+
+  if (existingRequest) {
+    if (existingRequest.status === 'Pending') {
+      return { allowed: false, message: 'Request already pending for this date.' };
+    }
+    if (existingRequest.status === 'Approved') {
+      return { allowed: false, message: 'Request already approved for this date.' };
+    }
+  }
+
+  const date = new Date(dateStr);
+  const today = startOfDay(new Date());
+
+  if (isAfter(date, today)) {
+    return { allowed: true, message: '' };
+  }
+
+  if (status === ATTENDANCE_STATUS.ABSENT || status === 'Absent' || status === 'A') {
+    return { allowed: true, message: '' };
+  }
+
+  let message = "Leave can only be applied on absent or future dates.";
+  if (status === ATTENDANCE_STATUS.MISSPUNCH || status === 'M') {
+    message = "Leave cannot be applied on missed punch day.";
+  } else if (status === ATTENDANCE_STATUS.PRESENT || status === 'P' || status === 'IN' || status === 'HD' || status === 'P/MP' || status === ATTENDANCE_STATUS.PRESENT_ON_HOLIDAY) {
+    message = "Leave cannot be applied on present day.";
+  } else if (status === ATTENDANCE_STATUS.WEEK_OFF || status === 'WO') {
+    message = "Leave cannot be applied on week off day.";
+  } else if (status === ATTENDANCE_STATUS.LEAVE || status === 'L') {
+    message = "Leave already applied for this date.";
+  }
+
+  return { allowed: false, message };
+};
+
+export const canApplyMissedPunch = (dateStr: string, status: string, existingRequest?: any): { allowed: boolean; message: string } => {
+  if (!dateStr) return { allowed: false, message: 'Please select a date first.' };
+
+  if (existingRequest) {
+    if (existingRequest.status === 'Pending') {
+      return { allowed: false, message: 'Request already pending for this date.' };
+    }
+    if (existingRequest.status === 'Approved') {
+      return { allowed: false, message: 'Request already approved for this date.' };
+    }
+  }
+
+  if (status === ATTENDANCE_STATUS.MISSPUNCH || status === 'M' || status === 'Missed Punch' || status === 'P/MP') {
+    return { allowed: true, message: '' };
+  }
+
+  return { allowed: false, message: "Missed Punch request is available only for missed punch days." };
 };

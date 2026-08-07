@@ -64,7 +64,8 @@ export const ATTENDANCE_BASE_MAP = {
   NOT_JOINED: { code: 'NJ', label: 'Not Joined', color: '' },
   LEAVE_WITHOUT_PAY: { code: 'LWP', label: 'Leave without Pay', color: '' },
   OUT: { code: 'Out', label: 'Out', color: '#64748b' },
-  LATE: { code: 'Late', label: 'Late', color: '#f59e0b' }
+  LATE: { code: 'Late', label: 'Late', color: '#f59e0b' },
+  PENDING: { code: 'Pending', label: 'Pending', color: '#f59e0b' }
 } as const;
 
 export const ATTENDANCE_STATUS = Object.fromEntries(
@@ -99,3 +100,15 @@ export const ATTENDANCE_SUMMARY_FILTERS = [
   { id: ATTENDANCE_STATUS_MAP[ATTENDANCE_STATUS.PRESENT_MISSPUNCH], label: ATTENDANCE_STATUS.PRESENT_MISSPUNCH, code: ATTENDANCE_STATUS.PRESENT_MISSPUNCH },
   { id: ATTENDANCE_STATUS_MAP[ATTENDANCE_STATUS.HALF_DAY], label: ATTENDANCE_STATUS.HALF_DAY, code: ATTENDANCE_STATUS.HALF_DAY }
 ];
+
+export const ATTENDANCE_MESSAGES = {
+  DATE_REQUIRED: 'Please select a date first.',
+  DUPLICATE_PENDING: 'Request already pending for this date.',
+  DUPLICATE_APPROVED: 'Request already approved for this date.',
+  LEAVE_RESTRICTION_DEFAULT: 'Leave can only be applied on absent or future dates.',
+  LEAVE_MISSPUNCH_BLOCKED: 'Leave cannot be applied on missed punch day.',
+  LEAVE_PRESENT_BLOCKED: 'Leave cannot be applied on present day.',
+  LEAVE_WEEK_OFF_BLOCKED: 'Leave cannot be applied on week off day.',
+  LEAVE_ALREADY_APPLIED: 'Leave already applied for this date.',
+  MISSED_PUNCH_ONLY: 'Missed Punch request is available only for missed punch days.',
+} as const;

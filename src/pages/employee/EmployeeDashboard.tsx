@@ -11,7 +11,7 @@ import 'react-datepicker/dist/react-datepicker.css';
 import { ATTENDANCE_BASE_MAP, ATTENDANCE_STATUS, ATTENDANCE_STATUS_MAP, DAYS } from '../../constants';
 import { AttendanceTable, type ColumnDef } from '../../components/AttendanceTable';
 import { fetchEmployeePunchData, fetchLeaveTypes, fetchRequests } from '../../api';
-import { calculateTimeNum, getAttendanceFieldStyle, calculateTime, isRecordLate, processAttendanceRecord } from '../../utils/attendanceUtils';
+import { calculateTimeNum, getAttendanceFieldStyle, calculateTime, isRecordLate, processAttendanceRecord, canApplyLeave, canApplyMissedPunch } from '../../utils/attendanceUtils';
 
 const EmployeeDashboard: React.FC = () => {
   const { user, login } = useAuth();
@@ -33,6 +33,7 @@ const EmployeeDashboard: React.FC = () => {
   const [leaveType, setLeaveType] = useState<string>('');
   const [managerId, setManagerId] = useState<string>('');
   const [leaveTypes, setLeaveTypes] = useState<any[]>([]);
+  const [validationError, setValidationError] = useState('');
 
   useEffect(() => {
     const loadLeaveTypes = async () => {
@@ -103,11 +104,42 @@ const EmployeeDashboard: React.FC = () => {
 
   useEffect(() => {
     fetchDashboardData();
+    setDate('');
+    setToDate('');
+    setValidationError('');
   }, [user, currentDate, attendanceGlobalRules]);
 
-  if (loading && !dashboardData) {
-    return <div className="flex items-center justify-center min-h-[70vh]"><Loader /></div>;
-  }
+  useEffect(() => {
+    if (!date) {
+      setValidationError('');
+      return;
+    }
+    const isFutureDate = isAfter(startOfDay(new Date(date)), startOfDay(new Date()));
+    let status = '-';
+    if (!isFutureDate && dashboardData?.attendance?.records) {
+      const record = dashboardData.attendance.records.find((r: any) => r.date === date);
+      status = record?.status || '-';
+    }
+
+    const existingRequest = dashboardData?.requests?.find((r: any) => {
+      if (!r.date) return false;
+      const fromDate = r.date.toString().split(' ')[0];
+      const toDate = r.toDate ? r.toDate.toString().split(' ')[0] : fromDate;
+      const isActiveRequest = r.status?.toLowerCase() === 'pending' || r.status?.toLowerCase() === 'approved';
+      const isDateInRange = date >= fromDate && date <= toDate;
+      return isDateInRange && isActiveRequest;
+    });
+
+    if (requestType === 'Leave') {
+      const { allowed, message } = canApplyLeave(date, status, existingRequest);
+      setValidationError(allowed ? '' : message);
+    } else {
+      const { allowed, message } = canApplyMissedPunch(date, status, existingRequest);
+      setValidationError(allowed ? '' : message);
+    }
+  }, [date, requestType, dashboardData]);
+
+  if (loading && !dashboardData) return <div className="flex items-center justify-center min-h-[70vh]"><Loader /></div>;
 
   const { attendance: empAttendance, managers = [] } = dashboardData || {};
   const myAttendance = empAttendance?.records || [];
@@ -120,9 +152,37 @@ const EmployeeDashboard: React.FC = () => {
   const emptyCells = Array.from({ length: startDayOfWeek });
   const today = startOfDay(new Date());
 
+  const isDateInRange = (r: any, targetDate: string) => {
+    const fromDate = r.date ? format(new Date(r.date), 'yyyy-MM-dd') : '';
+    const toDate = r.toDate ? format(new Date(r.toDate), 'yyyy-MM-dd') : fromDate;
+    if (!fromDate) return false;
+    return targetDate >= fromDate && targetDate <= toDate;
+  };
+
+  const handleDateClick = (dateStr: string) => {
+    setDate(dateStr);
+    let isFuture = isAfter(startOfDay(new Date(dateStr)), today);
+    let status = '-';
+    if (!isFuture && !loading) {
+      const record = myAttendance.find((r: any) => r.date === dateStr);
+      status = record?.status || '-';
+    }
+
+    if (status === ATTENDANCE_STATUS.MISSPUNCH || status === 'M') {
+      setRequestType(ATTENDANCE_BASE_MAP.MISSPUNCH.label as any);
+    } else {
+      setRequestType('Leave');
+      setToDate(dateStr);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user) return;
+    if (validationError) {
+      toast.error(validationError);
+      return;
+    }
     if (!managerId) {
       toast.error("Please select a manager to approve this request.");
       return;
@@ -219,6 +279,16 @@ const EmployeeDashboard: React.FC = () => {
       status = record?.status || '-';
       checkIn = record?.checkIn || '-';
       checkOut = record?.checkOut || '-';
+    } else if (isFuture && !loading) {
+      const futureReq = dashboardData?.requests?.find((r: any) => {
+        return isDateInRange(r, dateStr) && (r.status === 'Pending' || r.status === 'Approved');
+      });
+      if (futureReq) {
+        const dayOfWeek = format(currentIterDate, 'EEEE');
+        if (dayOfWeek !== DAYS.SD.name) {
+          status = futureReq.status === 'Pending' ? 'Pending' : (futureReq.type === 'Leave' ? ATTENDANCE_STATUS.LEAVE : status);
+        }
+      }
     }
 
     return {
@@ -419,7 +489,6 @@ const EmployeeDashboard: React.FC = () => {
 
                   {/* Offset for first day of month */}
                   {emptyCells.map((_, i) => <div key={`empty-${i}`} />)}
-
                   {days.map(day => {
                     const dateStr = format(new Date(currentDate.getFullYear(), currentDate.getMonth(), day), 'yyyy-MM-dd');
                     const currentIterDate = new Date(currentDate.getFullYear(), currentDate.getMonth(), day);
@@ -430,27 +499,60 @@ const EmployeeDashboard: React.FC = () => {
                     if (!isFuture && !loading) {
                       const record = myAttendance.find((r: any) => r.date === dateStr);
                       status = record?.status || '-';
+                    } else if (isFuture && !loading) {
+                      const futureReq = dashboardData?.requests?.find((r: any) => {
+                        return isDateInRange(r, dateStr) && (r.status === 'Pending' || r.status === 'Approved');
+                      });
+                      if (futureReq) {
+                        const dayOfWeek = format(currentIterDate, 'EEEE');
+                        if (dayOfWeek !== DAYS.SD.name) {
+                          status = futureReq.status === 'Pending' ? 'Pending' : (futureReq.type === 'Leave' ? ATTENDANCE_STATUS.LEAVE : status);
+                        }
+                      }
                     }
 
                     let bgColor = 'font-bold shadow-sm';
-                    if (isFuture || loading || status === '-') {
+                    if ((isFuture && status === '-') || loading || status === '-') {
                       bgColor += ' bg-slate-50 dark:bg-slate-800/50 text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-slate-700/60';
                     }
 
-                    let customStyle: React.CSSProperties = isFuture || loading || status === '-'
+                    let customStyle: React.CSSProperties = (isFuture && status === '-') || loading || status === '-'
                       ? {}
                       : getAttendanceFieldStyle(status, customColors, true);
 
-                    const displayStatus = isFuture || loading ? '' : status;
-                    const tooltip = !isFuture && !loading && displayStatus !== '-' ? `${day} ${displayStatus}: ${ATTENDANCE_STATUS_MAP[displayStatus] || displayStatus}` : '';
+                    const displayStatus = (isFuture && status === '-') || loading ? '' : status;
+                    let hasPendingRequest = false;
+                    let pendingRequestType = '';
+                    const dayOfWeek = format(currentIterDate, 'EEEE');
+                    if (dayOfWeek !== DAYS.SD.name && status !== ATTENDANCE_STATUS.HOLIDAY && status !== ATTENDANCE_STATUS.WEEK_OFF) {
+                      const dayRequests = dashboardData?.requests?.filter((r: any) => {
+                        return isDateInRange(r, dateStr) && r.status === 'Pending';
+                      });
+                      hasPendingRequest = (dayRequests && dayRequests.length > 0) || false;
+                      if (hasPendingRequest) {
+                        pendingRequestType = dayRequests[0].type;
+                      }
+                    }
+
+                    let hoverText = ATTENDANCE_STATUS_MAP[status] || status;
+                    if (status === 'Pending' && pendingRequestType) {
+                      hoverText = `${pendingRequestType} Request Pending`;
+                    }
+
+                    const tooltip = !loading && displayStatus !== '-' ? `${day} ${displayStatus}: ${hoverText}` : '';
 
                     return (
-                      <div key={day} title={tooltip} style={customStyle} className={`relative group rounded-lg flex flex-col items-center justify-center p-1 transition-colors h-full ${bgColor}`}>
+                      <div key={day} title={tooltip} onClick={() => handleDateClick(dateStr)} style={customStyle} className={`relative group rounded-lg flex flex-col items-center justify-center p-1 transition-colors h-full cursor-pointer ${bgColor}`}>
                         <div className="absolute opacity-0 group-hover:opacity-100 transition-opacity bg-slate-900 text-white text-[10px] py-1 px-2 rounded -top-8 left-1/2 -translate-x-1/2 whitespace-nowrap z-10 pointer-events-none">
-                          {ATTENDANCE_STATUS_MAP[status] || status}
+                          {hoverText}
                         </div>
                         <span className="text-xs opacity-80 mb-1">{day}</span>
-                        <span className="text-sm">{displayStatus}</span>
+                        <div className="flex items-center justify-center relative">
+                          <span className="text-sm">{displayStatus}</span>
+                          {hasPendingRequest && (
+                            <span className="absolute -top-1 -right-2.5 w-2 h-2 bg-amber-500 rounded-full animate-pulse" title="Pending Request"></span>
+                          )}
+                        </div>
                       </div>
                     );
                   })}
@@ -603,9 +705,16 @@ const EmployeeDashboard: React.FC = () => {
                   />
                 </div>
 
+                {validationError && (
+                  <div className="p-3 bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/20 rounded-lg text-sm text-red-600 dark:text-red-400">
+                    {validationError}
+                  </div>
+                )}
+
                 <button
                   type="submit"
-                  className="w-full flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-medium py-2.5 rounded-lg transition-colors"
+                  disabled={!!validationError}
+                  className={`w-full flex items-center justify-center gap-2 text-white font-medium py-2.5 rounded-lg transition-colors ${validationError ? 'bg-slate-400 dark:bg-slate-700 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700'}`}
                 >
                   <Send className="w-4 h-4" /> Submit Request
                 </button>
