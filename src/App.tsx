@@ -22,6 +22,8 @@ const MissingPunchReportPage = React.lazy(() => import('./pages/admin/MissingPun
 const EmployeeDashboard = React.lazy(() => import('./pages/employee/EmployeeDashboard'));
 const EmployeeRequests = React.lazy(() => import('./pages/employee/EmployeeRequests'));
 const MyAttendance = React.lazy(() => import('./pages/employee/MyAttendance'));
+const ExitPass = React.lazy(() => import('./pages/employee/ExitPass'));
+const AdminExitPass = React.lazy(() => import('./pages/admin/AdminExitPass'));
 
 const LoadingFallback = () => (
   <div className="min-h-screen flex items-center justify-center bg-[#f4f7f6] dark:bg-[#0b1120] text-slate-500">
@@ -52,10 +54,12 @@ function App() {
                   <Route path="/admin/missing-punch-report" element={<MissingPunchReportPage />} />
                   <Route path="/admin/settings/manager-cut-off" element={<ManagerCutOff />} />
                   <Route path="/admin/settings/worker-cut-off" element={<WorkerCutOff />} />
+                  <Route path="/admin/exit-pass-management" element={<AdminExitPass />} />
 
                   <Route path="/employee" element={<EmployeeDashboard />} />
                   <Route path="/employee/attendance" element={<MyAttendance />} />
                   <Route path="/employee/requests" element={<EmployeeRequests />} />
+                  <Route path="/employee/exit-pass" element={<ExitPass />} />
                 </Route>
 
                 <Route path="*" element={<Navigate to="/" replace />} />

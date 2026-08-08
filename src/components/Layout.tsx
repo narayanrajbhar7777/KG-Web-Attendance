@@ -3,7 +3,7 @@ import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useAppData } from '../context/AppContext';
 import { ATTENDANCE_STATUSES } from '../constants';
-import { LogOut, LayoutDashboard, CalendarCheck, FileText, Bell, HelpCircle, Building2, Moon, Sun, Clock, Settings, RepeatOff } from 'lucide-react';
+import { LogOut, LayoutDashboard, CalendarCheck, FileText, Bell, HelpCircle, Building2, Moon, Sun, Clock, Settings, RepeatOff, DoorOpen } from 'lucide-react';
 import { formatDistanceToNow, format } from 'date-fns';
 import { ToggleLeft, ToggleRight, ArrowRightLeft, Mail } from 'lucide-react';
 
@@ -113,11 +113,13 @@ const Layout: React.FC = () => {
     { label: 'Punch-In Logs', path: '/admin/summary', icon: CalendarCheck },
     { label: 'Attendance Tracker', path: '/admin/details', icon: FileText },
     { label: 'Worker Cut Off', path: '/admin/settings/worker-cut-off', icon: Clock },
+    { label: 'Exit Pass Mgmt', path: '/admin/exit-pass-management', icon: DoorOpen },
   ];
 
   const employeeLinks = [
     { label: 'Employee Dashboard', path: '/employee', icon: LayoutDashboard },
     { label: 'My Requests', path: '/employee/requests', icon: FileText },
+    { label: 'Exit Pass', path: '/employee/exit-pass', icon: DoorOpen },
   ];
 
   const links = user.role === 'Admin' ? [...adminLinks, ...employeeLinks] : employeeLinks;

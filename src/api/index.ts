@@ -797,5 +797,124 @@ export const deleteWorkerCutoff = async (cutoffData: any) => {
   }
 };
 
+// ==========================================
+// EXIT PASS APIs
+// ==========================================
+
+export const fetchGatePassEntity = async (empId: string) => {
+  try {
+    const res = await fetch(`${KG_WEB_APP0_API_URL}/EmpPortal/GetEntity`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ P_EMP_ID: empId })
+    });
+    return await res.json();
+  } catch (err) {
+    console.error('Error fetching Gate Pass Entity:', err);
+    throw err;
+  }
+};
+
+export const fetchEmployeeImage = async (empId: string) => {
+  try {
+    const res = await fetch(`${KG_WEB_APP0_API_URL}/EmpMas/GetImage1`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ p_emp_id: empId })
+    });
+    return await res.json();
+  } catch (err) {
+    console.error('Error fetching Employee Image:', err);
+    throw err;
+  }
+};
+
+export const fetchCombineEntityData = async (userId: string, nodeId: string) => {
+  try {
+    const res = await fetch(`${KG_WEB_APP0_API_URL}/Global/fetchCombineEntityData`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ P_USER_ID: userId, P_NODE_ID: nodeId })
+    });
+    return await res.json();
+  } catch (err) {
+    console.error('Error fetching Combine Entity Data:', err);
+    throw err;
+  }
+};
+
+export const fetchGatePassAuth = async () => {
+  try {
+    const payload =
+    {
+      "P_CRITERIA": " WHERE i.is_active = 'Y'"
+    }
+    const res = await fetch(`${KG_WEB_APP0_API_URL}/EmpPortal/FetchAuth`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    return await res.json();
+  } catch (err) {
+    console.error('Error fetching Gate Pass Auth:', err);
+    throw err;
+  }
+};
+
+export const fetchGatePassReasonCategory = async () => {
+  try {
+    const res = await fetch(`${KG_WEB_APP0_API_URL}/EmpPortal/FetchReasonCate`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({})
+    });
+    return await res.json();
+  } catch (err) {
+    console.error('Error fetching Reason Category:', err);
+    throw err;
+  }
+};
+
+export const insertGatePass = async (payload: any) => {
+  try {
+    const res = await fetch(`${KG_WEB_APP0_API_URL}/EmpPortal/InsGatePass`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    return await res.json();
+  } catch (err) {
+    console.error('Error inserting Gate Pass:', err);
+    throw err;
+  }
+};
+
+export const updateGatePass = async (payload: any) => {
+  try {
+    const res = await fetch(`${KG_WEB_APP0_API_URL}/EmpPortal/UpdGatePass`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    return await res.json();
+  } catch (err) {
+    console.error('Error updating Gate Pass:', err);
+    throw err;
+  }
+};
+
+export const fetchGatePassList = async (payload: any) => {
+  try {
+    const res = await fetch(`${KG_WEB_APP0_API_URL}/EmpPortal/FetchGatePass`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    return await res.json();
+  } catch (err) {
+    console.error('Error fetching Gate Pass List:', err);
+    throw err;
+  }
+};
 
 
